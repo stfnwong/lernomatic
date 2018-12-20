@@ -1,0 +1,4 @@
+# ignore swap, pyc, and pkl files 
+*.pyc
+*.swp
+*.pkl
