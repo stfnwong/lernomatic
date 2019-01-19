@@ -1,10 +1,9 @@
 """
-TEST_TRAINER
-Unit tests for trainer object
+TEST_MNIST_TRAINER
+Unit tests for MNIST trainer object
 
 Stefan Wong 2018
 """
-
 
 import sys
 import unittest
@@ -12,37 +11,35 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-# data split stuff
-#from sklearn.model_selection import test_train_split
-# unit under test
-from lernomatic.train import trainer
+# unit(s) under test
+from lernomatic.train import mnist_trainer
+from lernomatic.models import mnist as mnist_net
 
 # debug
 #from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-class TestDCASETrainer(unittest.TestCase):
+class TestMNISTTrainer(unittest.TestCase):
     def setUp(self):
         self.verbose         = GLOBAL_OPTS['verbose']
         self.draw_plot       = GLOBAL_OPTS['draw_plot']
         self.test_batch_size = 16
 
     def test_save_load_checkpoint(self):
-        print('======== TestDCASETrainer.test_save_load_checkpoint ')
+        print('======== TestMNISTTrainer.test_save_load_checkpoint ')
 
         test_dataset_file = 'hdf5/trainer_unit_test.h5'
-        model = dcase2018.DCASENet()
+        model = mnist_net.MNISTNet()
 
         test_num_epochs = 1
-        src_tr = trainer.DCASETrainer(
+        src_tr = mnist_trainer.MNISTTrainer(
             model,
             num_epochs = test_num_epochs,
             save_every = 1,
             device_id = GLOBAL_OPTS['device_id'],
             # dataload options
             checkpoint_name = 'save_load_test',
-            train_data_path = test_dataset_file,
             batch_size = 16,
             num_workers = GLOBAL_OPTS['num_workers']
         )
@@ -55,7 +52,7 @@ class TestDCASETrainer(unittest.TestCase):
         src_tr.train()
         # Make a new trainer and load all parameters into that
         # I guess we need to put some kind of loader and model here...
-        dst_tr = trainer.DCASETrainer(
+        dst_tr = mnist_trainer.MNISTTrainer(
             model,
             device_id = GLOBAL_OPTS['device_id']
         )
@@ -92,18 +89,18 @@ class TestDCASETrainer(unittest.TestCase):
 
         print('\n ...done')
 
-        print('======== TestDCASETrainer.test_save_load_checkpoint <END>')
+        print('======== TestMNISTTrainer.test_save_load_checkpoint <END>')
 
     def test_save_load_acc(self):
-        print('======== TestDCASETrainer.test_save_load_acc ')
+        print('======== TestMNISTTrainer.test_save_load_acc ')
 
         test_dataset_file = 'hdf5/trainer_unit_test.h5'
         val_dataset_file = 'hdf5/warblr_data.h5'
-        model = dcase2018.DCASENet()
+        model = mnist_net.MNISTNet()
 
         # Get trainer object
         test_num_epochs = 10
-        src_tr = trainer.DCASETrainer(
+        src_tr = mnist_trainer.MNISTTrainer(
             model,
             save_every = 1,
             print_every = 50,
@@ -113,7 +110,6 @@ class TestDCASETrainer(unittest.TestCase):
             num_epochs = test_num_epochs,
             batch_size = GLOBAL_OPTS['batch_size'],
             num_workers = GLOBAL_OPTS['num_workers'],
-            train_data_path = test_dataset_file,
             val_data_path = val_dataset_file,
         )
 
@@ -128,7 +124,7 @@ class TestDCASETrainer(unittest.TestCase):
         # Now try to load a checkpoint and ensure that there is an
         # acc history attribute that is not None
         # TODO : check that we restore the loaders  as well
-        dst_tr = trainer.DCASETrainer(
+        dst_tr = mnist_trainer.MNISTTrainer(
             model,
             device_id = GLOBAL_OPTS['device_id']        # TODO : not in checkpoint data...
         )
@@ -171,7 +167,7 @@ class TestDCASETrainer(unittest.TestCase):
             print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
             self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
 
-        print('======== TestDCASETrainer.test_save_load_acc <END>')
+        print('======== TestMNISTTrainer.test_save_load_acc <END>')
 
 
 

@@ -15,13 +15,12 @@ from pudb import set_trace; set_trace()
 
 # Other trainers should inherit from this...
 class Trainer(object):
-    def __init__(self, model, **kwargs):
-        if not isinstance(nn.Module, model):
-            raise TypeError('Expected model to be an instance of torch.nn.Module')
+    def __init__(self, model=None, **kwargs):
         self.model           = model
         # Training loop options
         self.num_epochs      = kwargs.pop('num_epochs', 10)
         self.learning_rate   = kwargs.pop('learning_rate', 1e-4)
+        self.momentum        = kwargs.pop('momentum', 0.5)
         self.weight_decay    = kwargs.pop('weight_decay', 1e-5)
         self.loss_function   = kwargs.pop('loss_function', 'BCELoss')
         self.optim_function  = kwargs.pop('optim_function', 'Adam')
@@ -38,27 +37,13 @@ class Trainer(object):
         self.device_id       = kwargs.pop('device_id', -1)
         # dataset/loader options
         self.batch_size      = kwargs.pop('batch_size', 64)
-        self.train_data_path = kwargs.pop('train_data_path', None)
-        self.val_data_path   = kwargs.pop('val_data_path', None)
+        self.train_dataset   = kwargs.pop('train_dataset', None)
+        self.val_dataset     = kwargs.pop('val_dataset', None)
+        self.shuffle         = kwargs.pop('shuffle', True)
         self.num_workers     = kwargs.pop('num_workers' , 1)
 
         # Setup optimizer. If we have no model then assume it will be
-        if self.model is not None:
-            if hasattr(torch.optim, self.optim_function):
-                #self.optimizer = torch.optim.Adam(
-                self.optimizer = getattr(torch.optim, self.optim_function)(
-                    self.model.parameters(),
-                    lr = self.learning_rate,
-                    weight_decay = self.weight_decay
-                )
-            else:
-                raise ValueError('Cannot find optim function %s' % str(self.optim_function))
-        if hasattr(nn, self.loss_function):
-            #self.criterion = getattr(nn, self.loss_function)   # TODO : fix this
-            self.criterion = nn.BCELoss()
-        else:
-            raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
-
+        self._init_optimizer()
         # set up device
         self._init_device()
         # Init the internal dataloader options. If nothing provided assume that
@@ -73,18 +58,62 @@ class Trainer(object):
     def __repr__(self):
         return 'Trainer (%d epochs)' % self.num_epochs
 
+    def _init_optimizer(self):
+        if self.model is not None:
+            if hasattr(torch.optim, self.optim_function):
+                #self.optimizer = torch.optim.Adam(
+                self.optimizer = getattr(torch.optim, self.optim_function)(
+                    self.model.parameters(),
+                    lr = self.learning_rate,
+                    weight_decay = self.weight_decay
+                )
+            else:
+                raise ValueError('Cannot find optim function %s' % str(self.optim_function))
+        else:
+            self.optimizer = None
+
+        # Get a loss function
+        if hasattr(nn, self.loss_function):
+            #self.criterion = getattr(nn, self.loss_function)   # TODO : fix this
+            self.criterion = nn.BCELoss()
+        else:
+            raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
+
     def _init_history(self):
         self.loss_iter = 0
         self.acc_iter = 0
         self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
-        self.loss_history  = np.zeros(len(self.train_loader) * self.num_epochs)
+        self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
         if self.val_loader is not None:
             self.acc_history = np.zeros(len(self.val_loader))
         else:
             self.acc_history = None
 
     def _init_dataloaders(self):
-        pass
+        # TODO; may want to re-use this dataset prototype elsewhere..
+        #train_dataset = data.AvetronDataset(
+        #    self.train_data_path,
+        #    num_workers = self.num_workers,
+        #    verbose = self.verbose
+        #)
+
+        if self.train_dataset is None:
+            self.train_loader = None
+        else:
+            self.train_loader = torch.utils.data.DataLoader(
+                self.train_dataset,
+                batch_size = self.batch_size,
+                shuffle = self.shuffle
+            )
+
+        if self.val_dataset is None:
+            self.val_loader = None
+        else:
+            self.val_loader = torch.utils.data.DataLoader(
+                self.val_dataset,
+                batch_size = self.batch_size,
+                shuffle    = self.shuffle
+            )
 
     def _init_device(self):
         if self.device_id < 0:
@@ -100,6 +129,7 @@ class Trainer(object):
         params = dict()
         params['num_epochs']      = self.num_epochs
         params['learning_rate']   = self.learning_rate
+        params['momentum']        = self.momentum
         params['weight_decay']    = self.weight_decay
         params['loss_function']   = self.loss_function
         params['optim_function']  = self.optim_function
@@ -110,15 +140,15 @@ class Trainer(object):
         params['save_every']      = self.save_every
         params['print_every']     = self.print_every
         # dataloader params (to regenerate data loader)
-        params['train_data_path'] = self.train_data_path
-        params['val_data_path']   = self.val_data_path
         params['batch_size']      = self.batch_size
+        params['shuffle']         = self.shuffle
 
         return params
 
     def set_trainer_params(self, params):
         self.num_epochs      = params['num_epochs']
         self.learning_rate   = params['learning_rate']
+        self.momentum        = params['momentum']
         self.weigh_decay     = params['weight_decay']
         self.loss_function   = params['loss_function']
         self.optim_function  = params['optim_function']
@@ -128,16 +158,15 @@ class Trainer(object):
         self.print_every     = params['print_every']
         self.device_id       = params['device_id']
         # dataloader params
-        self.train_data_path = params['train_data_path']
-        self.val_data_path   = params['val_data_path']
         self.batch_size      = params['batch_size']
+        self.shuffle         = params['shuffle']
 
         self._init_device()
         self._init_dataloaders()
 
     # Default save and load methods
     def save_state(self, fname):
-        pass
+        raise NotImplementedError('This method should be implemented in the derived class')
 
     def load_state(self, fname):
-        pass
+        raise NotImplementedError('This method should be implemented in the derived class')
