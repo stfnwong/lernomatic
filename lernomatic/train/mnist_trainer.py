@@ -16,12 +16,7 @@ from pudb import set_trace; set_trace()
 class MNISTTrainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs):
         self.data_dir       = kwargs.pop('data_dir', 'data/')
-        self.val_batch_size = kwargs.pop('val_batch_size', 0)
         super(MNISTTrainer, self).__init__(model, **kwargs)
-        # additional keyword args
-
-        if self.val_batch_size == 0:
-            self.val_batch_size = self.batch_size
 
         # init the criterion for MNIST
         self.criterion = torch.nn.NLLLoss()
@@ -64,7 +59,7 @@ class MNISTTrainer(trainer.Trainer):
                 download = True,
                 transform = dataset_transform
             ),
-            batch_size = self.batch_size,
+            batch_size = self.val_batch_size,
             shuffle = self.shuffle
         )
 
@@ -155,11 +150,11 @@ class MNISTTrainer(trainer.Trainer):
             print('\n ..done')
 
         test_loss /= len(self.val_loader)
-        self.acc_history[self.cur_epoch] = correct / len(self.val_loader)
+        self.acc_history[self.cur_epoch] = correct / len(self.val_loader.dataset)
         # show output
-        print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %.3f / %.3f (%.3f%%)' %\
-              (test_loss, correct, len(self.val_loader),
-               correct / len(self.val_loader))
+        print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+              (test_loss, correct, len(self.val_loader.dataset),
+               100.0 * correct / len(self.val_loader.dataset))
         )
 
     def train(self):

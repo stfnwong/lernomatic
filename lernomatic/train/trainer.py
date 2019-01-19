@@ -37,10 +37,14 @@ class Trainer(object):
         self.device_id       = kwargs.pop('device_id', -1)
         # dataset/loader options
         self.batch_size      = kwargs.pop('batch_size', 64)
+        self.val_batch_size  = kwargs.pop('val_batch_size', 0)
         self.train_dataset   = kwargs.pop('train_dataset', None)
         self.val_dataset     = kwargs.pop('val_dataset', None)
         self.shuffle         = kwargs.pop('shuffle', True)
         self.num_workers     = kwargs.pop('num_workers' , 1)
+
+        if self.val_batch_size == 0:
+            self.val_batch_size = self.batch_size
 
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()
