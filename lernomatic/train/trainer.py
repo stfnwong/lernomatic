@@ -55,6 +55,8 @@ class Trainer(object):
         if self.train_loader is not None:
             self._init_history()
 
+        self._send_to_device()
+
     def __repr__(self):
         return 'Trainer (%d epochs)' % self.num_epochs
 

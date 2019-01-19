@@ -25,7 +25,6 @@ class MNISTTrainer(trainer.Trainer):
 
         # init the criterion for MNIST
         self.criterion = torch.nn.NLLLoss()
-        self._send_to_device()
 
     def __repr__(self):
         return 'MNISTTrainer'
@@ -106,9 +105,12 @@ class MNISTTrainer(trainer.Trainer):
         self.model.train()
         # training loop
         for n, (data, target) in enumerate(self.train_loader):
+            data = data.to(self.device)
+            target = target.to(self.device)
             self.optimizer.zero_grad()
             output = self.model(data)
             loss   = self.criterion(output, target)
+            loss.backward()
             self.optimizer.step()
 
             if (n % self.print_every) == 0:
@@ -140,6 +142,8 @@ class MNISTTrainer(trainer.Trainer):
 
         with torch.no_grad():
             for n, (data, target) in enumerate(self.val_loader):
+                data = data.to(self.device)
+                target = target.to(self.device)
                 if self.verbose:
                     print('[VAL]   : element [%d / %d]' % (n+1, len(self.val_loader)), end='\r')
                 output = self.model(data)
