@@ -115,7 +115,7 @@ def get_parser():
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='mnist',
+                        default='cifar10',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',
