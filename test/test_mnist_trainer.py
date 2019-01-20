@@ -24,19 +24,22 @@ class TestMNISTTrainer(unittest.TestCase):
     def setUp(self):
         self.verbose         = GLOBAL_OPTS['verbose']
         self.draw_plot       = GLOBAL_OPTS['draw_plot']
+        self.test_num_epochs = 3
         self.test_batch_size = 16
 
-    def test_save_load_checkpoint(self):
-        print('======== TestMNISTTrainer.test_save_load_checkpoint ')
+    def test_save_load_checkpoint_train(self):
+        print('======== TestMNISTTrainer.test_save_load_checkpoint_train ')
 
         test_dataset_file = 'hdf5/trainer_unit_test.h5'
-        model = mnist_net.MNISTNet()
+        test_checkpoint_name = 'checkpoint/save_load_test_checkpoint.pkl'
 
-        test_num_epochs = 1
+        # get a model, trainer
+        model = mnist_net.MNISTNet()
         src_tr = mnist_trainer.MNISTTrainer(
             model,
-            num_epochs = test_num_epochs,
-            save_every = 1,
+            num_epochs = self.test_num_epochs,
+            save_every = 0,
+            print_every = 250,
             device_id = GLOBAL_OPTS['device_id'],
             # dataload options
             checkpoint_name = 'save_load_test',
@@ -50,13 +53,15 @@ class TestMNISTTrainer(unittest.TestCase):
 
         # train for one epoch
         src_tr.train()
+        src_tr.save_checkpoint(test_checkpoint_name)
+
         # Make a new trainer and load all parameters into that
         # I guess we need to put some kind of loader and model here...
         dst_tr = mnist_trainer.MNISTTrainer(
             model,
             device_id = GLOBAL_OPTS['device_id']
         )
-        dst_tr.load_checkpoint('checkpoint/save_load_test_epoch-0.pkl')
+        dst_tr.load_checkpoint(test_checkpoint_name)
 
         # Test object parameters
         self.assertEqual(src_tr.num_epochs, dst_tr.num_epochs)
@@ -80,37 +85,27 @@ class TestMNISTTrainer(unittest.TestCase):
             self.assertEqual(True, torch.equal(p1[1], p2[1]))
         print('\n ...done')
 
-        # Test loss history
-        print('\t Comparing loss history....')
-        self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
-        for n in range(src_tr.loss_iter):
-            print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
-            self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
+        print('======== TestMNISTTrainer.test_save_load_checkpoint_train <END>')
 
-        print('\n ...done')
-
-        print('======== TestMNISTTrainer.test_save_load_checkpoint <END>')
-
-    def test_save_load_acc(self):
-        print('======== TestMNISTTrainer.test_save_load_acc ')
+    def save_load_checkpoint_train_test(self):
+        print('======== TestMNISTTrainer.save_load_checkpoint_train_test ')
 
         test_dataset_file = 'hdf5/trainer_unit_test.h5'
         val_dataset_file = 'hdf5/warblr_data.h5'
         model = mnist_net.MNISTNet()
 
         # Get trainer object
-        test_num_epochs = 10
         src_tr = mnist_trainer.MNISTTrainer(
             model,
-            save_every = 1,
-            print_every = 50,
+            save_every = 0,
+            print_every = 250,
             checkpoint_name = 'save_load_test',
             device_id = GLOBAL_OPTS['device_id'],
             # loader options,
-            num_epochs = test_num_epochs,
+            num_epochs = self.test_num_epochs,
             batch_size = GLOBAL_OPTS['batch_size'],
             num_workers = GLOBAL_OPTS['num_workers'],
-            val_data_path = val_dataset_file,
+            # Need to provide both training and test datasets
         )
 
         if self.verbose:
@@ -119,19 +114,15 @@ class TestMNISTTrainer(unittest.TestCase):
 
         # train for one epoch
         src_tr.train()
-        self.assertIsNot(None, src_tr.acc_history)
 
         # Now try to load a checkpoint and ensure that there is an
         # acc history attribute that is not None
-        # TODO : check that we restore the loaders  as well
         dst_tr = mnist_trainer.MNISTTrainer(
             model,
-            device_id = GLOBAL_OPTS['device_id']        # TODO : not in checkpoint data...
+            device_id = GLOBAL_OPTS['device_id']
         )
         ck_fname = 'checkpoint/save_load_test_epoch-%d.pkl' % (test_num_epochs-1)
         dst_tr.load_checkpoint(ck_fname)
-        #dst_tr.load_checkpoint('checkpoint/save_load_test_epoch-%d.pkl' % test_num_epochs-1)
-        self.assertIsNot(None, dst_tr.acc_history)
 
         # Test object parameters
         self.assertEqual(src_tr.num_epochs, dst_tr.num_epochs)
@@ -160,6 +151,43 @@ class TestMNISTTrainer(unittest.TestCase):
             self.assertEqual(True, torch.equal(p1[1], p2[1]))
         print('\n ...done')
 
+        print('======== TestMNISTTrainer.save_load_checkpoint_train_test <END>')
+
+
+    def test_save_load_history(self):
+        print('======== TestMNISTTrainer.test_save_load_history ')
+
+        test_history_name = 'checkpoint/test_history.pkl'
+
+        # get a model, trainer
+        model = mnist_net.MNISTNet()
+        src_tr = mnist_trainer.MNISTTrainer(
+            model,
+            num_epochs = self.test_num_epochs,
+            save_every = 0,
+            print_every = 250,
+            device_id = GLOBAL_OPTS['device_id'],
+            # dataload options
+            checkpoint_name = 'save_load_test',
+            batch_size = 16,
+            num_workers = GLOBAL_OPTS['num_workers']
+        )
+
+        if self.verbose:
+            print('Created trainer object')
+            print(src_tr)
+
+        # train for one epoch
+        src_tr.train()
+        src_tr.save_history(test_history_name)
+
+        # Load history into new object
+        dst_tr = mnist_trainer.MNISTTrainer(
+            model,
+            device_id = GLOBAL_OPTS['device_id']
+        )
+        dst_tr.load_history(test_history_name)
+
         # Test loss history
         print('\t Comparing loss history....')
         self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
@@ -167,8 +195,9 @@ class TestMNISTTrainer(unittest.TestCase):
             print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
             self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
 
-        print('======== TestMNISTTrainer.test_save_load_acc <END>')
+        print('\n ...done')
 
+        print('======== TestMNISTTrainer.test_save_load_history <END>')
 
 
 # Entry point

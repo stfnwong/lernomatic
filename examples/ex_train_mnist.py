@@ -81,7 +81,7 @@ def get_parser():
                         )
     parser.add_argument('--num-epochs',
                         type=int,
-                        default=120,
+                        default=20,
                         help='Epoch to stop training at'
                         )
     parser.add_argument('--batch-size',
@@ -119,16 +119,6 @@ def get_parser():
                         type=str,
                         default='mnist',
                         help='Name to prepend to all checkpoints'
-                        )
-    parser.add_argument('--train-data',
-                        type=str,
-                        default='./hdf5/ff1010_proc_test.h5',
-                        help='Path to training data'
-                        )
-    parser.add_argument('--val-data',
-                        type=str,
-                        default='./hdf5/warblr_data.h5',
-                        help='Path to validation data'
                         )
     parser.add_argument('--load-checkpoint',
                         type=str,

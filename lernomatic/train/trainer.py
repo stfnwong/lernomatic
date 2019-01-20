@@ -32,19 +32,19 @@ class Trainer(object):
         # Internal options
         self.verbose         = kwargs.pop('verbose', True)
         self.print_every     = kwargs.pop('print_every', 10)
-        self.save_every      = kwargs.pop('save_every', 1) # TODO : unit is epochs?
+        self.save_every      = kwargs.pop('save_every', 1000)  # unit is iterations
         # Device options
         self.device_id       = kwargs.pop('device_id', -1)
         # dataset/loader options
         self.batch_size      = kwargs.pop('batch_size', 64)
-        self.val_batch_size  = kwargs.pop('val_batch_size', 0)
+        self.test_batch_size = kwargs.pop('test_batch_size', 0)
         self.train_dataset   = kwargs.pop('train_dataset', None)
-        self.val_dataset     = kwargs.pop('val_dataset', None)
+        self.test_dataset    = kwargs.pop('test_dataset', None)
         self.shuffle         = kwargs.pop('shuffle', True)
         self.num_workers     = kwargs.pop('num_workers' , 1)
 
-        if self.val_batch_size == 0:
-            self.val_batch_size = self.batch_size
+        if self.test_batch_size == 0:
+            self.test_batch_size = self.batch_size
 
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()
@@ -80,20 +80,21 @@ class Trainer(object):
 
         # Get a loss function
         if hasattr(nn, self.loss_function):
-            #self.criterion = getattr(nn, self.loss_function)   # TODO : fix this
             self.criterion = nn.BCELoss()
         else:
             raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
 
     def _init_history(self):
+        # TODO : add accuracy here, update trainer to perform validation on val
+        # dataset (need another loader for this)
         self.loss_iter = 0
         self.acc_iter = 0
         self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
         self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
-        if self.val_loader is not None:
-            self.acc_history = np.zeros(len(self.val_loader))
+        if self.test_loader is not None:
+            self.test_loss_history = np.zeros(len(self.test_loader))
         else:
-            self.acc_history = None
+            self.test_loss_history = None
 
     def _init_dataloaders(self):
         # TODO; may want to re-use this dataset prototype elsewhere..
@@ -112,11 +113,11 @@ class Trainer(object):
                 shuffle = self.shuffle
             )
 
-        if self.val_dataset is None:
-            self.val_loader = None
+        if self.test_dataset is None:
+            self.test_loader = None
         else:
-            self.val_loader = torch.utils.data.DataLoader(
-                self.val_dataset,
+            self.test_loader = torch.utils.data.DataLoader(
+                self.test_dataset,
                 batch_size = self.batch_size,
                 shuffle    = self.shuffle
             )
@@ -169,6 +170,11 @@ class Trainer(object):
 
         self._init_device()
         self._init_dataloaders()
+
+    def get_model_params(self):
+        if self.model is None:
+            return None
+        return self.model.state_dict()
 
     # Default save and load methods
     def save_state(self, fname):
