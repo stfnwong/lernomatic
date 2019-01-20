@@ -39,7 +39,6 @@ def main():
         verbose = GLOBAL_OPTS['verbose']
     )
 
-    # TODO: training schedule
     trainer.train()
 
 

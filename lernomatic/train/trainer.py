@@ -182,3 +182,84 @@ class Trainer(object):
 
     def load_state(self, fname):
         raise NotImplementedError('This method should be implemented in the derived class')
+
+    # Basic training/test routines. Specialize these when needed
+
+    def train_epoch(self):
+        """
+        TRAIN_EPOCH
+        Perform training on the model for a single epoch of the dataset
+        """
+        self.model.train()
+        # training loop
+        for n, (data, target) in enumerate(self.train_loader):
+            # move data
+            data = data.to(self.device)
+            target = target.to(self.device)
+
+            # optimization
+            self.optimizer.zero_grad()
+            output = self.model(data)
+            loss   = self.criterion(output, target)
+            loss.backward()
+            self.optimizer.step()
+
+            if (n % self.print_every) == 0:
+                print('[TRAIN] :   Epoch       iteration         Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
+
+            self.loss_history[self.loss_iter] = loss.item()
+            self.loss_iter += 1
+
+            # save checkpoints
+            if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
+                ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
+                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+                self.save_checkpoint(ck_name)
+                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
+                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
+                self.save_history(hist_name)
+
+
+    def test_epoch(self):
+        """
+        TEST_EPOCH
+        Perform testing on one epoch of the test data
+        """
+        self.model.eval()
+        test_loss = 0.0
+        correct = 0.0
+
+        with torch.no_grad():
+            for n, (data, target) in enumerate(self.test_loader):
+                data = data.to(self.device)
+                target = target.to(self.device)
+                if self.verbose:
+                    print('[VAL]   : element [%d / %d]' % (n+1, len(self.test_loader)), end='\r')
+                output = self.model(data)
+                test_loss += self.criterion(output, target).item()
+                pred = output.data.max(1, keepdim=True)[1]
+                correct += pred.eq(target.data.view_as(pred)).sum()
+
+        if self.verbose:
+            print('\n ..done')
+
+        test_loss /= len(self.test_loader)
+        self.test_loss_history[self.cur_epoch] = correct / len(self.test_loader.dataset)
+        # show output
+        print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+              (test_loss, correct, len(self.test_loader.dataset),
+               100.0 * correct / len(self.test_loader.dataset))
+        )
+
+    def train(self):
+        for n in range(self.num_epochs):
+            self.train_epoch()
+
+            if self.test_loader is not None:
+                self.test_epoch()
+            self.cur_epoch += 1
+
