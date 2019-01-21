@@ -131,6 +131,9 @@ class Trainer(object):
     def _send_to_device(self):
         self.model = self.model.to(self.device)
 
+    def reset_history(self):
+        self._init_history()
+
     # default param options
     def get_trainer_params(self):
         params = dict()
@@ -184,6 +187,42 @@ class Trainer(object):
         raise NotImplementedError('This method should be implemented in the derived class')
 
     # Basic training/test routines. Specialize these when needed
+    def train_step(self, data, target):
+        data = data.to(self.device)
+        target = target.to(self.device)
+        self.optimizer.zero_grad()
+        output = self.model(data)
+        loss   = self.criterion(output, target)
+        loss.backward()
+        self.optimizer.step()
+
+        return loss.item()
+
+    def train_fixed(self, num_iter):
+        self.model.train()
+        # training loop
+        for n, (data, target) in enumerate(self.train_loader):
+            # move data
+            data = data.to(self.device)
+            target = target.to(self.device)
+
+            # optimization
+            self.optimizer.zero_grad()
+            output = self.model(data)
+            loss   = self.criterion(output, target)
+            loss.backward()
+            self.optimizer.step()
+
+            if (n % self.print_every) == 0:
+                print('[TRAIN] :   Epoch       iteration         Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
+
+            self.loss_history[self.loss_iter] = loss.item()
+            self.loss_iter += 1
+
+            if n >= num_iter:
+                return
 
     def train_epoch(self):
         """
