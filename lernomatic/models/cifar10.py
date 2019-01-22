@@ -8,6 +8,7 @@ Stefan Wong 2019
 import torch.nn as nn
 import torch.nn.functional as F
 
+# A really simple network for testing with CIFAR-10 dataset
 class CIFAR10Net(nn.Module):
   def __init__(self):
     super(CIFAR10Net, self).__init__()

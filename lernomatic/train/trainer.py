@@ -10,8 +10,7 @@ from torch import nn
 import numpy as np
 
 # debug
-from pudb import set_trace; set_trace()
-
+#from pudb import set_trace; set_trace()
 
 # Other trainers should inherit from this...
 class Trainer(object):
@@ -242,7 +241,7 @@ class Trainer(object):
                 output = self.model(data)
                 test_loss += self.criterion(output, target).item()
                 pred = output.data.max(1, keepdim=True)[1]
-                correct += pred.eq(target.data.view_as(pred)).sum()
+                correct += pred.eq(target.data.view_as(pred)).sum().item()
 
         if self.verbose:
             print('\n ..done')
