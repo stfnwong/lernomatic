@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from lernomatic.train import trainer
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 class MNISTVAETrainer(trainer.Trainer):
     """
@@ -17,6 +17,9 @@ class MNISTVAETrainer(trainer.Trainer):
     def __init__(self, model, **kwargs):
         self.data_dir = kwargs.pop('data_dir', 'data/')
         super(MNISTVAETrainer, self).__init__(model, **kwargs)
+        self.criterion = torch.nn.MSELoss()
+
+        self._init_history()
 
     def __repr__(self):
         return 'VAETrainer-%d' % self.train_loader.batch_size
@@ -62,21 +65,40 @@ class MNISTVAETrainer(trainer.Trainer):
             shuffle = self.shuffle
         )
 
+    def save_history(self, fname):
+        history = dict()
+        history['loss_history']   = self.loss_history
+        history['loss_iter']      = self.loss_iter
+        history['cur_epoch']      = self.cur_epoch
+        history['iter_per_epoch'] = self.iter_per_epoch
+        if self.test_loss_history is not None:
+            history['test_loss_history'] = self.test_loss_history
+
+        torch.save(history, fname)
+
+    def load_history(self, fname):
+        history = torch.load(fname)
+        self.loss_history   = history['loss_history']
+        self.loss_iter      = history['loss_iter']
+        self.cur_epoch      = history['cur_epoch']
+        self.iter_per_epoch = history['iter_per_epoch']
+        if 'test_loss_history' in history:
+            self.test_loss_history = history['test_loss_history']
 
     def save_checkpoint(self, fname):
-        trainer_params = self.get_trainer_params()
-        checkpoint_data = {
-            'model' : self.model.state_dict(),
-            'optim' : self.optimizer.state_dict(),
-            'trainer_state' : trainer_params
-        }
-        torch.save(checkpoint_data, fname)
+        checkpoint = dict()
+        checkpoint['model'] = self.model.state_dict()
+        checkpoint['optimizer'] = self.optimizer.state_dict()
+        checkpoint['trainer'] = self.get_trainer_params()
+        torch.save(checkpoint, fname)
 
     def load_checkpoint(self, fname):
         checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer_params'])
+        self.set_trainer_params(checkpoint['trainer'])
+        self.model = mnist.MNISTNet()
         self.model.load_state_dict(checkpoint['model'])
-        self.optimizer.load_state_dict(['optim'])
+        self._init_optimizer()
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
 
     def vae_loss_function(self, recon_x, x, mu, logvar):
         # compute loss between real X and reconstructed X
@@ -110,25 +132,21 @@ class MNISTVAETrainer(trainer.Trainer):
             train_loss += loss.item()
             self.optimizer.step()
 
-            # log information
+            # print some stats
             if (batch_idx % self.print_every) == 0:
-                print('Epoch <%d> [%d/%d] (%.0f %%)\t Loss : %.6f' %\
-                    (self.epoch, batch_idx * len(data), len(self.train_loader.dataset),
-                     100.0 * batch_idx / len(self.train_loader),
-                    loss.item() / len(data))
-                    )
+                print('[TRAIN] :   Epoch       iteration         Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
 
-        print('Epoch %d average loss : %.6f' % (self.epoch, train_loss / len(self.train_loader.dataset)))
+        print('Epoch %d average loss : %.6f' % (self.cur_epoch, train_loss / len(self.train_loader.dataset)))
 
     def train(self):
         self._send_to_device()
-        self.epoch = 0;
         for n in range(self.num_epochs):
             self.train_epoch()
 
             if n % self.save_every == 0:
                 model_file = './checkpoint/vae_epoch_%d.pth' % int(n)
                 print('Saving model to file %s (epoch %d)...' % (model_file, n))
-                torch.save(self.model.state_dict(), model_file)
-            self.epoch += 1
-
+                self.save_checkpoint(model_file)
+            self.cur_epoch += 1
