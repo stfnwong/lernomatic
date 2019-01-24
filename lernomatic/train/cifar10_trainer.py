@@ -11,7 +11,7 @@ from lernomatic.train import trainer
 from lernomatic.models import cifar10
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 class CIFAR10Trainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs):
