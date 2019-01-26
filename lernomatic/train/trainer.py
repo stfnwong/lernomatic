@@ -87,13 +87,16 @@ class Trainer(object):
         # TODO : add accuracy here, update trainer to perform validation on val
         # dataset (need another loader for this)
         self.loss_iter = 0
+        self.test_loss_iter = 0
         self.acc_iter = 0
         self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
         self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
         if self.test_loader is not None:
-            self.test_loss_history = np.zeros(len(self.test_loader))
+            self.test_loss_history = np.zeros(len(self.test_loader) * self.num_epochs)
+            self.acc_history = np.zeros(len(self.test_loader) * self.num_epochs)
         else:
             self.test_loss_history = None
+            self.acc_history = None
 
     def _init_dataloaders(self):
         # TODO; may want to re-use this dataset prototype elsewhere..

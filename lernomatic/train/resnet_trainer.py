@@ -134,9 +134,37 @@ class ResnetTrainer(trainer.Trainer):
         test_loss = 0.0
         correct = 0
 
+        for n, (data, labels) in enumerate(self.test_loader):
+            data = data.to(self.device)
+            labels = labels.to(self.device)
+
+            with torch.no_grad():
+                output = self.model(data)
+            loss = self.criterion(output, labels)
+            test_loss += loss.item()
+
+            # accuracy
+            # TODO : top-k accuracy?
+            pred = output.data.max(1, keepdim=True)[1]
+            correct += pred.eq(labels.data.view_as(pred)).sum().item()
+
+            if (n % self.print_every) == 0:
+                print('[TEST]  :   Epoch       iteration         Test Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), loss.item()))
+
+            self.test_loss_history[self.test_loss_iter] = loss.item()
+            self.test_loss_iter += 1
+
+        avg_test_loss = test_loss / len(self.test_loader)
+        acc = correct / len(self.test_loader.dataset)
+        print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+              (avg_test_loss, correct, len(self.test_loader.dataset),
+               100.0 * correct / len(self.test_loader.dataset))
+        )
+
 
     def train(self):
-
         for n in range(self.num_epochs):
             self.train_epoch()
 

@@ -13,9 +13,8 @@ import torch.nn.functional as F
 # debug
 from pudb import set_trace; set_trace()
 
-
 class ResnetBlock(nn.Module):
-    def __init__(self, in_planes, out_planes, stride, drop_rate=0.0, downsample=None):
+    def __init__(self, in_planes, out_planes, stride, drop_rate=0.0):
         super(ResnetBlock, self).__init__()
         self.drop_rate = drop_rate
         self.equal_in_out = (in_planes == out_planes)
@@ -41,23 +40,23 @@ class ResnetBlock(nn.Module):
             padding=1,
             bias=False
         )
-        self.downsample = downsample
 
-        #self.conv_shortcut = (not self.equal_in_out) and nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, padding=0, bias=False) or None
-        #if self.equal_in_out:
-        #    self.conv_shortcut = nn.Conv2d(
-        #        in_planes,
-        #        out_planes,
-        #        kernel_size = 1,
-        #        stride=stride,
-        #        padding=0,
-        #        bias=False
-        #    )
-        #else:
-        #    pass
+        if self.equal_in_out:
+            self.shortcut = nn.Sequential()
+        else:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(
+                    in_planes,
+                    out_planes,
+                    kernel_size = 1,
+                    stride = stride,
+                    padding = 0,
+                    bias = False
+                ),
+                nn.BatchNorm2d(out_planes)
+            )
 
     def forward(self, X):
-        residual = X
         out = self.bn1(X)
         out = self.relu1(out)
         out = self.conv1(out)
@@ -68,17 +67,12 @@ class ResnetBlock(nn.Module):
             out = F.dropout(out, p=self.drop_rate, training=self.training)
         out = self.conv2(out)
 
-        if self.downsample is not None:
-            residual = self.downsample(X)
-        out += residual
+        #if self.downsample is not None:
+        #    residual = self.downsample(X)   # TODO : issue here with tensor size...
+        #out += residual
+        out += self.shortcut(X)
 
         return out
-
-        #if self.equal_in_out:
-        #    return torch.add(out, out)
-        #else:
-        #    return torch.add(self.conv_shortcut(out), out)
-        #return torch.add(out if self.equal_in_out else self.conv_shortcut(out), out)
 
 
 class NetworkBlock(nn.Module):
@@ -86,7 +80,19 @@ class NetworkBlock(nn.Module):
         super(NetworkBlock, self).__init__()
         # Create layers
         layers = []
-        downsample = None
+        #downsample = None
+        #if (stride != 1) or (in_planes != out_planes):
+        #    downsample = nn.Sequential(
+        #        nn.Conv2d(
+        #            in_planes,
+        #            out_planes,
+        #            kernel_size=3,
+        #            stride=stride,
+        #            padding=1,
+        #            bias=False
+        #        ),
+        #        nn.BatchNorm2d(out_planes)
+        #    )
         for i in range(num_layers):
             layers.append(
                 block(
@@ -94,7 +100,7 @@ class NetworkBlock(nn.Module):
                     out_planes,
                     i == 0 and stride or 1,
                     drop_rate,
-                    downsample
+                    #downsample
                 )
             )
         self.layers = nn.Sequential(*layers)
@@ -120,7 +126,6 @@ class WideResnet(nn.Module):
             padding = 1,
             bias = False
         )
-
         # first resnet block
         self.block1 = NetworkBlock(
             n,
@@ -152,7 +157,7 @@ class WideResnet(nn.Module):
         self.bn1 = nn.BatchNorm2d(num_channels[3])
         self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(num_channels[3], num_classes)
-        self.num_channels = num_channels
+        self.num_channels = num_channels[3]
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

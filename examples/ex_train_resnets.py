@@ -8,9 +8,10 @@ Stefan Wong 2019
 import argparse
 from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
+#from lernomatic.models import resnet2
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -20,8 +21,15 @@ def main():
     model = resnets.WideResnet(
         GLOBAL_OPTS['num_layers'],
         10,         # num_classes must be 10 for CIFAR-10
-        GLOBAL_OPTS['widen_factor']
+        1
+        #GLOBAL_OPTS['widen_factor']
     )
+
+    #model = resnet2.WideResNet(
+    #    GLOBAL_OPTS['num_layers'],
+    #    10,
+    #    1
+    #)
 
     # Get a trainer
     # NOTE: no need for special dataset opts for now
@@ -135,7 +143,7 @@ def get_parser():
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='cifar10',
+                        default='resnet-cifar10',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',
