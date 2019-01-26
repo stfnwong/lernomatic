@@ -39,6 +39,7 @@ class Trainer(object):
         self.test_batch_size = kwargs.pop('test_batch_size', 0)
         self.train_dataset   = kwargs.pop('train_dataset', None)
         self.test_dataset    = kwargs.pop('test_dataset', None)
+        self.val_dataset     = kwargs.pop('val_dataset', None)
         self.shuffle         = kwargs.pop('shuffle', True)
         self.num_workers     = kwargs.pop('num_workers' , 1)
 
@@ -216,36 +217,39 @@ class Trainer(object):
                     '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
                 self.save_history(hist_name)
 
-
     def test_epoch(self):
-        """
-        TEST_EPOCH
-        Perform testing on one epoch of the test data
-        """
         self.model.eval()
         test_loss = 0.0
-        correct = 0.0
+        correct = 0
 
-        with torch.no_grad():
-            for n, (data, target) in enumerate(self.test_loader):
-                data = data.to(self.device)
-                target = target.to(self.device)
-                if self.verbose:
-                    print('[VAL]   : element [%d / %d]' % (n+1, len(self.test_loader)), end='\r')
+        for n, (data, labels) in enumerate(self.test_loader):
+            data = data.to(self.device)
+            labels = labels.to(self.device)
+
+            with torch.no_grad():
                 output = self.model(data)
-                test_loss += self.criterion(output, target).item()
-                pred = output.data.max(1, keepdim=True)[1]
-                correct += pred.eq(target.data.view_as(pred)).sum().item()
+            loss = self.criterion(output, labels)
+            test_loss += loss.item()
 
-        if self.verbose:
-            print('\n ..done')
+            # accuracy
+            pred = output.data.max(1, keepdim=True)[1]
+            correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
-        test_loss /= len(self.test_loader)
-        self.test_loss_history[self.cur_epoch] = correct / len(self.test_loader.dataset)
-        # show output
+            if (n % self.print_every) == 0:
+                print('[TEST]  :   Epoch       iteration         Test Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), loss.item()))
+
+            self.test_loss_history[self.test_loss_iter] = loss.item()
+            self.test_loss_iter += 1
+
+        avg_test_loss = test_loss / len(self.test_loader)
+        acc = correct / len(self.test_loader.dataset)
+        self.acc_history[self.acc_iter] = acc
+        self.acc_iter += 1
         print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-              (test_loss, correct, len(self.test_loader.dataset),
-               100.0 * correct / len(self.test_loader.dataset))
+              (avg_test_loss, correct, len(self.test_loader.dataset),
+               100.0 * acc)
         )
 
     def train(self):
@@ -257,4 +261,3 @@ class Trainer(object):
             #if self.val_loader is not None:
             #    self.val_epoch()
             self.cur_epoch += 1
-

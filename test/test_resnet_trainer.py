@@ -30,6 +30,7 @@ class TestResnetTrainer(unittest.TestCase):
         print('======== TestResnetTrainer.save_load_checkpoint_train_test ')
 
         test_checkpoint_name = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_checkpoint.pkl'
+        test_history_name    = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_history.pkl'
         # get a model
         model = resnets.WideResnet(
             self.resnet_depth,
@@ -63,6 +64,7 @@ class TestResnetTrainer(unittest.TestCase):
 
         # save the final checkpoint
         src_tr.save_checkpoint(test_checkpoint_name)
+        src_tr.save_history(test_history_name)
 
         # get a new trainer and load checkpoint
         dst_tr = resnet_trainer.ResnetTrainer(
@@ -91,6 +93,28 @@ class TestResnetTrainer(unittest.TestCase):
             print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(src_model_params.items())), end='\r')
             self.assertEqual(True, torch.equal(p1[1], p2[1]))
         print('\n ...done')
+
+        # test history
+        dst_tr.load_history(test_history_name)
+
+        # loss history
+        self.assertEqual(len(src_tr.loss_history), len(dst_tr.loss_history))
+        self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
+        for n in range(len(src_tr.loss_history)):
+            self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
+
+        # test loss history
+        self.assertEqual(len(src_tr.test_loss_history), len(dst_tr.test_loss_history))
+        self.assertEqual(src_tr.test_loss_iter, dst_tr.test_loss_iter)
+        for n in range(len(src_tr.test_loss_history)):
+            self.assertEqual(src_tr.test_loss_history[n], dst_tr.test_loss_history[n])
+
+        # test acc history
+        self.assertEqual(len(src_tr.acc_history), len(dst_tr.acc_history))
+        self.assertEqual(src_tr.acc_iter, dst_tr.acc_iter)
+        for n in range(len(src_tr.acc_history)):
+            self.assertEqual(src_tr.acc_history[n], dst_tr.acc_history[n])
+
 
         print('======== TestResnetTrainer.save_load_checkpoint_train_test <END>')
 
