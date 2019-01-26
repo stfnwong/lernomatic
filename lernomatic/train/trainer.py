@@ -84,8 +84,6 @@ class Trainer(object):
             raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
 
     def _init_history(self):
-        # TODO : add accuracy here, update trainer to perform validation on val
-        # dataset (need another loader for this)
         self.loss_iter = 0
         self.test_loss_iter = 0
         self.acc_iter = 0
@@ -99,13 +97,6 @@ class Trainer(object):
             self.acc_history = None
 
     def _init_dataloaders(self):
-        # TODO; may want to re-use this dataset prototype elsewhere..
-        #train_dataset = data.AvetronDataset(
-        #    self.train_data_path,
-        #    num_workers = self.num_workers,
-        #    verbose = self.verbose
-        #)
-
         if self.train_dataset is None:
             self.train_loader = None
         else:
@@ -206,7 +197,7 @@ class Trainer(object):
             loss.backward()
             self.optimizer.step()
 
-            if (n % self.print_every) == 0:
+            if (n > 0) and (n % self.print_every) == 0:
                 print('[TRAIN] :   Epoch       iteration         Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
@@ -263,5 +254,7 @@ class Trainer(object):
 
             if self.test_loader is not None:
                 self.test_epoch()
+            #if self.val_loader is not None:
+            #    self.val_epoch()
             self.cur_epoch += 1
 

@@ -4,14 +4,12 @@ Modules for building resnets
 
 Stefan Wong 2019
 """
-
 import math
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 class ResnetBlock(nn.Module):
     def __init__(self, in_planes, out_planes, stride, drop_rate=0.0):
@@ -66,10 +64,7 @@ class ResnetBlock(nn.Module):
         if self.drop_rate > 0:
             out = F.dropout(out, p=self.drop_rate, training=self.training)
         out = self.conv2(out)
-
-        #if self.downsample is not None:
-        #    residual = self.downsample(X)   # TODO : issue here with tensor size...
-        #out += residual
+        # resnet shortcut
         out += self.shortcut(X)
 
         return out
@@ -80,19 +75,6 @@ class NetworkBlock(nn.Module):
         super(NetworkBlock, self).__init__()
         # Create layers
         layers = []
-        #downsample = None
-        #if (stride != 1) or (in_planes != out_planes):
-        #    downsample = nn.Sequential(
-        #        nn.Conv2d(
-        #            in_planes,
-        #            out_planes,
-        #            kernel_size=3,
-        #            stride=stride,
-        #            padding=1,
-        #            bias=False
-        #        ),
-        #        nn.BatchNorm2d(out_planes)
-        #    )
         for i in range(num_layers):
             layers.append(
                 block(
@@ -100,7 +82,6 @@ class NetworkBlock(nn.Module):
                     out_planes,
                     i == 0 and stride or 1,
                     drop_rate,
-                    #downsample
                 )
             )
         self.layers = nn.Sequential(*layers)

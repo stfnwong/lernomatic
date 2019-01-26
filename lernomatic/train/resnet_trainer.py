@@ -14,7 +14,7 @@ from lernomatic.train import trainer
 from lernomatic.models import resnets
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class ResnetTrainer(trainer.Trainer):
@@ -89,6 +89,7 @@ class ResnetTrainer(trainer.Trainer):
                 download=True,
                 transform=test_transform
             )
+
         self.train_loader = torch.utils.data.DataLoader(
             self.train_dataset,
             batch_size = self.batch_size,
@@ -102,6 +103,41 @@ class ResnetTrainer(trainer.Trainer):
             shuffle = self.shuffle,
             num_workers = self.num_workers
         )
+
+    def save_history(self, fname):
+        history = dict()
+        history['loss_history']   = self.loss_history
+        history['loss_iter']      = self.loss_iter
+        history['cur_epoch']      = self.cur_epoch
+        history['iter_per_epoch'] = self.iter_per_epoch
+        if self.test_loss_history is not None:
+            history['test_loss_history'] = self.test_loss_history
+
+        torch.save(history, fname)
+
+    def load_history(self, fname):
+        history = torch.load(fname)
+        self.loss_history   = history['loss_history']
+        self.loss_iter      = history['loss_iter']
+        self.cur_epoch      = history['cur_epoch']
+        self.iter_per_epoch = history['iter_per_epoch']
+        if 'test_loss_history' in history:
+            self.test_loss_history = history['test_loss_history']
+
+    def save_checkpoint(self, fname):
+        checkpoint = dict()
+        checkpoint['model'] = self.model.state_dict()
+        checkpoint['optimizer'] = self.optimizer.state_dict()
+        checkpoint['trainer'] = self.get_trainer_params()
+        torch.save(checkpoint, fname)
+
+    def load_checkpoint(self, fname):
+        checkpoint = torch.load(fname)
+        self.set_trainer_params(checkpoint['trainer'])
+        self.model = resnets.WideResnet(28, 10, 1)   # state dict overwrites values?
+        self.model.load_state_dict(checkpoint['model'])
+        self._init_optimizer()
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
 
     def train_epoch(self):
         self.model.train()
@@ -119,7 +155,7 @@ class ResnetTrainer(trainer.Trainer):
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
 
-            if (n % self.save_every) == 0 and n > 0:
+            if self.save_every > 0 and (n % self.save_every) == 0:
                 ck_name = self.checkpoint_dir + self.checkpoint_name + '_iter_' + str(self.loss_iter) +\
                     '_epoch_' + str(self.cur_epoch) + '.pkl'
                 if self.verbose:
@@ -160,15 +196,5 @@ class ResnetTrainer(trainer.Trainer):
         acc = correct / len(self.test_loader.dataset)
         print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
               (avg_test_loss, correct, len(self.test_loader.dataset),
-               100.0 * correct / len(self.test_loader.dataset))
+               100.0 * acc)
         )
-
-
-    def train(self):
-        for n in range(self.num_epochs):
-            self.train_epoch()
-
-            if self.test_loader is not None:
-                self.test_epoch()
-
-            self.cur_epoch += 1
