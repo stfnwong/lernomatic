@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from lernomatic.vis import vis_loss_history
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -22,12 +22,12 @@ def main():
 
     loss_history = history['loss_history'][0 : history['loss_iter']]
     if GLOBAL_OPTS['verbose']:
-        print('%d training iterations ' % history['test_loss_iter'])
+        print('%d training iterations ' % history['loss_iter'])
 
     if 'acc_history' in history:
         acc_history = history['acc_history'][0 : history['acc_iter']]
         if GLOBAL_OPTS['verbose']:
-            print('%d accuracy iterations ' % history['test_loss_iter'])
+            print('%d accuracy iterations ' % history['acc_iter'])
             print('Max accuracy : %.3f ' % max(history['acc_history'][0: history['acc_iter']]))
     else:
         acc_history = None
