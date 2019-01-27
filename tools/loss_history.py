@@ -18,24 +18,32 @@ GLOBAL_OPTS = dict()
 def main():
 
     fig, ax = plt.subplots()
-
     history = torch.load(GLOBAL_OPTS['input'])
 
     loss_history = history['loss_history'][0 : history['loss_iter']]
+    if GLOBAL_OPTS['verbose']:
+        print('%d training iterations ' % history['loss_iter'])
+
     if 'acc_history' in history:
-        acc_history = history['acc_history'][0 : history['loss_iter']]
+        acc_history = history['acc_history'][0 : history['acc_iter']]
+        if GLOBAL_OPTS['verbose']:
+            print('%d accuracy iterations ' % history['acc_iter'])
+            print('Max accuracy : %.3f ' % max(history['acc_history'][0: history['acc_iter']]))
     else:
         acc_history = None
+    if 'test_loss_history' in history:
+        test_loss_history = history['test_loss_history'][0 : history['test_loss_iter']]
+        if GLOBAL_OPTS['verbose']:
+            print('%d test loss iterations' % history['test_loss_iter'])
+    else:
+        test_loss_history = None
 
-    #if GLOBAL_OPTS['verbose']:
-    #    print('Checkpoint [%s] current epoch : %d' % (str(GLOBAL_OPTS['input']), t.cur_epoch))
-    if GLOBAL_OPTS['verbose']:
-        print('%d training iterations in loss history file [%s]' %\
-              (int(history['loss_iter']), str(GLOBAL_OPTS['input'])))
 
+    # plot the visualization
     vis_loss_history.plot_loss_history(
         ax,
         loss_history,
+        test_loss_curve = test_loss_history,
         acc_curve = acc_history,
         title = GLOBAL_OPTS['title'],
         iter_per_epoch = history['iter_per_epoch'],
@@ -67,11 +75,6 @@ def get_parser():
                         type=str,
                         default=None,
                         help='Title for plot output'
-                        )
-    parser.add_argument('--title',
-                        type=str,
-                        default=None,
-                        help='Type of network to load checkpoint for'
                         )
     # other opts
     parser.add_argument('--print-loss',
