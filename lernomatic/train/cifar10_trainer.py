@@ -67,10 +67,14 @@ class CIFAR10Trainer(trainer.Trainer):
 
     def save_history(self, fname):
         history = dict()
-        history['loss_history']   = self.loss_history
-        history['loss_iter']      = self.loss_iter
-        history['cur_epoch']      = self.cur_epoch
-        history['iter_per_epoch'] = self.iter_per_epoch
+        history['loss_history']      = self.loss_history
+        history['loss_iter']         = self.loss_iter
+        history['test_loss_history'] = self.test_loss_history
+        history['test_loss_iter']    = self.test_loss_iter
+        history['acc_history']       = self.acc_history
+        history['acc_iter']          = self.acc_iter
+        history['cur_epoch']         = self.cur_epoch
+        history['iter_per_epoch']    = self.iter_per_epoch
         if self.test_loss_history is not None:
             history['test_loss_history'] = self.test_loss_history
 
@@ -78,10 +82,14 @@ class CIFAR10Trainer(trainer.Trainer):
 
     def load_history(self, fname):
         history = torch.load(fname)
-        self.loss_history   = history['loss_history']
-        self.loss_iter      = history['loss_iter']
-        self.cur_epoch      = history['cur_epoch']
-        self.iter_per_epoch = history['iter_per_epoch']
+        self.loss_history      = history['loss_history']
+        self.loss_iter         = history['loss_iter']
+        self.test_loss_history = history['test_loss_history']
+        self.test_loss_iter    = history['test_loss_iter']
+        self.acc_history       = history['acc_history']
+        self.acc_iter          = history['acc_iter']
+        self.cur_epoch         = history['cur_epoch']
+        self.iter_per_epoch    = history['iter_per_epoch']
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
 
@@ -95,7 +103,7 @@ class CIFAR10Trainer(trainer.Trainer):
     def load_checkpoint(self, fname):
         checkpoint = torch.load(fname)
         self.set_trainer_params(checkpoint['trainer'])
-        self.model = mnist.MNISTNet()
+        self.model = cifar10.CIFAR10()
         self.model.load_state_dict(checkpoint['model'])
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint['optimizer'])
