@@ -25,6 +25,7 @@ class LRParams(object):
         self.mom_list = list()
         self.best_mom = 0.0
 
+
 class LRFinder(object):
     def __init__(self, trainer, **kwargs):
         self.trainer = trainer
@@ -34,14 +35,12 @@ class LRFinder(object):
         self.num_iter     = kwargs.pop('num_iter', 1000)    # number of steps to perform training
         self.start_lr     = kwargs.pop('start_lr', 1e-6)
         self.end_lr       = kwargs.pop('end_lr', 10)
-        self.lr_space     = kwargs.pop('lr_space', 'linear')
-        # learning rate info
-        self.best_lr      = 0.0
-        self.cur_lr       = 0.0
-        #self.lr_cache = list()
-
-        # TODO : possibly allow the ability to cache the history of all losses
-        # and results...
+        self.epoch_mult   = kwargs.pop('epoch_mult', 8)
+        self.lr_mult      = kwargs.pop('lr_mult', 1.05)
+        self.gamma        = kwargs.pop('gamma', 0.999995)
+        # lr params
+        self.lr_thresh    = kwargs.pop('lr_thresh', 4)      # fast.ai uses 4 * min_smoothed_loss
+        self.lr_beta      = kwargs.pop('lr_beta', 0.999)
 
     def __repr__(self):
         return 'LRFinder'
@@ -49,10 +48,28 @@ class LRFinder(object):
     def __str__(self):
         s = []
         s.append('LRFinder (%.3f -> %.3f)\n' % (self.start_lr, self.end_lr))
-        s.append('%d attempts with %d iters per attempt\n' % (self.max_attempts, self.num_iter))
         return ''.join(s)
 
-    def find_lr(self, print_every=0):
+    def get_stepsize(self):
+        return self.epoch_mult * int(len(self.trainer.train_loader.dataset) / self.trainer.batch_size)
+
+    def get_cycle(self, stepsize):
+        return np.floor(1 + self.trainer.num_epochs / (2 * stepsize))
+
+    def get_lr(self, cycle, stepsize):
+        x = np.abs(self.trainer.num_epochs / stepsize - 2 * cycle + 1)
+        return self.start_lr + (self.end_lr - self.start_lr) * np.max(0, (1 - x))
+
+    def range_test(self, test_num_epochs, lr_low, lr_high, lr_step):
+        # Cache the original number of epochs
+        self.trainer_num_epochs = self.trainer.num_epochs
+        self.trainer.num_epochs = test_num_epochs
+
+        epoch_num_iter = len(self.trainer.train_loader)
+        lrs = np.linspace(lr_low, lr_high, lr_step)
+
+
+    def old_find_lr(self, print_every=0):
         # Prepare a loader
         loader_iterator = iter(self.trainer.train_loader)
 
@@ -83,5 +100,17 @@ class LRFinder(object):
             self.trainer.reset_history()
 
 
-    # TODO : save and load parameters
-    # TODO : save and load object?
+class TriangularLR(LRFinder):
+    def __init__(self, trainer, **kwargs):
+        super(TriangularLR, self).__init__(trainer, **kwargs)
+
+    def __repr__(self):
+        return 'TriangularLR'
+
+    def __str__(self):
+        s = []
+        s.append('TriangularLR [%.3f -> %.3f]\n' % (self.start_lr, self.end_lr))
+        return ''.join(s)
+
+    def find_lr(self):
+        pass

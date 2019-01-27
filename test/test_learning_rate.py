@@ -21,7 +21,6 @@ from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-
 class TestLRFinder(unittest.TestCase):
     def setUp(self):
         self.verbose            = GLOBAL_OPTS['verbose']
@@ -33,9 +32,7 @@ class TestLRFinder(unittest.TestCase):
         self.test_end_lr        = 1
         self.test_num_iter      = 5000
 
-    def test_find_lr(self):
-        print('======== TestLRFinder.test_find_lr ')
-
+    def get_trainer(self):
         # get a model to test on and its corresponding trainer
         model = cifar10.CIFAR10Net()
         trainer = cifar10_trainer.CIFAR10Trainer(
@@ -51,7 +48,13 @@ class TestLRFinder(unittest.TestCase):
             verbose = self.verbose
         )
 
+        return trainer
+
+    def test_find_lr(self):
+        print('======== TestLRFinder.test_find_lr ')
+
         # get an LRFinder
+        trainer = self.get_trainer()
         lr_finder = learning_rate.LRFinder(
             trainer,
             start_lr = self.test_start_lr,
@@ -70,6 +73,24 @@ class TestLRFinder(unittest.TestCase):
 
 
         print('======== TestLRFinder.test_find_lr <END>')
+
+    def test_lr_range_find(self):
+        print('======== TestLRFinder.test_lr_range_find ')
+
+        trainer = self.get_trainer()
+        lr_finder = learning_rate.LRFinder(
+            trainer,
+            start_lr = self.test_start_lr,
+            end_lr   = self.test_end_lr,
+            num_iter = self.test_num_iter,
+            verbose  = self.verbose
+        )
+
+        # shut linter up
+        if self.verbose:
+            print(lr_finder)
+
+        print('======== TestLRFinder.test_lr_range_find <END>')
 
 
 # Entry point
