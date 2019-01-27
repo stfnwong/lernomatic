@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from lernomatic.vis import vis_loss_history
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -22,24 +22,24 @@ def main():
 
     loss_history = history['loss_history'][0 : history['loss_iter']]
     if GLOBAL_OPTS['verbose']:
-        print('%d training iterations in loss history file [%s]' %\
-              (int(history['loss_iter']), str(GLOBAL_OPTS['input'])))
+        print('%d training iterations ' % history['test_loss_iter'])
 
     if 'acc_history' in history:
         acc_history = history['acc_history'][0 : history['acc_iter']]
         if GLOBAL_OPTS['verbose']:
-            print('%d accuracy iterations in loss history file [%s]' %\
-                (int(history['acc_iter']), str(GLOBAL_OPTS['input'])))
+            print('%d accuracy iterations ' % history['test_loss_iter'])
+            print('Max accuracy : %.3f ' % max(history['acc_history'][0: history['acc_iter']]))
     else:
         acc_history = None
     if 'test_loss_history' in history:
         test_loss_history = history['test_loss_history'][0 : history['test_loss_iter']]
         if GLOBAL_OPTS['verbose']:
-            print('%d test loss iterations in loss history file [%s]' %\
-                (int(history['test_loss_iter']), str(GLOBAL_OPTS['input'])))
+            print('%d test loss iterations' % history['test_loss_iter'])
     else:
         test_loss_history = None
 
+
+    # plot the visualization
     vis_loss_history.plot_loss_history(
         ax,
         loss_history,
