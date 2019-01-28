@@ -122,7 +122,8 @@ class Trainer(object):
             self.device = torch.device('cuda:%d' % self.device_id)
 
     def _send_to_device(self):
-        self.model = self.model.to(self.device)
+        if self.model is not None:
+            self.model = self.model.to(self.device)
 
     # default param options
     def get_trainer_params(self):
