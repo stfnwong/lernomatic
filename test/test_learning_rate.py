@@ -28,8 +28,8 @@ class TestLRFinder(unittest.TestCase):
         self.test_learning_rate = 0.001
         self.test_print_every   = 20
         # options for learning rate finder
-        self.test_start_lr      = 1e-7
-        self.test_end_lr        = 1
+        self.test_lr_min      = 1e-7
+        self.test_lr_max        = 1
         self.test_num_iter      = 5000
 
     def get_trainer(self):
@@ -56,9 +56,8 @@ class TestLRFinder(unittest.TestCase):
         # get an LRFinder
         trainer = self.get_trainer()
         lr_finder = learning_rate.LRFinder(
-            trainer,
-            start_lr = self.test_start_lr,
-            end_lr   = self.test_end_lr,
+            lr_min = self.test_lr_min,
+            lr_max   = self.test_lr_max,
             num_iter = self.test_num_iter,
             verbose  = self.verbose
         )
@@ -80,8 +79,8 @@ class TestLRFinder(unittest.TestCase):
         trainer = self.get_trainer()
         lr_finder = learning_rate.LRFinder(
             trainer,
-            start_lr = self.test_start_lr,
-            end_lr   = self.test_end_lr,
+            lr_min = self.test_lr_min,
+            lr_max   = self.test_lr_max,
             num_iter = self.test_num_iter,
             verbose  = self.verbose
         )

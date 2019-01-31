@@ -42,6 +42,8 @@ class Trainer(object):
         self.val_dataset     = kwargs.pop('val_dataset', None)
         self.shuffle         = kwargs.pop('shuffle', True)
         self.num_workers     = kwargs.pop('num_workers' , 1)
+        # parameter scheduling
+        self.lr_scheduler    = kwargs.pop('lr_scheduler', None)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
@@ -80,7 +82,8 @@ class Trainer(object):
 
         # Get a loss function
         if hasattr(nn, self.loss_function):
-            self.criterion = nn.BCELoss()
+            loss_obj = getattr(nn, self.loss_function)
+            self.criterion = loss_obj()
         else:
             raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
 
@@ -130,6 +133,7 @@ class Trainer(object):
             raise ValueError('find_lr() requires a train dataset loader')
 
         lr_finder.cache_model_params(self.get_model_params())
+        #lr_finder.init_cache(len(self.train_loader), len(self.test_loader))
 
         for epoch in range(lr_finder.num_epochs):
             for batch_idx, (data, labels) in enumerate(self.train_loader):
@@ -142,8 +146,8 @@ class Trainer(object):
                 loss.backward()
                 self.optimizer.step()
 
-                new_lr = lr_finder.cb_batch_end()
-                self.optimizer.learning_rate = new_lr
+                #new_lr = lr_finder.cb_batch_end()
+                #self.optimizer.learning_rate = new_lr
 
         # restore the original model parameters
         self.model.load_state_dict(lr_finder.get_model_params())
@@ -195,8 +199,9 @@ class Trainer(object):
 
     # common getters/setters
     def get_learning_rate(self):
-        optim_state = self.optimizer.state_dict()
-        return optim_state['lr']
+        return self.optimizer.param_groups[0]['lr']
+        #optim_state = self.optimizer.state_dict()
+        #return optim_state['lr']
 
     def get_momentum(self):
         optim_state = self.optimizer.state_dict()
@@ -214,6 +219,12 @@ class Trainer(object):
             for g in self.optimizer.param_groups:
                 g['momentum'] = momentum
 
+
+    def set_lr_scheduler(self, lr_scheduler):
+        self.lr_scheduler = lr_scheduler
+
+    def get_lr_scheduler(self):
+        return self.lr_scheduler
 
     # Basic training/test routines. Specialize these when needed
     def train_epoch(self):
@@ -254,7 +265,17 @@ class Trainer(object):
                     '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
                 self.save_history(hist_name)
 
+            # perform any scheduling
+            if self.lr_scheduler is not None:
+                new_lr = self.lr_scheduler.get_lr(self.loss_iter)
+                self.set_learning_rate(new_lr)
+
+
     def test_epoch(self):
+        """
+        TEST_EPOCH
+        Run a single epoch on the test dataset
+        """
         self.model.eval()
         test_loss = 0.0
         correct = 0

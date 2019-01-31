@@ -16,7 +16,7 @@ import torchvision
 # data split stuff
 #from sklearn.model_selection import test_train_split
 # unit under test
-from lernomatic.train import trainer
+from lernomatic.train import cifar10_trainer
 # we use a CIFAR-10 model for testing the trainer
 from lernomatic.models import cifar10
 
@@ -38,42 +38,20 @@ class TestTrainer(unittest.TestCase):
     def test_save_load_checkpoint(self):
         print('======== TestTrainer.test_save_load_checkpoint ')
 
-        test_dataset_file = 'hdf5/trainer_unit_test.h5'
+        test_checkpoint = 'checkpoint/trainer_test_save_load.pkl'
+
+        # get a model
         model = cifar10.CIFAR10Net()
-
-        # manually get CIFAR-10 datasets
-        dataset_transform = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
-
-        train_dataset = torchvision.datasets.CIFAR10(
-            self.data_dir,
-            train = True,
-            download = True,
-            transform = dataset_transform
-        )
-        test_dataset = torchvision.datasets.CIFAR10(
-            self.data_dir,
-            train = False,
-            download = True,
-            transform = dataset_transform
-        )
-
         # get a trainer
         test_num_epochs = 1
-        src_tr = trainer.Trainer(
+        src_tr = cifar10_trainer.CIFAR10Trainer(
             model,
             num_epochs = test_num_epochs,
             save_every = 0,
             device_id = GLOBAL_OPTS['device_id'],
-            # dataload options
-            train_dataset = train_dataset,
-            test_dataset = test_dataset,
             batch_size = self.test_batch_size,
             num_workers = self.test_num_workers
         )
-
 
         if self.verbose:
             print('Created trainer object')
@@ -81,13 +59,14 @@ class TestTrainer(unittest.TestCase):
 
         # train for one epoch
         src_tr.train()
+        src_tr.save_checkpoint(test_checkpoint)
         # Make a new trainer and load all parameters into that
         # I guess we need to put some kind of loader and model here...
-        dst_tr = trainer.Trainer(
+        dst_tr = cifar10_trainer.CIFAR10Trainer(
             model,
             device_id = GLOBAL_OPTS['device_id']
         )
-        dst_tr.load_checkpoint('checkpoint/save_load_test_epoch-0.pkl')
+        dst_tr.load_checkpoint(test_checkpoint)
 
         # Test object parameters
         self.assertEqual(src_tr.num_epochs, dst_tr.num_epochs)
@@ -112,6 +91,9 @@ class TestTrainer(unittest.TestCase):
         print('\n ...done')
 
         # Test loss history
+        test_loss_history = 'test_save_load_history.pkl'
+        src_tr.save_history(test_loss_history)
+        dst_tr.load_history(test_loss_history)
         print('\t Comparing loss history....')
         self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
         for n in range(src_tr.loss_iter):
@@ -125,39 +107,16 @@ class TestTrainer(unittest.TestCase):
     def test_save_load_acc(self):
         print('======== TestTrainer.test_save_load_acc ')
 
-        test_dataset_file = 'hdf5/trainer_unit_test.h5'
-        val_dataset_file = 'hdf5/warblr_data.h5'
+        test_checkpoint = 'checkpoint/trainer_test_save_load_acc.pkl'
+
         model = cifar10.CIFAR10Net()
-
-        # manually get CIFAR-10 datasets
-        dataset_transform = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
-
-        train_dataset = torchvision.datasets.CIFAR10(
-            self.data_dir,
-            train = True,
-            download = True,
-            transform = dataset_transform
-        )
-        test_dataset = torchvision.datasets.CIFAR10(
-            self.data_dir,
-            train = False,
-            download = True,
-            transform = dataset_transform
-        )
-
         # Get trainer object
         test_num_epochs = 10
-        src_tr = trainer.Trainer(
+        src_tr = cifar10_trainer.CIFAR10Trainer(
             model,
             save_every = 0,
             print_every = 50,
             device_id = GLOBAL_OPTS['device_id'],
-            # datasets
-            train_dataset = train_dataset,
-            test_dataset = test_dataset,
             # loader options,
             num_epochs = self.test_num_epochs,
             batch_size = self.test_batch_size,
@@ -170,22 +129,19 @@ class TestTrainer(unittest.TestCase):
 
         # train for one epoch
         src_tr.train()
+        src_tr.save_checkpoint(test_checkpoint)
         self.assertIsNot(None, src_tr.acc_history)
 
         # Now try to load a checkpoint and ensure that there is an
         # acc history attribute that is not None
         # TODO : check that we restore the loaders  as well
-        dst_tr = trainer.Trainer(
+        dst_tr = cifar10_trainer.CIFAR10Trainer(
             model,
-            device_id = GLOBAL_OPTS['device_id'],        # TODO : not in checkpoint data...
-            # loaders
-            train_dataset = train_dataset,
-            test_dataset = test_dataset,
+            device_id = GLOBAL_OPTS['device_id'],
             verbose = self.verbose
         )
-        ck_fname = 'checkpoint/save_load_test_epoch-%d.pkl' % (test_num_epochs-1)
-        dst_tr.load_checkpoint(ck_fname)
-        #dst_tr.load_checkpoint('checkpoint/save_load_test_epoch-%d.pkl' % test_num_epochs-1)
+        dst_tr.load_checkpoint(test_checkpoint)
+        # TODO: history is seperate in lernomatic
         self.assertIsNot(None, dst_tr.acc_history)
 
         # Test object parameters

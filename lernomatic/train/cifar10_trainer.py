@@ -11,7 +11,7 @@ from lernomatic.train import trainer
 from lernomatic.models import cifar10
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 class CIFAR10Trainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs):
@@ -22,7 +22,7 @@ class CIFAR10Trainer(trainer.Trainer):
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def __repr__(self):
-        return 'MNISTTrainer'
+        return 'CIFAR10Trainer'
 
     def _init_optimizer(self):
         if self.model is not None:
@@ -95,7 +95,7 @@ class CIFAR10Trainer(trainer.Trainer):
     def load_checkpoint(self, fname):
         checkpoint = torch.load(fname)
         self.set_trainer_params(checkpoint['trainer'])
-        self.model = mnist.MNISTNet()
+        self.model = cifar10.CIFAR10Net()
         self.model.load_state_dict(checkpoint['model'])
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint['optimizer'])
