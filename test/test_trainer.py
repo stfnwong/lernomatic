@@ -12,40 +12,68 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import torchvision
 # data split stuff
 #from sklearn.model_selection import test_train_split
 # unit under test
 from lernomatic.train import trainer
+# we use a CIFAR-10 model for testing the trainer
+from lernomatic.models import cifar10
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-class TestDCASETrainer(unittest.TestCase):
+class TestTrainer(unittest.TestCase):
     def setUp(self):
-        self.verbose         = GLOBAL_OPTS['verbose']
-        self.draw_plot       = GLOBAL_OPTS['draw_plot']
-        self.test_batch_size = 16
+        self.verbose          = GLOBAL_OPTS['verbose']
+        self.draw_plot        = GLOBAL_OPTS['draw_plot']
+        self.test_batch_size  = 16
+        self.test_num_workers = 2
+        self.test_num_epochs  = 2
+        self.shuffle          = True
+        self.data_dir         = 'data/'
 
     def test_save_load_checkpoint(self):
-        print('======== TestDCASETrainer.test_save_load_checkpoint ')
+        print('======== TestTrainer.test_save_load_checkpoint ')
 
         test_dataset_file = 'hdf5/trainer_unit_test.h5'
-        model = dcase2018.DCASENet()
+        model = cifar10.CIFAR10Net()
 
+        # manually get CIFAR-10 datasets
+        dataset_transform = torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        train_dataset = torchvision.datasets.CIFAR10(
+            self.data_dir,
+            train = True,
+            download = True,
+            transform = dataset_transform
+        )
+        test_dataset = torchvision.datasets.CIFAR10(
+            self.data_dir,
+            train = False,
+            download = True,
+            transform = dataset_transform
+        )
+
+        # get a trainer
         test_num_epochs = 1
-        src_tr = trainer.DCASETrainer(
+        src_tr = trainer.Trainer(
             model,
             num_epochs = test_num_epochs,
-            save_every = 1,
+            save_every = 0,
             device_id = GLOBAL_OPTS['device_id'],
             # dataload options
-            checkpoint_name = 'save_load_test',
-            train_data_path = test_dataset_file,
-            batch_size = 16,
-            num_workers = GLOBAL_OPTS['num_workers']
+            train_dataset = train_dataset,
+            test_dataset = test_dataset,
+            batch_size = self.test_batch_size,
+            num_workers = self.test_num_workers
         )
+
 
         if self.verbose:
             print('Created trainer object')
@@ -55,7 +83,7 @@ class TestDCASETrainer(unittest.TestCase):
         src_tr.train()
         # Make a new trainer and load all parameters into that
         # I guess we need to put some kind of loader and model here...
-        dst_tr = trainer.DCASETrainer(
+        dst_tr = trainer.Trainer(
             model,
             device_id = GLOBAL_OPTS['device_id']
         )
@@ -92,29 +120,48 @@ class TestDCASETrainer(unittest.TestCase):
 
         print('\n ...done')
 
-        print('======== TestDCASETrainer.test_save_load_checkpoint <END>')
+        print('======== TestTrainer.test_save_load_checkpoint <END>')
 
     def test_save_load_acc(self):
-        print('======== TestDCASETrainer.test_save_load_acc ')
+        print('======== TestTrainer.test_save_load_acc ')
 
         test_dataset_file = 'hdf5/trainer_unit_test.h5'
         val_dataset_file = 'hdf5/warblr_data.h5'
-        model = dcase2018.DCASENet()
+        model = cifar10.CIFAR10Net()
+
+        # manually get CIFAR-10 datasets
+        dataset_transform = torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        train_dataset = torchvision.datasets.CIFAR10(
+            self.data_dir,
+            train = True,
+            download = True,
+            transform = dataset_transform
+        )
+        test_dataset = torchvision.datasets.CIFAR10(
+            self.data_dir,
+            train = False,
+            download = True,
+            transform = dataset_transform
+        )
 
         # Get trainer object
         test_num_epochs = 10
-        src_tr = trainer.DCASETrainer(
+        src_tr = trainer.Trainer(
             model,
-            save_every = 1,
+            save_every = 0,
             print_every = 50,
-            checkpoint_name = 'save_load_test',
             device_id = GLOBAL_OPTS['device_id'],
+            # datasets
+            train_dataset = train_dataset,
+            test_dataset = test_dataset,
             # loader options,
-            num_epochs = test_num_epochs,
-            batch_size = GLOBAL_OPTS['batch_size'],
-            num_workers = GLOBAL_OPTS['num_workers'],
-            train_data_path = test_dataset_file,
-            val_data_path = val_dataset_file,
+            num_epochs = self.test_num_epochs,
+            batch_size = self.test_batch_size,
+            num_workers = self.test_num_workers,
         )
 
         if self.verbose:
@@ -128,9 +175,13 @@ class TestDCASETrainer(unittest.TestCase):
         # Now try to load a checkpoint and ensure that there is an
         # acc history attribute that is not None
         # TODO : check that we restore the loaders  as well
-        dst_tr = trainer.DCASETrainer(
+        dst_tr = trainer.Trainer(
             model,
-            device_id = GLOBAL_OPTS['device_id']        # TODO : not in checkpoint data...
+            device_id = GLOBAL_OPTS['device_id'],        # TODO : not in checkpoint data...
+            # loaders
+            train_dataset = train_dataset,
+            test_dataset = test_dataset,
+            verbose = self.verbose
         )
         ck_fname = 'checkpoint/save_load_test_epoch-%d.pkl' % (test_num_epochs-1)
         dst_tr.load_checkpoint(ck_fname)
@@ -171,7 +222,7 @@ class TestDCASETrainer(unittest.TestCase):
             print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
             self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
 
-        print('======== TestDCASETrainer.test_save_load_acc <END>')
+        print('======== TestTrainer.test_save_load_acc <END>')
 
 
 

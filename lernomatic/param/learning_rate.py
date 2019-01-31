@@ -6,6 +6,7 @@ Stefan Wong 2018
 """
 
 import numpy as np
+import copy
 
 """
 TODO : stuff that needs to be implemented. What we want is to do some
@@ -27,14 +28,15 @@ class LRParams(object):
 
 
 class LRFinder(object):
-    def __init__(self, trainer, **kwargs):
-        self.trainer = trainer
+    def __init__(self, **kwargs):
         # get keyword args
         self.verbose      = kwargs.pop('verbose', False)
         self.max_attempts = kwargs.pop('max_attempts', 5000)
+        self.num_epochs   = kwargs.pop('num_epochs', 2)
         self.num_iter     = kwargs.pop('num_iter', 1000)    # number of steps to perform training
-        self.start_lr     = kwargs.pop('start_lr', 1e-6)
-        self.end_lr       = kwargs.pop('end_lr', 10)
+        self.start_iter   = kwargs.pop('start_iter', 0)
+        self.lr_min       = kwargs.pop('lr_min', 1e-6)
+        self.lr_max       = kwargs.pop('lr_max', 10)
         self.epoch_mult   = kwargs.pop('epoch_mult', 8)
         self.lr_mult      = kwargs.pop('lr_mult', 1.05)
         self.gamma        = kwargs.pop('gamma', 0.999995)
@@ -42,14 +44,57 @@ class LRFinder(object):
         self.lr_thresh    = kwargs.pop('lr_thresh', 4)      # fast.ai uses 4 * min_smoothed_loss
         self.lr_beta      = kwargs.pop('lr_beta', 0.999)
 
+        # init model params
+        self.model_params = None
+
     def __repr__(self):
         return 'LRFinder'
 
     def __str__(self):
         s = []
-        s.append('LRFinder (%.3f -> %.3f)\n' % (self.start_lr, self.end_lr))
+        s.append('LRFinder (%.3f -> %.3f)\n' % (self.lr_min, self.lr_max))
         return ''.join(s)
 
+    def cache_model_params(self, params):
+        self.model_params = copy.deepcopy(params)
+
+    def get_model_params(self):
+        return self.model_params
+
+    def get_lr(self, dataset_size, batch_size):
+        stepsize = self.epoch_mult * int(dataset_size / batch_size)
+        cycle = np.floor(1 + self.num_epochs / (2 * stepsize))
+        x = np.abs(self.num_epochs / stepsize - 2 * cycle + 1)
+
+        return self.lr_min + (self.lr_max - self.lr_min) * np.max(0, (1 - x))
+
+    # callbacks (called from trainer in loop)
+    def cb_batch_end(self):
+        raise NotImplementedError
+
+    def cb_epoch_end(self):
+        raise NotImplementedError
+
+
+
+class TriangularLR(LRFinder):
+    def __init__(self, trainer, **kwargs):
+        super(TriangularLR, self).__init__(trainer, **kwargs)
+
+    def __repr__(self):
+        return 'TriangularLR'
+
+    def __str__(self):
+        s = []
+        s.append('TriangularLR [%.3f -> %.3f]\n' % (self.lr_min, self.lr_max))
+        return ''.join(s)
+
+    def cb_batch_end(self):
+        return 0        ## TODO : calculate new lr based on schedule
+
+
+"""
+# TODO : old stuff, archived here
     def get_stepsize(self):
         return self.epoch_mult * int(len(self.trainer.train_loader.dataset) / self.trainer.batch_size)
 
@@ -58,7 +103,7 @@ class LRFinder(object):
 
     def get_lr(self, cycle, stepsize):
         x = np.abs(self.trainer.num_epochs / stepsize - 2 * cycle + 1)
-        return self.start_lr + (self.end_lr - self.start_lr) * np.max(0, (1 - x))
+        return self.lr_min + (self.lr_max - self.lr_min) * np.max(0, (1 - x))
 
     def range_test(self, test_num_epochs, lr_low, lr_high, lr_step):
         # Cache the original number of epochs
@@ -75,7 +120,7 @@ class LRFinder(object):
 
         best_loss = 1e8
         for lr_idx, lr_attempt in enumerate(range(self.max_attempts)):
-            cand_lr = (np.random.uniform(self.start_lr, self.end_lr))
+            cand_lr = (np.random.uniform(self.lr_min, self.lr_max))
 
             print('\t [LRFINDER] :  Attempt [%d / %d] with candidate learning rate %.4f' %\
                   (lr_idx+1, self.max_attempts, cand_lr))
@@ -98,19 +143,9 @@ class LRFinder(object):
 
             # if we didn't do well enough then reset history and try again
             self.trainer.reset_history()
+"""
 
 
-class TriangularLR(LRFinder):
-    def __init__(self, trainer, **kwargs):
-        super(TriangularLR, self).__init__(trainer, **kwargs)
-
-    def __repr__(self):
-        return 'TriangularLR'
-
-    def __str__(self):
-        s = []
-        s.append('TriangularLR [%.3f -> %.3f]\n' % (self.start_lr, self.end_lr))
-        return ''.join(s)
-
-    def find_lr(self):
+class LRScheduler(object):
+    def __init__(self, **kwargs):
         pass
