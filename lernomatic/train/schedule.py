@@ -24,6 +24,7 @@ class LRScheduler(object):
         self.start_iter = kwargs.pop('start_iter', 0)
 
         self.lr_history_size = kwargs.pop('lr_history_size', 0)
+        self.lr_history_ptr  = 0
         self._init_history()
 
     def __repr__(self):
@@ -37,6 +38,13 @@ class LRScheduler(object):
             self.lr_history = np.zeros(self.lr_history_size)
         else:
             self.lr_history = None
+
+    def _update_lr_history(self, lr):
+        if self.lr_history is None:
+            return
+
+        self.lr_history[self.lr_history_ptr] = lr
+        self.lr_history_ptr += 1
 
     def get_lr(self, cur_iter):
         raise NotImplementedError('This should be implemented in the derived class')
@@ -68,8 +76,10 @@ class StepLRScheduler(LRScheduler):
         if cur_iter % self.lr_decay_every == 0:
             new_lr = self.cur_lr * self.lr_decay
             self.cur_lr = new_lr
+            self._update_lr_history(new_lr)
             return new_lr
 
+        self._update_lr_history(self.cur_lr)
         return self.cur_lr
 
 
@@ -106,8 +116,10 @@ class TriangularLRScheduler(LRScheduler):
             x /= self.stepsize
             rate = self.lr_min + (self.lr_max - self.lr_min) *\
                 np.maximum(0.0, 1.0 - np.abs(x))
+            self._update_lr_history(rate)
             return rate
 
+        self._update_lr_history(self.lr_min)
         return self.lr_min
 
 
@@ -133,8 +145,10 @@ class Triangular2LRScheduler(LRScheduler):
             x /= self.stepsize
             rate = self.lr_min + (self.lr_max - self.lr_min) *\
                 np.minimum(1.0, np.maximum(0.0, (1.0 - np.abs(x) / np.pow(2, cycle))))
+            self._update_lr_history(rate)
             return rate
 
+        self._update_lr_history(self.lr_min)
         return self.lr_min
 
 
