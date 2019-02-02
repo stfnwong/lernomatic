@@ -10,7 +10,6 @@ import unittest
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
 
 # modules under test
 from lernomatic.train import schedule
@@ -27,10 +26,13 @@ def plot_loss_vs_lr(ax, loss_history, lr_history):
     if len(lr_history) != len(loss_history):
         raise ValueError('lr_history and loss_history must be same length')
 
-    ax.plot(loss_history, lr_history)
+    #ax.plot(loss_history, lr_history)
+    ax.plot(np.arange(len(loss_history)), loss_history)
+    ax.plot(np.arange(len(lr_history)), lr_history)
     ax.set_xlabel('Loss')
     ax.set_ylabel('Learning Rate')
     ax.set_title('loss vs learning rate')
+    ax.legend(['loss history', 'lr history'])
 
 def plot_lr_schedule(ax, lr_history):
 
@@ -38,6 +40,7 @@ def plot_lr_schedule(ax, lr_history):
     ax.set_xlabel('Iteration')
     ax.set_ylabel('Learning rate')
     ax.set_title('Final learning rate schedule')
+
 
 # helper function to get trainer and model
 def get_trainer(learning_rate = None):
@@ -53,6 +56,7 @@ def get_trainer(learning_rate = None):
         # data options
         batch_size = GLOBAL_OPTS['batch_size'],
         num_workers = GLOBAL_OPTS['num_workers'],
+        num_epochs = GLOBAL_OPTS['num_epochs'],
         # set initial learning rate
         learning_rate = test_learning_rate,
         # other options
@@ -76,8 +80,8 @@ class TestStepLR(unittest.TestCase):
         # we will be varying the learning rate starting at lr_max, and
         # decreasing towards lr_min by a factor of test_lr_decay every 10000
         # iterations
-        test_lr_min = 1e-6
-        test_lr_max = 1e-2
+        test_lr_min = 1e-4
+        test_lr_max = 1e-1
         test_lr_decay = 0.01
         test_lr_decay_every = 1000
         test_start_iter = 0
@@ -122,8 +126,8 @@ class TestTriangularLR(unittest.TestCase):
         # between lr_min and lr_max, then back to lr_min over an interval of
         # 2*stepsize.
         test_lr_min = 0.0001
-        test_lr_max = 0.1
-        test_stepsize = 500
+        test_lr_max = 0.01
+        test_stepsize = 8 * len(trainer.train_loader)
         test_start_iter = 0
         lr_scheduler = schedule.TriangularLRScheduler(
             lr_min = test_lr_min,
@@ -175,6 +179,11 @@ if __name__ == '__main__':
                         type=float,
                         default=0.0001,
                         help='Initial learning rate to use for test'
+                        )
+    parser.add_argument('--num-epochs',
+                        type=int,
+                        default=20,
+                        help='Number of epochs to train for in test'
                         )
     parser.add_argument('--device-id',
                         type=int,

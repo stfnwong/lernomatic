@@ -129,11 +129,16 @@ class Trainer(object):
         self.model = self.model.to(self.device)
 
     def find_lr(self, lr_finder):
+        """
+        FIND_LR
+        Find an optimal learning rate using the schedule given in the supplied
+        LRFinder object
+        """
         if self.train_loader is None:
             raise ValueError('find_lr() requires a train dataset loader')
 
         lr_finder.cache_model_params(self.get_model_params())
-        #lr_finder.init_cache(len(self.train_loader), len(self.test_loader))
+        lr_finder.cache_trainer_params(self.get_trainer_params())
 
         for epoch in range(lr_finder.num_epochs):
             for batch_idx, (data, labels) in enumerate(self.train_loader):
@@ -143,14 +148,32 @@ class Trainer(object):
                 self.optimizer.zero_grad()
                 output = self.model(data)
                 loss   = self.criterion(output, labels)
+
+                lr, done = lr_finder.get_lr(batch_idx, loss.item())
+                if done is True:
+                    self.set_learning_rate(lr)
+                    print('\t done searching on batch %d of epoch %d' % (batch_idx, epoch))
+                    print('Learning rate at end of search is %f' % lr)
+                    break
+
+                if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
+                    print('[LR_FIND]:  Epoch         iteration         Loss      LR')
+                    print('           [%4d/%4d]  [%6d/%6d]  %.6f       %f' %\
+                        (epoch, lr_finder.num_epochs, batch_idx, len(self.train_loader), loss.item(), lr))
+
+                # finish optimization
                 loss.backward()
                 self.optimizer.step()
+                self.set_learning_rate(lr)
 
-                #new_lr = lr_finder.cb_batch_end()
-                #self.optimizer.learning_rate = new_lr
+            if (done is True) or (epoch > lr_finder.num_epochs):
+                break
 
-        # restore the original model parameters
+        # restore the original model and trainer parameters
+        print('Restoring model, trainer state')
         self.model.load_state_dict(lr_finder.get_model_params())
+        self.set_trainer_params(lr_finder.get_trainer_params())
+        self.set_learning_rate(lr_finder.get_best_lr())
 
     # default param options
     def get_trainer_params(self):
@@ -209,16 +232,18 @@ class Trainer(object):
             return optim_state['momentum']
         return None
 
-    def set_learning_rate(self, lr):
-        for g in self.optimizer.param_groups:
-            g['lr'] = lr
+    def set_learning_rate(self, lr, param_zero=True):
+        if param_zero:
+            self.optimizer.param_groups[0]['lr'] = lr
+        else:
+            for g in self.optimizer.param_groups:
+                g['lr'] = lr
 
     def set_momentum(self, momentum):
         optim_state = self.optimizer.state_dict()
         if 'momentum' in optim_state:
             for g in self.optimizer.param_groups:
                 g['momentum'] = momentum
-
 
     def set_lr_scheduler(self, lr_scheduler):
         self.lr_scheduler = lr_scheduler
