@@ -16,7 +16,7 @@ we select 0, then we train for one epoch)
 """
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class LRFinder(object):
@@ -29,7 +29,8 @@ class LRFinder(object):
         self.verbose        = kwargs.pop('verbose', False)
         self.max_iter       = kwargs.pop('max_iter', 5000)
         self.stepsize_epoch = kwargs.pop('stepsize_epoch', 8)
-        self.best_factor    = kwargs.pop('best_factor', 4.0)
+        self.best_factor    = kwargs.pop('best_factor', 8.0)
+        self.min_batches    = kwargs.pop('min_batches', 80)
         self.num_epochs     = kwargs.pop('num_epochs', 8)
         # lr params
         self.lr_mult        = kwargs.pop('lr_mult', 0)
@@ -131,7 +132,7 @@ class LinearFinder(LRFinder):
         self.avg_loss = self.beta * self.avg_loss + (1 - self.beta) * loss
         smoothed_loss = self.avg_loss / (1 - self.beta ** batch_num+1)
 
-        if (batch_num > 1) and (smoothed_loss > (self.best_factor * self.best_loss)):
+        if (batch_num > self.min_batches) and (smoothed_loss > (self.best_factor * self.best_loss)):
             return self.learning_rate, True
 
         if (smoothed_loss < self.best_loss) or (batch_num == 0):
@@ -144,6 +145,10 @@ class LinearFinder(LRFinder):
         self.log_lr_history.append(log_lr)
         self.smooth_loss_history.append(smoothed_loss)
         self.learning_rate *= self.lr_mult
+
+        # debug
+        #print('[LinearFinder] : log_lr : %.4f, smooth loss : %f, best loss : %f' %\
+        #      (log_lr, smoothed_loss, self.best_loss))
 
         return self.learning_rate, False
 

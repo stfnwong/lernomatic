@@ -170,9 +170,11 @@ class Trainer(object):
                 break
 
         # restore the original model and trainer parameters
-        print('Restoring model, trainer state')
+        print('[TRAINER] : restoring model')
         self.model.load_state_dict(lr_finder.get_model_params())
+        print('[TRAINER] : restoring trainer')
         self.set_trainer_params(lr_finder.get_trainer_params())
+        print('[TRAINER] : setting learning rate to %f' % lr_finder.get_best_lr())
         self.set_learning_rate(lr_finder.get_best_lr())
 
     # default param options
