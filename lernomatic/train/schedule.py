@@ -152,6 +152,11 @@ class Triangular2LRScheduler(LRScheduler):
         return self.lr_min
 
 
+class EpochSetScheduleer(LRScheduler):
+    def __init__(self, **kwargs):
+        super(EpochSetScheduler, self).__init__(**kwargs)
+
+
 # ---- Momentum ----- #
 class MScheduler(object):
     def __init__(self, **kwargs):

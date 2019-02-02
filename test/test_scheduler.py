@@ -16,6 +16,8 @@ from lernomatic.train import schedule
 from lernomatic.train import cifar10_trainer
 from lernomatic.models import cifar10
 
+from lernomatic.vis import vis_loss_history
+
 # debug
 from pudb import set_trace; set_trace()
 
@@ -103,11 +105,32 @@ class TestStepLR(unittest.TestCase):
         trainer.train()
 
         print('Generating loss history vs learning rate history plot')
-        fig, ax = plt.subplots()
-        plot_loss_vs_lr(ax, trainer.loss_history, lr_scheduler.lr_history)
-        plt.show()
-        plot_lr_schedule(ax, lr_scheduler.lr_history)
-        plt.show()
+        fig1, ax1 = plt.subplots()
+        plot_loss_vs_lr(ax1, trainer.loss_history, lr_scheduler.lr_history)
+        if GLOBAL_OPTS['draw_plots'] is True:
+            plt.show()
+        else:
+            plt.savefig('step_lr_loss_vs_lr.png', bbox_inches='tight')
+
+        fig2, ax2 = plt.subplots()
+        plot_lr_schedule(ax2, lr_scheduler.lr_history)
+        if GLOBAL_OPTS['draw_plots'] is True:
+            plt.show()
+        else:
+            plt.savefig('step_lr_lr_schedule.png', bbox_inches='tight')
+
+        fig3, ax3 = plt.subplots()
+        vis_loss_history.plot_loss_history(
+            ax3,
+            trainer.loss_history,
+            acc_curve = trainer.acc_history,
+            iter_per_epoch = trainer.iter_per_epoch,
+            cur_epoch = trainer.cur_epoch
+        )
+        if GLOBAL_OPTS['draw_plot'] is True:
+            plt.show()
+        else:
+            plt.savefig('step_lr_train_results.png', bbox_inches='tight')
 
         print('======== TestStepLR.test_train_lr_schedule <END>')
 
@@ -141,12 +164,32 @@ class TestTriangularLR(unittest.TestCase):
         trainer.set_lr_scheduler(lr_scheduler)
         trainer.train()
 
-        print('Generating loss history vs learning rate history plot')
-        fig, ax = plt.subplots()
-        plot_loss_vs_lr(ax, trainer.loss_history, lr_scheduler.lr_history)
-        plt.show()
-        plot_lr_schedule(ax, lr_scheduler.lr_history)
-        plt.show()
+        fig1, ax1 = plt.subplots()
+        plot_loss_vs_lr(ax1, trainer.loss_history, lr_scheduler.lr_history)
+        if GLOBAL_OPTS['draw_plots'] is True:
+            plt.show()
+        else:
+            plt.savefig('triangular_lr_loss_vs_lr.png', bbox_inches='tight')
+
+        fig2, ax2 = plt.subplots()
+        plot_lr_schedule(ax2, lr_scheduler.lr_history)
+        if GLOBAL_OPTS['draw_plots'] is True:
+            plt.show()
+        else:
+            plt.savefig('triangular_lr_schedule.png', bbox_inches='tight')
+
+        fig3, ax3 = plt.subplots()
+        vis_loss_history.plot_loss_history(
+            ax3,
+            trainer.loss_history,
+            acc_curve = trainer.acc_history,
+            iter_per_epoch = trainer.iter_per_epoch,
+            cur_epoch = trainer.cur_epoch
+        )
+        if GLOBAL_OPTS['draw_plot'] is True:
+            plt.show()
+        else:
+            plt.savefig('triangular_lr_train_results.png', bbox_inches='tight')
 
         print('======== TestTriangularLR.test_train_lr_schedule <END>')
 
@@ -201,7 +244,6 @@ if __name__ == '__main__':
         print('-------- GLOBAL OPTS (%s) --------' % str(sys.argv[0]))
         for k, v in GLOBAL_OPTS.items():
             print('[%s] : %s' % (str(k), str(v)))
-
 
     sys.argv[1:] = args.unittest_args
     unittest.main()
