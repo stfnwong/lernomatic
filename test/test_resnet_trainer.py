@@ -171,7 +171,9 @@ class TestResnetTrainer(unittest.TestCase):
             print('Created %s object' % repr(trainer))
             print(trainer)
 
-        print('Training model %s for %d epochs' % (repr(trainer), train_num_epochs))
+        print('Training model %s for %d epochs (batch size = %d)' %\
+              (repr(trainer), train_num_epochs, train_batch_size)
+        )
         trainer.train()
 
         # save the final checkpoint

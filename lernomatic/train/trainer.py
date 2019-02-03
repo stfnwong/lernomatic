@@ -52,6 +52,7 @@ class Trainer(object):
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
+        self.best_acc = 0.0
 
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()
@@ -260,54 +261,6 @@ class Trainer(object):
         print('[TRAINER] : setting learning rate to %f' % lr_finder.get_best_lr())
         self.set_learning_rate(lr_finder.get_best_lr())
 
-    def find_lr_range(self, lr_finder):
-
-        if self.train_loader is None:
-            raise ValueError('find_lr() requires a train dataset loader')
-
-        lr_finder.cache_model_params(self.get_model_params())
-        lr_finder.cache_trainer_params(self.get_trainer_params())
-
-        train = True
-        while(train):
-            for epoch in range(lr_finder.num_epochs):
-                for batch_idx, (data, labels) in enumerate(self.train_loader):
-                    data = data.to(self.device)
-                    labels = labels.to(self.device)
-                    # optimization
-                    self.optimizer.zero_grad()
-                    output = self.model(data)
-                    loss   = self.criterion(output, labels)
-
-                    lr, done = lr_finder.get_lr(batch_idx, loss.item())
-                    if done is True:
-                        self.set_learning_rate(lr)
-                        print('\t done searching on batch %d of epoch %d' % (batch_idx, epoch))
-                        print('Learning rate at end of search is %f' % lr)
-                        break
-
-                    if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
-                        print('[LR_FIND]:  Epoch         iteration         Loss      LR')
-                        print('           [%4d/%4d]  [%6d/%6d]  %.6f       %f' %\
-                            (epoch, lr_finder.num_epochs, batch_idx, len(self.train_loader), loss.item(), lr))
-
-                    # finish optimization
-                    loss.backward()
-                    self.optimizer.step()
-
-
-                if (done is True) or (epoch > lr_finder.num_epochs):
-                    train = False
-                    break
-
-        # restore the original model and trainer parameters
-        print('[TRAINER] : restoring model')
-        self.model.load_state_dict(lr_finder.get_model_params())
-        print('[TRAINER] : restoring trainer')
-        self.set_trainer_params(lr_finder.get_trainer_params())
-        print('[TRAINER] : setting learning rate to %f' % lr_finder.get_best_lr())
-        self.set_learning_rate(lr_finder.get_best_lr())
-
     # Basic training/test routines. Specialize these when needed
     def train_epoch(self):
         """
@@ -352,7 +305,6 @@ class Trainer(object):
                 new_lr = self.lr_scheduler.get_lr(self.loss_iter)
                 self.set_learning_rate(new_lr)
 
-
     def test_epoch(self):
         """
         TEST_EPOCH
@@ -391,6 +343,19 @@ class Trainer(object):
               (avg_test_loss, correct, len(self.test_loader.dataset),
                100.0 * acc)
         )
+
+        # save the best weights
+        if acc > self.best_acc:
+            self.best_acc = acc
+            if self.save_every > 0:
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name +\
+                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+                self.save_checkpoint(ck_name)
+                hist_name = self.checkpoint_dir + '/' + 'best_' + self.checkpoint_name +\
+                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
+                self.save_history(hist_name)
 
     def train(self):
         """
