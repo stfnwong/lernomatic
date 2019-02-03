@@ -192,6 +192,66 @@ class TestLinearFinder(unittest.TestCase):
         print('======== TestLinearFinder.test_lr_range_find <END>')
 
 
+# Tests for 'searcher' experiment
+class TestSearcher(unittest.TestCase):
+    def setUp(self):
+        self.verbose     = GLOBAL_OPTS['verbose']
+        self.test_lr_min = 3e-6
+        self.test_lr_max = 1.0
+        self.train_num_epochs = 20
+        self.test_num_epochs = 8
+        # other trainer params
+        self.test_learning_rate = 0.001
+        self.test_batch_size = 128
+        self.test_print_every = 200
+
+    def get_trainer(self):
+        # get a model to test on and its corresponding trainer
+        model = cifar10.CIFAR10Net()
+        trainer = cifar10_trainer.CIFAR10Trainer(
+            model,
+            # turn off checkpointing
+            save_every = 0,
+            print_every = self.test_print_every,
+            # data options
+            batch_size = self.test_batch_size,
+            # training options
+            learning_rate = self.test_learning_rate,
+            num_epochs = self.train_num_epochs,
+            device_id = GLOBAL_OPTS['device_id'],
+            verbose = self.verbose
+        )
+
+        return trainer
+
+    def test_find_lr(self):
+        print('======== TestSearcher.test_find_lr ')
+
+        trainer = self.get_trainer()
+
+        lr_finder = learning_rate.LogSearcher(
+            trainer,
+            explode_thresh = 8,
+            num_epochs = self.test_num_epochs,
+            lr_min = self.test_lr_min,
+            lr_max = self.test_lr_max
+        )
+        print(lr_finder)
+
+        lr_finder.find_lr()
+
+        fig, ax = plt.subplots()
+        ax.plot(lr_finder.log_lr_history, lr_finder.smooth_loss_history)
+        ax.set_xlabel('lr history (log)')
+        ax.set_ylabel('loss history (smooth)')
+        ax.set_title('LRSearcher learning rate test')
+        fig.savefig('figures/LRSearcher_test.png')
+
+
+        print('======== TestSearcher.test_find_lr <END>')
+
+
+
 # Entry point
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -124,13 +124,13 @@ class TestResnetTrainer(unittest.TestCase):
         for n in range(len(src_tr.acc_history)):
             self.assertEqual(src_tr.acc_history[n], dst_tr.acc_history[n])
 
-        fix, ax = get_figure_subplots()
+        fig, ax = get_figure_subplots()
         vis_loss_history.plot_train_history_2subplots(
             ax,
-            trainer.loss_history,
-            acc_history = trainer.acc_history,
-            cur_epoch = trainer.cur_epoch,
-            iter_per_epoch = trainer.iter_per_epoch
+            src_tr.loss_history,
+            acc_history = src_tr.acc_history,
+            cur_epoch = src_tr.cur_epoch,
+            iter_per_epoch = src_tr.iter_per_epoch
         )
         fig.savefig('figures/resnet_trainer_train_test_history.png', bbox_inches='tight')
 

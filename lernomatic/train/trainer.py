@@ -348,13 +348,13 @@ class Trainer(object):
         if acc > self.best_acc:
             self.best_acc = acc
             if self.save_every > 0:
-                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
-                hist_name = self.checkpoint_dir + '/' + 'best_' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
+                hist_name = self.checkpoint_dir + '/' + 'best_' + self.checkpoint_name + '_history.pkl'
+                if self.verbose:
+                    print('\t Saving history to file [%s] ' % str(hist_name))
                 self.save_history(hist_name)
 
     def train(self):

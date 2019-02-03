@@ -232,5 +232,141 @@ class CosFinder(LRFinder):
         return 'CosFinder'
 
 
+# For now we call the experimental lr_finder LRSearch
+class LRSearcher(object):
+    """
+    LRSearcher
+    'Search' for a good learning rate
+    """
+    def __init__(self, trainer, **kwargs):
+        self.trainer = trainer
+        # learning params
+        self.num_epochs     = kwargs.pop('num_epochs', 8)
+        # lr params
+        self.lr_mult        = kwargs.pop('lr_mult', 0)
+        self.lr_min         = kwargs.pop('lr_min', 1e-6)
+        self.lr_max         = kwargs.pop('lr_max', 10)
+        self.explode_thresh = kwargs.pop('explode_thresh', 4)      # fast.ai uses 4 * min_smoothed_loss
+        self.beta           = kwargs.pop('beta', 0.999)
+        self.gamma          = kwargs.pop('gamma', 0.999995)
+        # other
+        self.print_every    = kwargs.pop('print_every', 20)
+
+        # trainer and model params
+        self.model_params = None
+        self.trainer_params = None
+        # loss params
+        self.avg_loss = 0.0
+        self.best_loss = 1e6
+        # learning rate params
+        self.learning_rate = 0.0
+
+        self._init_history()
+
+    def __repr__(self):
+        return 'LRSearcher'
+
+    def _print_find(self, epoch, batch_idx, loss):
+        print('[FIND_LR] :  Epoch    iteration          loss    best loss (smooth)  lr')
+        print('            [%d/%d]     [%6d/%6d]    %.6f     %.6f     %.6f' %\
+            (epoch, self.num_epochs, batch_idx, len(self.trainer.train_loader),
+            loss, self.best_loss, self.learning_rate)
+        )
+
+    def _init_history(self):
+        self.smooth_loss_history = []
+        self.log_lr_history = []
+        self.acc_history = []
+
+    def _calc_loss(self, batch_idx, loss):
+        self.avg_loss = self.beta * self.avg_loss + (1.0 - self.beta) * loss
+        smooth_loss = self.avg_loss / (1.0 - self.beta ** (batch_idx+1))
+
+        return smooth_loss
+
+    def save_model_params(self, params):
+        self.model_params = copy.deepcopy(params)
+
+    def save_trainer_params(self, params):
+        self.trainer_params = copy.deepcopy(params)
+
+    def load_model_params(self):
+        return self.model_params
+
+    def load_trainer_params(self):
+        return self.trainer_params
+
+    def find_lr(self):
+        raise NotImplementedError('This method should be implemented in subclass')
+
+
+class LogSearcher(LRSearcher):
+    """
+    Implements linear learning rate search
+    """
+    def __init__(self, trainer, **kwargs):
+        super(LogSearcher, self).__init__(trainer, **kwargs)
+
+    def __repr__(self):
+        return 'LogSearcher'
+
+    def __str__(self):
+        s = []
+        s.append('LogSearcher. lr range [%f -> %f]\n' % (self.lr_min, self.lr_max))
+        return ''.join(s)
+
+    def find_lr(self):
+        if self.trainer.train_loader is None:
+            raise ValueError('No train_loader in trainer')
+        if self.trainer.test_loader is None:
+            raise ValueError('No test_loader in trainer')
+
+        self.save_model_params(self.trainer.get_model_params())
+        self.save_trainer_params(self.trainer.get_trainer_params())
+        self.learning_rate = self.lr_min
+        self.lr_mult = (self.lr_max / self.lr_min) ** (1.0 / len(self.trainer.train_loader))
+
+        # train the network for
+        explode = False
+        for epoch in range(self.num_epochs):
+            for batch_idx, (data, labels) in enumerate(self.trainer.train_loader):
+                data = data.to(self.trainer.device)
+                labels = labels.to(self.trainer.device)
+
+                self.trainer.optimizer.zero_grad()
+                outputs = self.trainer.model(data)
+                loss = self.trainer.criterion(outputs, labels)
+
+                #smooth_loss = self._calc_loss(batch_idx, loss.item())
+                self.avg_loss = self.beta * self.avg_loss + (1.0 - self.beta) * loss.item()
+                smooth_loss = self.avg_loss / (1.0 - self.beta ** (batch_idx+1))
+                if smooth_loss < self.best_loss:
+                    self.best_loss = smooth_loss
+
+                if batch_idx % self.print_every == 0:
+                    self._print_find(epoch, batch_idx, loss.item())
+
+                if smooth_loss > self.explode_thresh * self.best_loss:
+                    explode = True
+                    break
+
+                # update history
+                self.smooth_loss_history.append(smooth_loss)
+                self.log_lr_history.append(np.log10(self.learning_rate))
+                loss.backward()
+                self.trainer.optimizer.step()
+
+                # update learning rate
+                self.learning_rate *= self.lr_mult
+                self.trainer.set_learning_rate(self.learning_rate)
+
+            if explode is True:
+                break
+
+        # restore state
+        print('[FIND_LR] : restoring trainer state')
+        self.trainer.set_trainer_params(self.load_trainer_params())
+        print('[FIND_LR] : restoring model state')
+        self.trainer.model.state_dict(self.load_model_params())
 
 
