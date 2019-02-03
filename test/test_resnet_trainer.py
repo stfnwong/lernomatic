@@ -125,9 +125,9 @@ class TestResnetTrainer(unittest.TestCase):
             self.assertEqual(src_tr.acc_history[n], dst_tr.acc_history[n])
 
         fix, ax = get_figure_subplots()
-        plot_train_history_2subplot(
+        vis_loss_history.plot_train_history_2subplots(
             ax,
-            loss_history = trainer.loss_history,
+            trainer.loss_history,
             acc_history = trainer.acc_history,
             cur_epoch = trainer.cur_epoch,
             iter_per_epoch = trainer.iter_per_epoch
@@ -181,7 +181,7 @@ class TestResnetTrainer(unittest.TestCase):
         fig, ax = get_figure_subplots()
         vis_loss_history.plot_train_history_2subplots(
             ax,
-            loss_history = trainer.loss_history,
+            trainer.loss_history,
             acc_history = trainer.acc_history,
             cur_epoch = trainer.cur_epoch,
             iter_per_epoch = trainer.iter_per_epoch

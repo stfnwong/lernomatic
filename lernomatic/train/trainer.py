@@ -393,6 +393,10 @@ class Trainer(object):
         )
 
     def train(self):
+        """
+        TRAIN
+        Standard training routine
+        """
         for n in range(self.num_epochs):
             self.train_epoch()
 

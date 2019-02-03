@@ -27,13 +27,13 @@ def main():
     model = resnet.WideResnet(28, 10)
     trainer = resnet_trainer.ResnetTrainer(
         model,
-
         # training time
-        num_epochs = GLOBAL_OPTS['num_epochs'],
-
+        num_epochs    = GLOBAL_OPTS['num_epochs'],
+        learning_rate = GLOBAL_OPTS['learning_rate'],   # this will be overwritten by lr_finder later
+        batch_size    = GLOBAL_OPTS['batch_size'],
         # other
-        device_id = GLOBAL_OPTS['device_id'],
-        verbose = GLOBAL_OPTS['verbose']
+        device_id     = GLOBAL_OPTS['device_id'],
+        verbose       = GLOBAL_OPTS['verbose']
 
     )
 
@@ -43,6 +43,7 @@ def main():
         lr_min = GLOBAL_OPTS['lr_min'],
         lr_max = GLOBAL_OPTS['lr_max']
     )
+
 
     # prepare learning schedule
     lr_schedule = schedule.TriangularSchedule(

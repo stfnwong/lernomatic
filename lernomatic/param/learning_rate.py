@@ -230,3 +230,7 @@ class CosFinder(LRFinder):
 
     def __repr__(self):
         return 'CosFinder'
+
+
+
+
