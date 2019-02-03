@@ -6,6 +6,7 @@ Stefan Wong 2019
 """
 
 import time
+import torch
 from torch.nn.utils.rnn import pack_padded_sequence
 from nltk.translate.bleu_score import corpus_bleu
 # other lernomatic modules
@@ -16,7 +17,46 @@ from lernomatic.util import util
 # debug
 from pudb import set_trace; set_trace()
 
+def clip_gradient(optimizer, grad_clip):
+    """
+    CLIP_GRADIENT
+    Clips gradients commputed during backpropagation to avoid gradient explosion.
+    """
+    for group in optimizer.param_groups:
+        for param in group['params']:
+            if param.grad is not None:
+                param.grad.data.clamp_(-grad_clip, grad_clip)
+
+# TODO : move to scheduler
+def adjust_learning_rate(optimizer, shrink_factor):
+    """
+    ADJUST_LEARNING_RATE
+    Shrinks learning rate by a specified factor
+    """
+
+    print('Decaying learning rate....')
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = param_group['lr'] * shrink_factor
+
+    print('New learning rate is %f\n' % (optimizer.param_groups[0]['lr']))
+
+def ica_accuracy(scores, targets, k):
+    """
+    ACCURACY
+    Computes top-k accuracy
+    """
+    batch_size = targets.size(0)
+    _, ind = scores.topk(k, 1, True, True)
+    correct = ind.eq(targets.view(-1, 1).expand_as(ind))
+    correct_total = correct.view(-1).float().sum()  # 0-dimension tensor
+
+    return correct_total.item() * (100.0 / batch_size)
+
 class ImageCaptTrainer(trainer.Trainer):
+    """
+    IMAGECAPTTRAINER
+    Trainer object for image captioning experiments
+    """
     def __init__(self, encoder, decoder, **kwargs):
         self.encoder = encoder
         self.decoder = decoder
@@ -28,6 +68,7 @@ class ImageCaptTrainer(trainer.Trainer):
         self.alpha_c   = kwargs.pop('alpha_c', 1.0)
         self.grad_clip = kwargs.pop('grad_clip', None)
         self.word_map  = kwargs.pop('word_map', None)
+        # paths to datasets
 
         # optimizer
         if self.decoder is None or self.encoder is None or self.train_loader is None:
@@ -45,9 +86,20 @@ class ImageCaptTrainer(trainer.Trainer):
                 lr = self.enc_lr
             )
 
+        self.criterion = torch.nn.CrossEntropyLoss()
 
     def __repr__(self):
         return 'ImageCaptTrainer'
+
+    def __str__(self):
+        s = []
+        s.append('ImageCaptTrainer (%d epochs)\n' % self.num_epochs)
+        params = self.get_trainer_params()
+        s.append('Trainer parameters :\n')
+        for k, v in params.items():
+            s.append('\t [%s] : %s\n' % (str(k), str(v)))
+
+        return ''.join(s)
 
     def _send_to_device(self):
         if self.decoder is not None:
@@ -56,7 +108,6 @@ class ImageCaptTrainer(trainer.Trainer):
             self.encoder = self.encoder.to(self.device)
 
     # TODO : checkpoints, history, etc
-
 
     def check_acc(self):
         """
@@ -197,7 +248,7 @@ class ImageCaptTrainer(trainer.Trainer):
                 self.encoder_optim.step()
 
             # track metrics
-            top5 = train_util.accuracy(scores, targets, 5)
+            top5 = ica_accuracy(scores, targets, 5)
             losses.update(loss.item(), sum(decode_lengths))
             top_5_acc.update(top5, sum(decode_lengths))
             batch_time.update(time.time() - start)
