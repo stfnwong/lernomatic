@@ -146,10 +146,6 @@ class LinearFinder(LRFinder):
         self.smooth_loss_history.append(smoothed_loss)
         self.learning_rate *= self.lr_mult
 
-        # debug
-        #print('[LinearFinder] : log_lr : %.4f, smooth loss : %f, best loss : %f' %\
-        #      (log_lr, smoothed_loss, self.best_loss))
-
         return self.learning_rate, False
 
 
@@ -169,18 +165,33 @@ class TriangularFinder(LRFinder):
         s.append('TriangularFinder [%.3f -> %.3f]\n' % (self.lr_min, self.lr_max))
         return ''.join(s)
 
-    def old_get_lr(self, dataset_size, batch_size):
-        stepsize = self.stepsize_epoch * int(dataset_size / batch_size)
+    def get_lr(self, batch_idx, loss):
+
+        self.avg_loss = self.beta * self.avg_loss + (1 - self.beta) * loss
+        smoothed_loss = self.avg_loss / (1 - self.beta ** batch_num+1)
+
+        if (batch_num > self.min_batches) and (smoothed_loss > (self.best_factor * self.best_loss)):
+            return self.learning_rate, True
+
+        if (smoothed_loss < self.best_loss) or (batch_num == 0):
+            self.best_loss = smoothed_loss
+            print('\t best loss is %f [lr = %f, smoothed loss = %f]' %\
+                  (self.best_loss, self.learning_rate, smoothed_loss))
+
+        stepsize = self.stepsize_epoch * self.num_batches
         cycle = np.floor(1 + self.num_epochs / (2 * stepsize))
         x = np.abs(self.num_epochs / stepsize - (2 * cycle + 1))
-        rate = self.lr_min + (self.lr_max - self.lr_min) *\
-            np.maximum(0, (1 - np.abs(x)))
+        self.learning_rate = self.lr_min + (self.lr_max - self.lr_min) *\
+            np.maximum(0.0, (1.0 - np.abs(x)))
 
-        return rate
+        log_lr = np.log10(self.learning_rate)
+        # save history
+        self.loss_history.append(loss)
+        self.log_lr_history.append(log_lr)
+        self.smooth_loss_history.append(smoothed_loss)
+        self.learning_rate *= self.lr_mult
 
-    def get_lr(self, batch_idx, loss):
-        # compute average loss here
-        pass
+        return self.learning_rate, False
 
 
 class Triangular2Finder(LRFinder):

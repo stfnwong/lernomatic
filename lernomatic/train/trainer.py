@@ -12,8 +12,13 @@ import numpy as np
 # debug
 from pudb import set_trace; set_trace()
 
-# Other trainers should inherit from this...
 class Trainer(object):
+    """
+    Trainer
+
+    Base class for model trainers in lernomatic. Note that this is not
+    an abstract class and can be instantiated.
+    """
     def __init__(self, model=None, **kwargs):
         self.model           = model
         # Training loop options
@@ -128,56 +133,7 @@ class Trainer(object):
     def _send_to_device(self):
         self.model = self.model.to(self.device)
 
-    def find_lr(self, lr_finder):
-        """
-        FIND_LR
-        Find an optimal learning rate using the schedule given in the supplied
-        LRFinder object
-        """
-        if self.train_loader is None:
-            raise ValueError('find_lr() requires a train dataset loader')
-
-        lr_finder.cache_model_params(self.get_model_params())
-        lr_finder.cache_trainer_params(self.get_trainer_params())
-
-        for epoch in range(lr_finder.num_epochs):
-            for batch_idx, (data, labels) in enumerate(self.train_loader):
-                data = data.to(self.device)
-                labels = labels.to(self.device)
-                # optimization
-                self.optimizer.zero_grad()
-                output = self.model(data)
-                loss   = self.criterion(output, labels)
-
-                lr, done = lr_finder.get_lr(batch_idx, loss.item())
-                if done is True:
-                    self.set_learning_rate(lr)
-                    print('\t done searching on batch %d of epoch %d' % (batch_idx, epoch))
-                    print('Learning rate at end of search is %f' % lr)
-                    break
-
-                if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
-                    print('[LR_FIND]:  Epoch         iteration         Loss      LR')
-                    print('           [%4d/%4d]  [%6d/%6d]  %.6f       %f' %\
-                        (epoch, lr_finder.num_epochs, batch_idx, len(self.train_loader), loss.item(), lr))
-
-                # finish optimization
-                loss.backward()
-                self.optimizer.step()
-                self.set_learning_rate(lr)
-
-            if (done is True) or (epoch > lr_finder.num_epochs):
-                break
-
-        # restore the original model and trainer parameters
-        print('[TRAINER] : restoring model')
-        self.model.load_state_dict(lr_finder.get_model_params())
-        print('[TRAINER] : restoring trainer')
-        self.set_trainer_params(lr_finder.get_trainer_params())
-        print('[TRAINER] : setting learning rate to %f' % lr_finder.get_best_lr())
-        self.set_learning_rate(lr_finder.get_best_lr())
-
-    # default param options
+    # ======== getters, setters
     def get_trainer_params(self):
         params = dict()
         params['num_epochs']      = self.num_epochs
@@ -252,6 +208,105 @@ class Trainer(object):
 
     def get_lr_scheduler(self):
         return self.lr_scheduler
+
+    # ======== hyperparameter tuning
+    def find_lr(self, lr_finder):
+        """
+        FIND_LR
+        Find an optimal learning rate using the schedule given in the supplied
+        LRFinder object
+        """
+        if self.train_loader is None:
+            raise ValueError('find_lr() requires a train dataset loader')
+
+        lr_finder.cache_model_params(self.get_model_params())
+        lr_finder.cache_trainer_params(self.get_trainer_params())
+
+        for epoch in range(lr_finder.num_epochs):
+            for batch_idx, (data, labels) in enumerate(self.train_loader):
+                data = data.to(self.device)
+                labels = labels.to(self.device)
+                # optimization
+                self.optimizer.zero_grad()
+                output = self.model(data)
+                loss   = self.criterion(output, labels)
+
+                lr, done = lr_finder.get_lr(batch_idx, loss.item())
+                if done is True:
+                    print('\t done searching on batch %d of epoch %d' % (batch_idx, epoch))
+                    print('Learning rate at end of search is %f' % lr)
+                    break
+
+                if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
+                    print('[LR_FIND]:  Epoch         iteration         Loss      LR')
+                    print('           [%4d/%4d]  [%6d/%6d]  %.6f       %f' %\
+                        (epoch, lr_finder.num_epochs, batch_idx, len(self.train_loader), loss.item(), lr))
+
+                # finish optimization
+                loss.backward()
+                self.optimizer.step()
+                self.set_learning_rate(lr)
+                if self.test_loader is not None:
+                    self.test_epoch()
+
+            if (done is True) or (epoch > lr_finder.num_epochs):
+                break
+
+        # restore the original model and trainer parameters
+        print('[TRAINER] : restoring model')
+        self.model.load_state_dict(lr_finder.get_model_params())
+        print('[TRAINER] : restoring trainer')
+        self.set_trainer_params(lr_finder.get_trainer_params())
+        print('[TRAINER] : setting learning rate to %f' % lr_finder.get_best_lr())
+        self.set_learning_rate(lr_finder.get_best_lr())
+
+    def find_lr_range(self, lr_finder):
+
+        if self.train_loader is None:
+            raise ValueError('find_lr() requires a train dataset loader')
+
+        lr_finder.cache_model_params(self.get_model_params())
+        lr_finder.cache_trainer_params(self.get_trainer_params())
+
+        train = True
+        while(train):
+            for epoch in range(lr_finder.num_epochs):
+                for batch_idx, (data, labels) in enumerate(self.train_loader):
+                    data = data.to(self.device)
+                    labels = labels.to(self.device)
+                    # optimization
+                    self.optimizer.zero_grad()
+                    output = self.model(data)
+                    loss   = self.criterion(output, labels)
+
+                    lr, done = lr_finder.get_lr(batch_idx, loss.item())
+                    if done is True:
+                        self.set_learning_rate(lr)
+                        print('\t done searching on batch %d of epoch %d' % (batch_idx, epoch))
+                        print('Learning rate at end of search is %f' % lr)
+                        break
+
+                    if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
+                        print('[LR_FIND]:  Epoch         iteration         Loss      LR')
+                        print('           [%4d/%4d]  [%6d/%6d]  %.6f       %f' %\
+                            (epoch, lr_finder.num_epochs, batch_idx, len(self.train_loader), loss.item(), lr))
+
+                    # finish optimization
+                    loss.backward()
+                    self.optimizer.step()
+
+
+                if (done is True) or (epoch > lr_finder.num_epochs):
+                    train = False
+                    break
+
+        # restore the original model and trainer parameters
+        print('[TRAINER] : restoring model')
+        self.model.load_state_dict(lr_finder.get_model_params())
+        print('[TRAINER] : restoring trainer')
+        self.set_trainer_params(lr_finder.get_trainer_params())
+        print('[TRAINER] : setting learning rate to %f' % lr_finder.get_best_lr())
+        self.set_learning_rate(lr_finder.get_best_lr())
 
     # Basic training/test routines. Specialize these when needed
     def train_epoch(self):
@@ -332,7 +387,7 @@ class Trainer(object):
         acc = correct / len(self.test_loader.dataset)
         self.acc_history[self.acc_iter] = acc
         self.acc_iter += 1
-        print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+        print('[TEST]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
               (avg_test_loss, correct, len(self.test_loader.dataset),
                100.0 * acc)
         )
@@ -343,6 +398,7 @@ class Trainer(object):
 
             if self.test_loader is not None:
                 self.test_epoch()
+            # TODO: another validation fold?
             #if self.val_loader is not None:
             #    self.val_epoch()
             self.cur_epoch += 1

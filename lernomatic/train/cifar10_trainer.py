@@ -17,8 +17,6 @@ class CIFAR10Trainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs):
         self.data_dir       = kwargs.pop('data_dir', 'data/')
         super(CIFAR10Trainer, self).__init__(model, **kwargs)
-
-        # init the criterion for MNIST
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def __repr__(self):

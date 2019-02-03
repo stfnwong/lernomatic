@@ -18,7 +18,7 @@ from lernomatic.models import cifar10
 from lernomatic.vis import vis_loss_history
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -43,6 +43,21 @@ def plot_lr_vs_loss(ax, lr_history, loss_history):
     ax.set_ylabel('(smoothed) loss')
 
 
+def get_figure():
+    fig, ax = plt.subplots()
+    return fig, ax
+
+
+def get_figure_subplots(num_subplots=2):
+    fig = plt.figure()
+    ax = []
+    for p in range(num_subplots):
+        sub_ax = fig.add_subplot(num_subplots, 1, (p+1))
+        ax.append(sub_ax)
+
+    return fig, ax
+
+
 class TestLinearFinder(unittest.TestCase):
     def setUp(self):
         self.verbose             = GLOBAL_OPTS['verbose']
@@ -51,7 +66,7 @@ class TestLinearFinder(unittest.TestCase):
         self.test_lr_num_epochs  = 8            # number of epochs to run test for
         self.test_print_every    = 20
         # options for learning rate finder
-        self.test_lr_min         = 1e-4
+        self.test_lr_min         = 1e-8
         self.test_lr_max         = 1e-1
         self.test_num_iter       = 5000
         self.train_num_epochs    = 80
@@ -104,13 +119,65 @@ class TestLinearFinder(unittest.TestCase):
         if GLOBAL_OPTS['draw_plot'] is True:
             plt.show()
         else:
-            plt.savefig('test_find_lr_lr_vs_loss.png', bbox_inches='tight')
+            plt.savefig('figures/test_find_lr_lr_vs_loss.png', bbox_inches='tight')
+
+        trainer.print_every = 200
+        trainer.train()
+
+        train_fig, train_ax = get_figure_subplots()
+        vis_loss_history.plot_train_history_2subplots(
+            train_ax,
+            trainer.loss_history,
+            acc_curve = trainer.acc_history,
+            iter_per_epoch = trainer.iter_per_epoch,
+            cur_epoch = trainer.cur_epoch
+        )
+        if GLOBAL_OPTS['draw_plot'] is True:
+            plt.show()
+        else:
+            train_fig.savefig('figures/test_find_lr_train_results.png', bbox_inches='tight')
+
+        print('======== TestLinearFinder.test_find_lr <END>')
+
+    def test_lr_range_find(self):
+        print('======== TestLinearFinder.test_lr_range_find ')
+
+        trainer = self.get_trainer()
+        lr_finder = learning_rate.LinearFinder(
+            len(trainer.train_loader),
+            lr_min = self.test_lr_min,
+            lr_max   = self.test_lr_max,
+            num_iter = self.test_num_iter,
+            num_epochs = self.test_lr_num_epochs,
+            verbose  = self.verbose
+        )
+
+        # shut linter up
+        if self.verbose:
+            print(lr_finder)
+
+        # perform range test
+        tr_lr_min, tr_lr_max = trainer.find_lr_range(lr_finder)
+        lr_finder.lr_min = tr_lr_min
+        lr_finder.lr_max = tr_lr_max
+        trainer.find_lr(lr_finder)
+        # show plot
+        fig1, ax1 = plt.subplots()
+        plot_lr_vs_loss(
+            ax1,
+            lr_finder.log_lr_history,
+            lr_finder.smooth_loss_history
+        )
+        if GLOBAL_OPTS['draw_plot'] is True:
+            plt.show()
+        else:
+            plt.savefig('figures/test_lr_range_find_lr_vs_loss.png', bbox_inches='tight')
 
         trainer.print_every = 200
         trainer.train()
 
         fig2, ax2 = plt.subplots()
-        vis_loss_history.plot_loss_history(
+        vis_loss_history.plot_train_history_2subplots(
             ax2,
             trainer.loss_history,
             acc_curve = trainer.acc_history,
@@ -120,58 +187,9 @@ class TestLinearFinder(unittest.TestCase):
         if GLOBAL_OPTS['draw_plot'] is True:
             plt.show()
         else:
-            plt.savefig('test_find_lr_train_results.png', bbox_inches='tight')
+            plt.savefig('figures/test_lr_range_find_train_results.png', bbox_inches='tight')
 
-
-        print('======== TestLinearFinder.test_find_lr <END>')
-
-    #def test_lr_range_find(self):
-    #    print('======== TestLinearFinder.test_lr_range_find ')
-
-    #    trainer = self.get_trainer()
-    #    lr_finder = learning_rate.LinearFinder(
-    #        len(trainer.train_loader),
-    #        lr_min = self.test_lr_min,
-    #        lr_max   = self.test_lr_max,
-    #        num_iter = self.test_num_iter,
-    #        num_epochs = self.test_lr_num_epochs,
-    #        verbose  = self.verbose
-    #    )
-
-    #    # shut linter up
-    #    if self.verbose:
-    #        print(lr_finder)
-
-    #    trainer.find_lr(lr_finder)
-    #    # show plot
-    #    fig1, ax1 = plt.subplots()
-    #    plot_lr_vs_loss(
-    #        ax1,
-    #        lr_finder.log_lr_history,
-    #        lr_finder.smooth_loss_history
-    #    )
-    #    if GLOBAL_OPTS['draw_plot'] is True:
-    #        plt.show()
-    #    else:
-    #        plt.savefig('test_lr_range_find_lr_vs_loss.png', bbox_inches='tight')
-
-    #    trainer.print_every = 200
-    #    trainer.train()
-
-    #    fig2, ax2 = plt.subplots()
-    #    vis_loss_history.plot_loss_history(
-    #        ax2,
-    #        trainer.loss_history,
-    #        acc_curve = trainer.acc_history,
-    #        iter_per_epoch = trainer.iter_per_epoch,
-    #        cur_epoch = trainer.cur_epoch
-    #    )
-    #    if GLOBAL_OPTS['draw_plot'] is True:
-    #        plt.show()
-    #    else:
-    #        plt.savefig('test_lr_range_find_train_results.png', bbox_inches='tight')
-
-    #    print('======== TestLinearFinder.test_lr_range_find <END>')
+        print('======== TestLinearFinder.test_lr_range_find <END>')
 
 
 # Entry point

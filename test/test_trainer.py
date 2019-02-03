@@ -19,11 +19,23 @@ import torchvision
 from lernomatic.train import cifar10_trainer
 # we use a CIFAR-10 model for testing the trainer
 from lernomatic.models import cifar10
+# vis tools
+from lernomatic.vis import vis_loss_history
 
 # debug
 from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
+
+def get_figure_subplots(num_subplots=2):
+    fig = plt.figure()
+    ax = []
+    for p in range(num_subplots):
+        sub_ax = fig.add_subplot(num_subplots, 1, (p+1))
+        ax.append(sub_ax)
+
+    return fig, ax
+
 
 class TestTrainer(unittest.TestCase):
     def setUp(self):
@@ -180,6 +192,46 @@ class TestTrainer(unittest.TestCase):
 
         print('======== TestTrainer.test_save_load_acc <END>')
 
+    def test_train(self):
+        print('======== TestTrainer.test_train ')
+
+        test_checkpoint = 'checkpoint/trainer_train_test.pkl'
+        model = cifar10.CIFAR10Net()
+        # Get trainer object
+        test_num_epochs = 10
+        trainer = cifar10_trainer.CIFAR10Trainer(
+            model,
+            save_every = 0,
+            print_every = 50,
+            device_id = GLOBAL_OPTS['device_id'],
+            # loader options,
+            num_epochs = 100,
+            learning_rate = 3e-4,
+            batch_size = 128,
+            num_workers = self.test_num_workers,
+        )
+
+        if self.verbose:
+            print('Created trainer object')
+            print(trainer)
+
+        # train for one epoch
+        trainer.train()
+        trainer.save_checkpoint(test_checkpoint)
+
+        fig, ax = get_figure_subplots()
+        vis_loss_history.plot_train_history_2subplots(
+            ax,
+            trainer.loss_history,
+            acc_history = trainer.acc_history,
+            cur_epoch = trainer.cur_epoch,
+            iter_per_epoch = trainer.iter_per_epoch,
+            loss_title = 'CIFAR-10 Trainer Test loss',
+            acc_title = 'CIFAR-10 Trainer Test accuracy'
+        )
+        fig.savefig('figures/trainer_train_test_history.png', bbox_inches='tight')
+
+        print('======== TestTrainer.test_train <END>')
 
 
 # Entry point

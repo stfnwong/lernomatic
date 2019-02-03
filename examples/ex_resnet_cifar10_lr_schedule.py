@@ -1,82 +1,57 @@
 """
-EX_LR_FINDER
-Example use of the learning rate finder
+EX_RESET_CIFAR10_LR_SCHEDULE
+Example using LRScheduler objects with a resnet trained
+on CIFAR10
 
 Stefan Wong 2019
 """
-
+import sys
 import argparse
-import matplotlib.pyplot as plt
-from lernomatic.param import learning_rate
-from lernomatic.vis import vis_lr
-# we use CIFAR-10 for this example
-from lernomatic.models import cifar10
-from lernomatic.models import resnets
-from lernomatic.train import cifar10_trainer
 
-from lernomatic.vis import vis_loss_history
+from lernomatic.train import schedule
+from lernomatic.train import resnet_trainer
+from lernomatic.models import resnet
+from lernomatic.param import learning_rate
+
+# debug
+from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-
 def main():
 
-    # get a model and trainer
-    #model = cifar10.CIFAR10Net()
-    model = resnets.WideResnet(28, 10)
-    trainer = cifar10_trainer.CIFAR10Trainer(
+    if GLOBAL_OPTS['load_checkpoint'] is not None:
+        print('Loading checkpoints is not yet implemented')
+
+    # get a model
+    model = resnet.WideResnet(28, 10)
+    trainer = resnet_trainer.ResnetTrainer(
         model,
-        batch_size = GLOBAL_OPTS['batch_size'],
+
+        # training time
         num_epochs = GLOBAL_OPTS['num_epochs'],
-        learning_rate = GLOBAL_OPTS['learning_rate'],
-        #momentum = GLOBAL_OPTS['momentum'],
-        #weight_decay = GLOBAL_OPTS['weight_decay'],
-        # device
+
+        # other
         device_id = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
-        # display,
-        print_every = 2,
-        save_every = GLOBAL_OPTS['save_every'],
         verbose = GLOBAL_OPTS['verbose']
+
     )
 
-    # get an LRFinder object
+    # prepare lr_finder
     lr_finder = learning_rate.LinearFinder(
         len(trainer.train_loader),
-        lr_min       = GLOBAL_OPTS['lr_min'],
-        lr_max       = GLOBAL_OPTS['lr_max'],
-        num_epochs = GLOBAL_OPTS['max_epochs'],
+        lr_min = GLOBAL_OPTS['lr_min'],
+        lr_max = GLOBAL_OPTS['lr_max']
     )
-    trainer.print_every = GLOBAL_OPTS['print_every']
-    trainer.find_lr(lr_finder)
-    trainer.train()
 
-    if GLOBAL_OPTS['verbose']:
-        print('Created new %s object ' % repr(lr_finder))
-        print(lr_finder)
-
-
-    fig1, ax1 = plt.subplots()
-    vis_lr.plot_lr_vs_acc(ax1, None, None, title='Learning rate finder example')
-    if GLOBAL_OPTS['draw_plot']:
-        plt.show()
-    else:
-        plt.savefig('lr_finder_lr_vs_acc.png', bbox_inches='tight')
-
-    fig2, ax2 = plt.subplots()
-    vis_loss_history.plot_loss_history(
-        ax2,
-        trainer.loss_history,
-        acc_curve = trainer.acc_history,
-        iter_per_epoch = trainer.iter_per_epoch,
-        cur_epoch = trainer.cur_epoch
+    # prepare learning schedule
+    lr_schedule = schedule.TriangularSchedule(
+        stepsize = int(len(trainer.train_loader) / 2)
     )
-    if GLOBAL_OPTS['draw_plot']:
-        plt.show()
-    else:
-        plt.savefig('lr_finder_train_results.png', bbox_inches='tight')
+
+    trainer.set_schedule(lr_schedule)
+
+
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -114,7 +89,7 @@ def get_parser():
                         )
     parser.add_argument('--lr-min',
                         type=float,
-                        default=2e-4,
+                        default=2e-8,
                         help='Minimum range to search for learning rate'
                         )
     parser.add_argument('--lr-max',
@@ -163,7 +138,7 @@ def get_parser():
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='lr_find_ex_cifar10',
+                        default='resnet_cifar10_schedule',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',

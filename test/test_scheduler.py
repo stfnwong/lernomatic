@@ -15,11 +15,11 @@ import matplotlib.pyplot as plt
 from lernomatic.train import schedule
 from lernomatic.train import cifar10_trainer
 from lernomatic.models import cifar10
-
+# visualizations
 from lernomatic.vis import vis_loss_history
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -72,6 +72,10 @@ def get_trainer(learning_rate = None):
 
 
 class TestStepLR(unittest.TestCase):
+    """
+    TestStepLR
+    Unit tests for step scheduler object
+    """
     def setUp(self):
         self.verbose = GLOBAL_OPTS['verbose']
 
@@ -107,20 +111,20 @@ class TestStepLR(unittest.TestCase):
         print('Generating loss history vs learning rate history plot')
         fig1, ax1 = plt.subplots()
         plot_loss_vs_lr(ax1, trainer.loss_history, lr_scheduler.lr_history)
-        if GLOBAL_OPTS['draw_plots'] is True:
+        if GLOBAL_OPTS['draw_plot'] is True:
             plt.show()
         else:
             plt.savefig('step_lr_loss_vs_lr.png', bbox_inches='tight')
 
         fig2, ax2 = plt.subplots()
         plot_lr_schedule(ax2, lr_scheduler.lr_history)
-        if GLOBAL_OPTS['draw_plots'] is True:
+        if GLOBAL_OPTS['draw_plot'] is True:
             plt.show()
         else:
             plt.savefig('step_lr_lr_schedule.png', bbox_inches='tight')
 
         fig3, ax3 = plt.subplots()
-        vis_loss_history.plot_loss_history(
+        vis_loss_history.plot_train_history(
             ax3,
             trainer.loss_history,
             acc_curve = trainer.acc_history,
@@ -135,12 +139,16 @@ class TestStepLR(unittest.TestCase):
         print('======== TestStepLR.test_train_lr_schedule <END>')
 
 
-class TestTriangularLR(unittest.TestCase):
+class TestTriangularScheduler(unittest.TestCase):
+    """
+    TestTriangularScheduler
+    Unit tests for the triangular learning rate scheduler
+    """
     def setUp(self):
         self.verbose = GLOBAL_OPTS['verbose']
 
     def test_train_lr_schedule(self):
-        print('======== TestTriangularLR.test_train_lr_schedule ')
+        print('======== TestTriangularScheduler.test_train_lr_schedule ')
 
         # get a trainer
         trainer = get_trainer()
@@ -166,20 +174,20 @@ class TestTriangularLR(unittest.TestCase):
 
         fig1, ax1 = plt.subplots()
         plot_loss_vs_lr(ax1, trainer.loss_history, lr_scheduler.lr_history)
-        if GLOBAL_OPTS['draw_plots'] is True:
+        if GLOBAL_OPTS['draw_plot'] is True:
             plt.show()
         else:
             plt.savefig('triangular_lr_loss_vs_lr.png', bbox_inches='tight')
 
         fig2, ax2 = plt.subplots()
         plot_lr_schedule(ax2, lr_scheduler.lr_history)
-        if GLOBAL_OPTS['draw_plots'] is True:
+        if GLOBAL_OPTS['draw_plot'] is True:
             plt.show()
         else:
             plt.savefig('triangular_lr_schedule.png', bbox_inches='tight')
 
         fig3, ax3 = plt.subplots()
-        vis_loss_history.plot_loss_history(
+        vis_loss_history.plot_train_history(
             ax3,
             trainer.loss_history,
             acc_curve = trainer.acc_history,
@@ -191,9 +199,103 @@ class TestTriangularLR(unittest.TestCase):
         else:
             plt.savefig('triangular_lr_train_results.png', bbox_inches='tight')
 
-        print('======== TestTriangularLR.test_train_lr_schedule <END>')
+        print('======== TestTriangularScheduler.test_train_lr_schedule <END>')
 
-    # TODO : test where we use the learning rate finder to pick the bounds
+
+# TODO : warm restart scheduler test
+
+
+class TestEpochSetScheduler(unittest.TestCase):
+    """
+    TestEpochSetScheduler
+    Unit test for epoch scheduler
+    """
+    def setUp(self):
+        self.verbose = GLOBAL_OPTS['verbose']
+
+    def test_exceptions(self):
+        print('======== TestEpochSetScheduler.test_exceptions ')
+
+        with self.assertRaises(ValueError):
+            lr_schedule = schedule.EpochSetScheduler(
+                [0, 4, 2]
+            )
+
+        with self.assertRaises(ValueError):
+            lr_schedule = schedule.EpochSetScheduler(
+                4.2
+            )
+
+        # no zero key, should raise ValueError during check
+        schedule = {
+            10: 0.002,
+            20: 0.002,
+            30: 0.002
+        }
+        with self.assertRaises(ValueError):
+            lr_schedule = schedule.EpochSetScheduler(
+                schedule
+            )
+
+        # one of the keys is not an integer
+        schedule = {
+            0 : 0.004,
+            10: 0.002,
+            20: 0.002,
+            30: 0.002,
+            40.0 : 0.0002
+        }
+        with self.assertRaises(ValueError):
+            lr_schedule = schedule.EpochSetScheduler(
+                schedule
+            )
+        schedule = {
+            0 : 0.004,
+            10: 0.002,
+            20: 0.002,
+            30: 0.002,
+            40: 0.0002
+        }
+
+        lr_schedule = schedule.EpochSetScheduler(
+            schedule
+        )
+        self.assertEqual(False, lr_schedule.lr_value)
+        print(lr_schedule)
+
+        print('======== TestEpochSetScheduler.test_exceptions <END>')
+
+    def test_train_lr_schedule(self):
+        print('======== TestEpochSetScheduler.test_train_lr_schedule ')
+
+        test_checkpoint_name = 'checkpoint/epoch_set_schedule_train_test.pkl'
+        test_save_every = 2000
+        # get a trainer
+        trainer = get_trainer()
+        # get a (valid) schedule
+        schedule = {
+            0  : 0.01,
+            5  : 0.001,
+            20 : 0.0008,
+            40 : 0.00008
+        }
+        train_num_epochs = 50
+
+        lr_schedule = schedule.EpochSetScheduler(
+            schedule,
+            lr_value = True
+        )
+        print(lr_schedule)
+        print('Setting schedule in trainer and training')
+        trainer.set_schedule(lr_schedule)
+        trainer.num_epochs = train_num_epochs
+        trainer.checkpoint_name = test_checkpoint_name
+        trainer.save_every = test_save_every
+        trainer.print_every = 200
+        trainer.train()
+
+        print('======== TestEpochSetScheduler.test_train_lr_schedule <END>')
+
 
 # Entry point
 if __name__ == '__main__':

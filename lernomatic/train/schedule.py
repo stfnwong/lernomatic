@@ -8,7 +8,7 @@ Stefan Wong 2019
 import numpy as np
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 # ---- Learning Rate ---- #
 class LRScheduler(object):
@@ -152,9 +152,67 @@ class Triangular2LRScheduler(LRScheduler):
         return self.lr_min
 
 
-class EpochSetScheduleer(LRScheduler):
-    def __init__(self, **kwargs):
+class EpochSetScheduler(LRScheduler):
+    def __init__(self, schedule, **kwargs):
+        """
+        EpochSetScheduler
+        Adjust learning rate on a fixed schedule at the given epochs
+
+        Arguments:
+            schedule - A dictionary specifying the schedule to use. Each key must be an
+                       integer specifying the epoch at which to apply the value. The value
+                       may either be a float by which to multiply the current learning rate,
+                       or a value to set the current learning rate to. The value is applied
+                       when the training reaches the specified epoch. There must be a '0'
+                       key that indicates the initial learning rate.
+
+            lr_value - If true, set the lr to the value in the schedule at the given
+                       epoch. If false, multiply the current learning rate by the value
+                       in the schedule at the given epoch.
+        """
         super(EpochSetScheduler, self).__init__(**kwargs)
+        if type(schedule) is not dict:
+            raise ValueError('schedule must be a dict of epochs and values')
+        self.schedule = schedule
+        self.lr_value = kwargs.pop('lr_value', False)       # if true, set the lr to the value in the dict at epoch E
+        self.learning_rate = 0.0
+
+        self._check_schedule()
+
+    def __repr__(self):
+        return 'EpochSetScheduler'
+
+    def __str__(self):
+        s = []
+        s.append('EpochSetScheduler Learning Rate Scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+        if self.lr_value is True:
+            s.append(' Epoch      : learning rate (set) \n')
+        else:
+            s.append(' Epoch      : learning rate (multiplied by) \n')
+        for k, v in self.schedule.items():
+            s.append('\t %6d :  %f\n' % (int(k), v))
+        s.append('\n')
+
+        return ''.join(s)
+
+    def _check_schedule(self):
+        if 0 not in self.schedule.keys():
+            raise ValueError('Failed to find 0 key in schedule')
+
+        for k in self.schedule.keys():
+            if type(k) is not int:
+                raise ValueError('Key [%s] is not an integer. Schedule keys must be integers' %\
+                                 str(k)
+                )
+
+    def get_lr(self, cur_epoch):
+        if cur_epoch in self.schedule.keys():
+            self.learning_rate = self.schedule[cur_epoch]
+
+        return self.learning_rate
+
+
 
 
 # ---- Momentum ----- #
