@@ -83,23 +83,25 @@ class StepLRScheduler(LRScheduler):
         return self.cur_lr
 
 
+# TODO: scheduler that just linearly decreases over a certain number of epochs
+
 # TODO : implement this
 class WarmRestartScheduler(LRScheduler):
     def __init__(self, **kwargs):
         super(WarmRestartScheduler, self).__init__(**kwargs)
 
 
-class TriangularLRScheduler(LRScheduler):
+class TriangularScheduler(LRScheduler):
     """
-    TriangularLRScheduler
+    TriangularScheduler
     Implements the triangular CLR learning rate schedule from
     'Cyclical Learning Rates for Training Neural Networks' (L. N. Smith, 2017)
     """
     def __init__(self, **kwargs):
-        super(TriangularLRScheduler, self).__init__(**kwargs)
+        super(TriangularScheduler, self).__init__(**kwargs)
 
     def __repr__(self):
-        return 'TriangularLRScheduler'
+        return 'TriangularScheduler'
 
     def __str__(self):
         s = []
@@ -123,12 +125,12 @@ class TriangularLRScheduler(LRScheduler):
         return self.lr_min
 
 
-class Triangular2LRScheduler(LRScheduler):
+class Triangular2Scheduler(LRScheduler):
     def __init__(self, **kwargs):
-        super(Triangular2LRScheduler, self).__init__(**kwargs)
+        super(Triangular2Scheduler, self).__init__(**kwargs)
 
     def __repr__(self):
-        return 'Triangular2LRScheduler'
+        return 'Triangular2Scheduler'
 
     def __str__(self):
         s = []

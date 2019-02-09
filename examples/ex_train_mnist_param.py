@@ -1,84 +1,84 @@
 """
-EX_RESET_CIFAR10_LR_SCHEDULE
-Example using LRScheduler objects with a resnet trained
-on CIFAR10
+EX_TRAIN_MNIST
+Train a classifier on the MNIST handwritten digits example
 
 Stefan Wong 2019
 """
-import sys
-import argparse
-import matplotlib.pyplot as plt
 
+import argparse
+import numpy as np
+import matplotlib.pyplot as plt
+from lernomatic.train import mnist_trainer
+from lernomatic.models import mnist
+# add learning rate scheduler
 from lernomatic.train import schedule
-from lernomatic.train import resnet_trainer
-from lernomatic.models import resnets
 from lernomatic.param import learning_rate
-# vis stuff
-from lernomatic.vis import vis_loss_history
 
 # debug
 #from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
+def differentiate(function):
+    dx = np.zeros(len(function))
+    for n in range(len(function)-1):
+        dx[n] = function[n+1] - function[n]
+
+    return dx
 
 def main():
-    if GLOBAL_OPTS['load_checkpoint'] is not None:
-        print('Loading checkpoints is not yet implemented')
 
-    # get a model
-    model = resnets.WideResnet(GLOBAL_OPTS['resnet_depth'], 10)
-    trainer = resnet_trainer.ResnetTrainer(
+    # Get a model
+    model = mnist.MNISTNet()
+
+    # Get a trainer
+    trainer = mnist_trainer.MNISTTrainer(
         model,
-        # training time
-        num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = GLOBAL_OPTS['learning_rate'],   # this will be overwritten by lr_finder later
-        batch_size      = GLOBAL_OPTS['batch_size'],
-        # other
-        device_id       = GLOBAL_OPTS['device_id'],
-        verbose         = GLOBAL_OPTS['verbose'],
-        # checkpoint options
-        save_every      = GLOBAL_OPTS['save_every'],
+        # training parameters
+        batch_size = GLOBAL_OPTS['batch_size'],
+        num_epochs = GLOBAL_OPTS['num_epochs'],
+        learning_rate = GLOBAL_OPTS['learning_rate'],
+        momentum = GLOBAL_OPTS['momentum'],
+        weight_decay = GLOBAL_OPTS['weight_decay'],
+        # device
+        device_id = GLOBAL_OPTS['device_id'],
+        # checkpoint
+        checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
         checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
-        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
+        # display,
+        print_every = GLOBAL_OPTS['print_every'],
+        save_every = GLOBAL_OPTS['save_every'],
+        verbose = GLOBAL_OPTS['verbose']
     )
 
-    # prepare lr_finder
-    # TODO : replace all the Searcher code with newer LRFinder code
+    # get an LRFinder object
+    find_num_epochs = 8
     lr_finder = learning_rate.LogSearcher(
         trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = 20
+        lr_min       = GLOBAL_OPTS['lr_min'],
+        lr_max       = GLOBAL_OPTS['lr_max'],
+        num_epochs   = find_num_epochs,
+        explode_thresh = 10,
+        print_every  = 20
     )
-    lr_finder.find()
+    print(lr_finder)
 
+    lr_finder.find_lr()
 
-    # prepare learning schedule
-    lr_schedule = schedule.TriangularScheduler(
-        stepsize = int(len(trainer.train_loader) / 4)
-    )
+    dx_smooth_loss = differentiate(lr_finder.loss_grad_history)
+    loss_fig, loss_ax = plt.subplots()
+    loss_ax.plot(np.arange(len(lr_finder.smooth_loss_history)), lr_finder.smooth_loss_history, 'b')
+    loss_ax.plot(np.arange(len(lr_finder.loss_grad_history)), lr_finder.loss_grad_history, 'g')
+    loss_ax.plot(np.arange(len(dx_smooth_loss)), dx_smooth_loss, 'r')
+    loss_ax.set_xlabel('Iteration')
+    loss_ax.set_ylabel('2nd order smoothed loss')
+    loss_ax.set_title('Second derivative of smoothed loss')
+    loss_ax.legend(['smoothed loss', 'smooth loss dx', 'smooth loss d2x'])
+    loss_fig.savefig('figures/ex_lr_finder_smooth_loss_d2x.png', bbox_inches='tight')
 
-    trainer.set_lr_scheduler(lr_schedule)
+    #lr_schedule = schedule.TriangularLRSchedule(
+    #)
     trainer.train()
-
-    # Plot outputs (optional)
-    train_fig, train_ax = vis_loss_history.get_figure_subplots()
-    vis_loss_history.plot_train_history_2subplots(
-        train_ax,
-        trainer.loss_history,
-        acc_history = trainer.acc_history,
-        cur_epoch = trainer.cur_epoch,
-        iter_per_epoch = trainer.iter_per_epoch,
-        loss_title = 'CIFAR-10 Resnet LR Finder Loss (example with scheduling)',
-        acc_title = 'CIFAR-10 Resnet LR Finder Accuracy (example with scheduling)'
-    )
-    train_fig.savefig('figures/resnet_cifar10_lr_schedule.png')
-
-    if GLOBAL_OPTS['draw_plot']:
-        plt.show()
 
 
 def get_parser():
@@ -88,11 +88,6 @@ def get_parser():
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
-                        )
-    parser.add_argument('--draw-plot',
-                        default=False,
-                        action='store_true',
-                        help='Display plots'
                         )
     parser.add_argument('--print-every',
                         type=int,
@@ -109,27 +104,6 @@ def get_parser():
                         default=1,
                         help='Number of workers to use when generating HDF5 files'
                         )
-    # Learning rate finder options
-    parser.add_argument('--find-num-epochs',
-                        type=int,
-                        default=10,
-                        help='Maximum number of epochs to attempt to find learning rate'
-                        )
-    parser.add_argument('--find-explode-thresh',
-                        type=float,
-                        default=4.0,
-                        help='Maximum number of epochs to attempt to find learning rate'
-                        )
-    parser.add_argument('--lr-min',
-                        type=float,
-                        default=2e-8,
-                        help='Minimum range to search for learning rate'
-                        )
-    parser.add_argument('--lr-max',
-                        type=float,
-                        default=5e-1,
-                        help='Maximum range to search for learning rate'
-                        )
     # Device options
     parser.add_argument('--device-id',
                         type=int,
@@ -137,11 +111,6 @@ def get_parser():
                         help='Set device id (-1 for CPU)'
                         )
     # Network options
-    parser.add_argument('--resnet-depth',
-                         type=int,
-                         default=28,
-                         help='Number of layers to use for Resnet'
-                         )
     # Training options
     parser.add_argument('--start-epoch',
                         type=int,
@@ -168,6 +137,16 @@ def get_parser():
                         default=1e-3,
                         help='Learning rate for optimizer'
                         )
+    parser.add_argument('--momentum',
+                        type=float,
+                        default=0.5,
+                        help='Momentum for SGD'
+                        )
+    parser.add_argument('--grad-clip',
+                        type=float,
+                        default=5.0,
+                        help='Clip gradients at this (absolute) value'
+                        )
     # Data options
     parser.add_argument('--checkpoint-dir',
                         type=str,
@@ -176,7 +155,7 @@ def get_parser():
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='resnet_cifar10_schedule',
+                        default='mnist',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',

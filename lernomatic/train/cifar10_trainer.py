@@ -22,6 +22,15 @@ class CIFAR10Trainer(trainer.Trainer):
     def __repr__(self):
         return 'CIFAR10Trainer'
 
+    def __str__(self):
+        s = []
+        s.append('CIFAR10Trainer :\n')
+        param = self.get_trainer_params()
+        for k, v in param.items():
+            s.append('\t [%s] : %s\n' % (str(k), str(v)))
+
+        return ''.join(s)
+
     def _init_optimizer(self):
         if self.model is not None:
             self.optimizer = torch.optim.SGD(
