@@ -1,6 +1,6 @@
 """
-EX_LR_FINDER
-Example use of the learning rate finder
+EX_LR_SCHEDULE_CIFAR10
+CIFAR-10 example using the LR Scheduler
 
 Stefan Wong 2019
 """
@@ -12,12 +12,10 @@ from lernomatic.param import learning_rate
 from lernomatic.vis import vis_lr
 # we use CIFAR-10 for this example
 from lernomatic.models import cifar10
-from lernomatic.models import resnets
 from lernomatic.train import cifar10_trainer
 from lernomatic.train import schedule
 # vis tools
 from lernomatic.vis import vis_loss_history
-from lernomatic.vis import vis_lr
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -69,7 +67,7 @@ def main():
     )
 
     # get an LRFinder object
-    lr_finder = learning_rate.LogSearcher(
+    lr_finder = learning_rate.LogFinder(
         trainer,
         lr_min         = GLOBAL_OPTS['lr_min'],
         lr_max         = GLOBAL_OPTS['lr_max'],
@@ -141,19 +139,20 @@ def main():
         acc_history = trainer.acc_history[0 : trainer.acc_iter],
         cur_epoch = trainer.cur_epoch,
         iter_per_epoch = trainer.iter_per_epoch,
-        loss_title = 'CIFAR-10 Resnet LR Finder Loss (%s scheduler, min LR: %f, max LR: %f' % (repr(lr_scheduler), lr_scheduler.lr_min, lr_scheduler.lr_max),
-        acc_title = 'CIFAR-10 Resnet LR Finder Accuracy '
+        loss_title = 'CIFAR-10 LR Finder Loss\n (%s min LR: %f, max LR: %f' % (repr(lr_scheduler), lr_scheduler.lr_min, lr_scheduler.lr_max),
+        acc_title = 'CIFAR-10 LR Finder Accuracy '
     )
     train_fig.savefig('figures/ex_lr_finder_train_output.png', bbox_inches='tight')
 
     # How does this compare to training without the scheduler?
     print('Creating trainer with no scheduler...')
+    no_sched_model = cifar10.CIFAR10Net()
     no_sched_trainer = cifar10_trainer.CIFAR10Trainer(
-        model,
+        no_sched_model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
         num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = 0.0001,
+        learning_rate   = 0.001,
         #momentum = GLOBAL_OPTS['momentum'],
         weight_decay    = GLOBAL_OPTS['weight_decay'],
         # device
@@ -178,39 +177,11 @@ def main():
         acc_history = no_sched_trainer.acc_history[0 : no_sched_trainer.acc_iter],
         cur_epoch = no_sched_trainer.cur_epoch,
         iter_per_epoch = no_sched_trainer.iter_per_epoch,
-        loss_title = 'CIFAR-10 Resnet LR Finder Loss (no scheduling, lr=%f' % no_sched_trainer.get_learning_rate(),
-        acc_title = 'CIFAR-10 Resnet LR Finder Accuracy  (no scheduling)'
+        loss_title = 'CIFAR-10 LR Finder Loss (no scheduling, lr=%f' % no_sched_trainer.get_learning_rate(),
+        acc_title = 'CIFAR-10 LR Finder Accuracy  (no scheduling)'
     )
     ns_train_fig.savefig('figures/ex_lr_finder_train_no_sched_output.png', bbox_inches='tight')
 
-
-    # TODO : deal with this later..
-    #trainer.train()
-
-    #if GLOBAL_OPTS['verbose']:
-    #    print('Created new %s object ' % repr(lr_finder))
-    #    print(lr_finder)
-
-
-    #fig1, ax1 = plt.subplots()
-    #vis_lr.plot_lr_vs_acc(ax1, None, None, title='Learning rate finder example')
-    #if GLOBAL_OPTS['draw_plot']:
-    #    plt.show()
-    #else:
-    #    plt.savefig('lr_finder_lr_vs_acc.png', bbox_inches='tight')
-
-    #fig2, ax2 = plt.subplots()
-    #vis_loss_history.plot_loss_history(
-    #    ax2,
-    #    trainer.loss_history,
-    #    acc_curve = trainer.acc_history,
-    #    iter_per_epoch = trainer.iter_per_epoch,
-    #    cur_epoch = trainer.cur_epoch
-    #)
-    #if GLOBAL_OPTS['draw_plot']:
-    #    plt.show()
-    #else:
-    #    plt.savefig('lr_finder_train_results.png', bbox_inches='tight')
 
 def get_parser():
     parser = argparse.ArgumentParser()

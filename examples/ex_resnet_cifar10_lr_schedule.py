@@ -44,8 +44,7 @@ def main():
     )
 
     # prepare lr_finder
-    # TODO : replace all the Searcher code with newer LRFinder code
-    lr_finder = learning_rate.LogSearcher(
+    r_finder = learning_rate.LogFinder(
         trainer,
         lr_min         = GLOBAL_OPTS['lr_min'],
         lr_max         = GLOBAL_OPTS['lr_max'],
@@ -54,7 +53,6 @@ def main():
         print_every    = 20
     )
     lr_finder.find()
-
 
     # prepare learning schedule
     lr_schedule = schedule.TriangularScheduler(

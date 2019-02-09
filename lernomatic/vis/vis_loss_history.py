@@ -92,7 +92,6 @@ def plot_train_history_2subplots(ax, loss_history, **kwargs):
     test_loss_history = kwargs.pop('test_loss_history', None)
     test_loss_title   = kwargs.pop('test_loss_title', 'Test Loss curve')
     acc_history       = kwargs.pop('acc_history', None)
-    loss_title        = kwargs.pop('loss_title', 'Loss curve')
     iter_per_epoch    = kwargs.pop('iter_per_epoch', 0)
     cur_epoch         = kwargs.pop('cur_epoch', 0)
     max_ticks         = kwargs.pop('max_ticks', 6)

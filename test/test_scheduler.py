@@ -95,7 +95,7 @@ class TestStepLR(unittest.TestCase):
         # get a trainer
         trainer = get_trainer()
         # get a scheduler
-        lr_scheduler = schedule.StepLRScheduler(
+        lr_scheduler = schedule.StepScheduler(
             lr_min = test_lr_min,
             lr_max = test_lr_max,
             lr_decay = test_lr_decay,
