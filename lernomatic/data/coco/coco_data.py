@@ -12,10 +12,9 @@ from tqdm import tqdm
 import numpy as np
 from random import seed, choice, sample
 from imageio import imread
-from skimage.transform import resize
 
-#from ica.data import data
-#from ica.data import word_map
+from lernomatic.data import data_split
+from lernomatic.data.coco import word_map
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -35,6 +34,94 @@ def gen_coco_data_split(coco_json, data_root, split_name='train', verbose=True):
             pass
 
     return split_data
+
+
+class CaptionDataSplit(object):
+    def __init__(self, split_name='unknown'):
+        self.image_paths = list()
+        self.captions    = list ()
+        self.elem_ids    = list()
+        self.split_name  = split_name
+        # iteration index
+        self.idx         = 0
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __str__(self):
+        s = []
+        s.append('DataSplit <%s> (%d items)\n' % (self.split_name, len(self)))
+        return ''.join(s)
+
+    def __getitem__(self, idx):
+        return (self.image_paths[idx], self.captions[idx])
+
+    def __iter__(self):
+        self.idx = 0
+        return self
+
+    def __next__(self):
+        if self.idx < len(self.image_paths):
+            path    = self.image_paths[self.idx]
+            caption = self.captions[self.idx]
+            elem_id = self.elem_ids[self.idx]
+            self.idx += 1
+            return (path, caption, elem_id)
+        else:
+            raise StopIteration
+
+    def _get_param_dict(self):
+        param = dict()
+        param['image_paths'] = self.image_paths
+        param['captions']    = self.captions
+        param['elem_ids']    = self.elem_ids
+        param['split_name']  = self.split_name
+        return param
+
+    def _set_param_from_dict(self, param):
+        self.image_paths = param['image_paths']
+        self.captions    = param['captions']
+        self.elem_ids    = param['elem_ids']
+        self.split_name  = param['split_name']
+
+    def reset(self):
+        self.image_paths = list()
+        self.captions    = list()
+        self.elem_ids    = list()
+
+    def get_num_paths(self):
+        return len(self.image_paths)
+
+    def get_num_captions(self):
+        return len(self.captions)
+
+    def add_caption(self, c):
+        self.captions.append(c)
+
+    def add_path(self, p):
+        self.image_paths.append(p)
+
+    def add_id(self, i):
+        self.elem_ids.append(i)
+
+    def get_captions(self):
+        return self.captions
+
+    def get_image_paths(self):
+        return self.image_paths
+
+    def get_elem_ids(self):
+        return self.elem_ids
+
+    def save(self, fname):
+        param = self._get_param_dict()
+        with open(fname, 'w') as fp:
+            json.dump(param, fp)
+
+    def load(self, fname):
+        with open(fname, 'r') as fp:
+            param = json.load(fp)
+        self._set_param_from_dict(param)
 
 
 class COCODataSplit(object):
@@ -60,7 +147,8 @@ class COCODataSplit(object):
         if type(self.data_root) is not str:
             raise TypeError('data_root must be a path to json file of type str')
 
-        self.split_data = data.DataSplit(split_name=split_name)
+        #self.split_data = data_split.DataSplit(split_name=split_name)
+        self.split_data = CaptionDataSplit(split_name = split_name)
 
         # Try to load the data from json
         try:
