@@ -245,7 +245,7 @@ class Triangular2Scheduler(LRScheduler):
 class Triangular2ExpScheduler(LRScheduler):
     def __init__(self, **kwargs):
         self.k = kwargs.pop('k', 0.1)
-        super(TriangularExpScheduler, self).__init__(**kwargs)
+        super(Triangular2ExpScheduler, self).__init__(**kwargs)
 
     def __repr__(self):
         return 'Triangular2Expcheduler'
