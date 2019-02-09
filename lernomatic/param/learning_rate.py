@@ -10,7 +10,7 @@ import copy
 import torch
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 class LRFinder(object):
     """
@@ -25,7 +25,7 @@ class LRFinder(object):
         self.lr_mult        = kwargs.pop('lr_mult', 0)
         self.lr_min         = kwargs.pop('lr_min', 1e-6)
         self.lr_max         = kwargs.pop('lr_max', 10)
-        self.explode_thresh = kwargs.pop('explode_thresh', 4)      # fast.ai uses 4 * min_smoothed_loss
+        self.explode_thresh = kwargs.pop('explode_thresh', 4.0)      # fast.ai uses 4 * min_smoothed_loss
         self.beta           = kwargs.pop('beta', 0.999)
         self.gamma          = kwargs.pop('gamma', 0.999995)
         # gradient params

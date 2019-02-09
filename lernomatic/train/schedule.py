@@ -182,6 +182,37 @@ class TriangularScheduler(LRScheduler):
         return self.lr_min
 
 
+class TriangularExpScheduler(LRScheduler):
+    def __init__(self, **kwargs):
+        self.k = kwargs.pop('k', 0.1)
+        super(TriangularExpScheduler, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return 'TriangularExpScheduler'
+
+    def __str__(self):
+        s = []
+        s.append('Triangular Learning Rate Scheduler (exponential decay)\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+
+        return ''.join(s)
+
+    def get_lr(self, cur_iter):
+        itr = cur_iter - self.start_iter
+        if itr > 0:
+            cycle = itr / (2 * self.stepsize)
+            x = itr - (2 * cycle + 1) * self.stepsize
+            x /= self.stepsize
+            rate = self.lr_min + (self.lr_max - self.lr_min) *\
+                np.maximum(0.0, 1.0 - np.abs(x))
+            rate = rate * np.exp(-self.k * cur_iter)
+            self._update_lr_history(rate)
+            return rate
+
+        self._update_lr_history(self.lr_min)
+        return self.lr_min
+
+
 class Triangular2Scheduler(LRScheduler):
     def __init__(self, **kwargs):
         super(Triangular2Scheduler, self).__init__(**kwargs)
@@ -210,6 +241,36 @@ class Triangular2Scheduler(LRScheduler):
         self._update_lr_history(self.lr_min)
         return self.lr_min
 
+
+class Triangular2ExpScheduler(LRScheduler):
+    def __init__(self, **kwargs):
+        self.k = kwargs.pop('k', 0.1)
+        super(TriangularExpScheduler, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return 'Triangular2Expcheduler'
+
+    def __str__(self):
+        s = []
+        s.append('Triangular2 Learning Rate Scheduler (exponential decay)\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+
+        return ''.join(s)
+
+    def get_lr(self, cur_iter):
+        itr = cur_iter - self.start_iter
+        if itr > 0:
+            cycle = itr / (2 * self.stepsize)
+            x = itr - (2 * cycle + 1) * self.stepsize
+            x /= self.stepsize
+            rate = self.lr_min + (self.lr_max - self.lr_min) *\
+                np.minimum(1.0, np.maximum(0.0, (1.0 - np.abs(x) / np.power(2, cycle))))
+            rate = rate * np.exp(-self.k * cur_iter)
+            self._update_lr_history(rate)
+            return rate
+
+        self._update_lr_history(self.lr_min)
+        return self.lr_min
 
 class EpochSetScheduler(LRScheduler):
     def __init__(self, schedule, **kwargs):

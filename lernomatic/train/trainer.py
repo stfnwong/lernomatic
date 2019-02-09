@@ -219,6 +219,22 @@ class Trainer(object):
     def get_lr_scheduler(self):
         return self.lr_scheduler
 
+    # history getters - these provide the history up to the current iteration
+    def get_loss_history(self):
+        if self.loss_iter == 0:
+            return None
+        return self.loss_history[0 : self.loss_iter]
+
+    def get_test_loss_history(self):
+        if self.test_loss_iter == 0:
+            return None
+        return self.test_loss_history[0 : self.test_loss_iter]
+
+    def get_acc_history(self):
+        if self.acc_iter == 0:
+            return None
+        return self.acc_history[0 : self.acc_iter]
+
     # Basic training/test routines. Specialize these when needed
     def train_epoch(self):
         """

@@ -74,8 +74,8 @@ def triangular_sched():
     train_fig, train_ax = vis_loss_history.get_figure_subplots()
     vis_loss_history.plot_train_history_2subplots(
         train_ax,
-        triangular_sched_trainer.loss_history,
-        acc_history = triangular_sched_trainer.acc_history[0 : triangular_sched_trainer.acc_iter],
+        triangular_sched_trainer.get_loss_history(),
+        acc_history = triangular_sched_trainer.get_acc_history(),
         cur_epoch = triangular_sched_trainer.cur_epoch,
         iter_per_epoch = triangular_sched_trainer.iter_per_epoch,
         loss_title = 'CIFAR-10 LR Finder Loss\n (%s min LR: %f, max LR: %f' % (repr(lr_scheduler), lr_scheduler.lr_min, lr_scheduler.lr_max),
@@ -135,8 +135,8 @@ def triangular2_sched():
     train_fig, train_ax = vis_loss_history.get_figure_subplots()
     vis_loss_history.plot_train_history_2subplots(
         train_ax,
-        triangular2_sched_trainer.loss_history,
-        acc_history = triangular2_sched_trainer.acc_history[0 : triangular2_sched_trainer.acc_iter],
+        triangular2_sched_trainer.get_loss_history(),
+        acc_history = triangular2_sched_trainer.get_acc_history(),
         cur_epoch = triangular2_sched_trainer.cur_epoch,
         iter_per_epoch = triangular2_sched_trainer.iter_per_epoch,
         loss_title = 'CIFAR-10 LR Finder Loss\n (%s min LR: %f, max LR: %f' % (repr(lr_scheduler), lr_scheduler.lr_min, lr_scheduler.lr_max),
@@ -198,14 +198,136 @@ def step_sched():
     train_fig, train_ax = vis_loss_history.get_figure_subplots()
     vis_loss_history.plot_train_history_2subplots(
         train_ax,
-        step_sched_trainer.loss_history,
-        acc_history = step_sched_trainer.acc_history[0 : step_sched_trainer.acc_iter],
+        step_sched_trainer.get_loss_history(),
+        acc_history = step_sched_trainer.get_acc_history(),
         cur_epoch = step_sched_trainer.cur_epoch,
         iter_per_epoch = step_sched_trainer.iter_per_epoch,
         loss_title = 'CIFAR-10 LR Finder Loss\n (%s min LR: %f, max LR: %f' % (repr(lr_scheduler), lr_scheduler.lr_min, lr_scheduler.lr_max),
         acc_title = 'CIFAR-10 LR Finder Accuracy '
     )
     train_fig.savefig('figures/ex_step_sched_cifar10.png', bbox_inches='tight')
+
+
+def triangular_exp_sched():
+    # get a model and trainer
+    triangular_sched_model = cifar10.CIFAR10Net()
+    #model = resnets.WideResnet(28, 10)
+    triangular_exp_sched_trainer = cifar10_trainer.CIFAR10Trainer(
+        triangular_sched_model,
+        batch_size      = GLOBAL_OPTS['batch_size'],
+        test_batch_size = GLOBAL_OPTS['test_batch_size'],
+        num_epochs      = GLOBAL_OPTS['num_epochs'],
+        learning_rate   = GLOBAL_OPTS['learning_rate'],
+        #momentum = GLOBAL_OPTS['momentum'],
+        weight_decay    = GLOBAL_OPTS['weight_decay'],
+        # device
+        device_id       = GLOBAL_OPTS['device_id'],
+        # checkpoint
+        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
+        checkpoint_name = 'triangular_schedule_cifar10',
+        # display,
+        print_every     = GLOBAL_OPTS['print_every'],
+        save_every      = GLOBAL_OPTS['save_every'],
+        verbose         = GLOBAL_OPTS['verbose']
+    )
+
+    # get an LRFinder object
+    lr_finder = learning_rate.LogFinder(
+        triangular_exp_sched_trainer,
+        lr_min         = GLOBAL_OPTS['lr_min'],
+        lr_max         = GLOBAL_OPTS['lr_max'],
+        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
+        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
+        print_every    = GLOBAL_OPTS['find_print_every']
+    )
+
+    lr_finder.find()        # TODO: still need automatic lr range setting
+
+    lr_find_max = 1e-1
+    lr_find_min = 1e-2
+
+    lr_scheduler = schedule.TriangularExpScheduler(
+        stepsize = int(len(triangular_exp_sched_trainer.train_loader) / 4),
+        lr_min = lr_find_min,
+        lr_max = lr_find_max
+    )
+
+    triangular_exp_sched_trainer.set_lr_scheduler(lr_scheduler)
+    triangular_exp_sched_trainer.train()
+
+    # generate loss history plot
+    train_fig, train_ax = vis_loss_history.get_figure_subplots()
+    vis_loss_history.plot_train_history_2subplots(
+        train_ax,
+        triangular_exp_sched_trainer.get_loss_history(),
+        acc_history = triangular_exp_sched_trainer.get_acc_history(),
+        cur_epoch = triangular_exp_sched_trainer.cur_epoch,
+        iter_per_epoch = triangular_exp_sched_trainer.iter_per_epoch,
+        loss_title = 'CIFAR-10 LR Finder Loss\n (%s min LR: %f, max LR: %f' % (repr(lr_scheduler), lr_scheduler.lr_min, lr_scheduler.lr_max),
+        acc_title = 'CIFAR-10 LR Finder Accuracy '
+    )
+    train_fig.savefig('figures/ex_triangular_exp_sched_cifar10.png', bbox_inches='tight')
+
+
+def triangular2_exp_sched():
+    # get a model and trainer
+    triangular_sched_model = cifar10.CIFAR10Net()
+    #model = resnets.WideResnet(28, 10)
+    triangular2_exp_sched_trainer = cifar10_trainer.CIFAR10Trainer(
+        triangular_sched_model,
+        batch_size      = GLOBAL_OPTS['batch_size'],
+        test_batch_size = GLOBAL_OPTS['test_batch_size'],
+        num_epochs      = GLOBAL_OPTS['num_epochs'],
+        learning_rate   = GLOBAL_OPTS['learning_rate'],
+        #momentum = GLOBAL_OPTS['momentum'],
+        weight_decay    = GLOBAL_OPTS['weight_decay'],
+        # device
+        device_id       = GLOBAL_OPTS['device_id'],
+        # checkpoint
+        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
+        checkpoint_name = 'triangular_schedule_cifar10',
+        # display,
+        print_every     = GLOBAL_OPTS['print_every'],
+        save_every      = GLOBAL_OPTS['save_every'],
+        verbose         = GLOBAL_OPTS['verbose']
+    )
+
+    # get an LRFinder object
+    lr_finder = learning_rate.LogFinder(
+        triangular2_exp_sched_trainer,
+        lr_min         = GLOBAL_OPTS['lr_min'],
+        lr_max         = GLOBAL_OPTS['lr_max'],
+        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
+        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
+        print_every    = GLOBAL_OPTS['find_print_every']
+    )
+
+    lr_finder.find()        # TODO: still need automatic lr range setting
+
+    lr_find_max = 1e-1
+    lr_find_min = 1e-2
+
+    lr_scheduler = schedule.Triangular2ExpScheduler(
+        stepsize = int(len(triangular2_exp_sched_trainer.train_loader) / 4),
+        lr_min = lr_find_min,
+        lr_max = lr_find_max
+    )
+
+    triangular2_exp_sched_trainer.set_lr_scheduler(lr_scheduler)
+    triangular2_exp_sched_trainer.train()
+
+    # generate loss history plot
+    train_fig, train_ax = vis_loss_history.get_figure_subplots()
+    vis_loss_history.plot_train_history_2subplots(
+        train_ax,
+        triangular2_exp_sched_trainer.get_loss_history(),
+        acc_history = triangular2_exp_sched_trainer.get_acc_history(),
+        cur_epoch = triangular2_exp_sched_trainer.cur_epoch,
+        iter_per_epoch = triangular2_exp_sched_trainer.iter_per_epoch,
+        loss_title = 'CIFAR-10 LR Finder Loss\n (%s min LR: %f, max LR: %f' % (repr(lr_scheduler), lr_scheduler.lr_min, lr_scheduler.lr_max),
+        acc_title = 'CIFAR-10 LR Finder Accuracy '
+    )
+    train_fig.savefig('figures/ex_triangular2_exp_sched_cifar10.png', bbox_inches='tight')
 
 
 def warm_restart_sched():
@@ -260,8 +382,8 @@ def warm_restart_sched():
     train_fig, train_ax = vis_loss_history.get_figure_subplots()
     vis_loss_history.plot_train_history_2subplots(
         train_ax,
-        warm_restart_trainer.loss_history,
-        acc_history = warm_restart_trainer.acc_history[0 : warm_restart_trainer.acc_iter],
+        warm_restart_trainer.get_loss_history(),
+        acc_history = warm_restart_trainer.get_acc_history(),
         cur_epoch = warm_restart_trainer.cur_epoch,
         iter_per_epoch = warm_restart_trainer.iter_per_epoch,
         loss_title = 'CIFAR-10 LR Finder Loss\n (%s min LR: %f, max LR: %f' % (repr(lr_scheduler), lr_scheduler.lr_min, lr_scheduler.lr_max),
@@ -403,4 +525,6 @@ if __name__ == '__main__':
     triangular_sched()
     triangular2_sched()
     step_sched()
+    triangular_exp_sched()
+    triangular2_exp_sched()
     #warm_restart_sched()
