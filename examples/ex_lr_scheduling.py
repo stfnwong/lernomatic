@@ -249,7 +249,8 @@ def triangular_exp_sched():
     lr_scheduler = schedule.TriangularExpScheduler(
         stepsize = int(len(triangular_exp_sched_trainer.train_loader) / 4),
         lr_min = lr_find_min,
-        lr_max = lr_find_max
+        lr_max = lr_find_max,
+        k = GLOBAL_OPTS['exp_decay']
     )
 
     triangular_exp_sched_trainer.set_lr_scheduler(lr_scheduler)
@@ -310,7 +311,8 @@ def triangular2_exp_sched():
     lr_scheduler = schedule.Triangular2ExpScheduler(
         stepsize = int(len(triangular2_exp_sched_trainer.train_loader) / 4),
         lr_min = lr_find_min,
-        lr_max = lr_find_max
+        lr_max = lr_find_max,
+        k = GLOBAL_OPTS['exp_decay']
     )
 
     triangular2_exp_sched_trainer.set_lr_scheduler(lr_scheduler)
@@ -445,6 +447,12 @@ def get_parser():
                         type=float,
                         default=1e-1,
                         help='Maximum range to search for learning rate'
+                        )
+    # Schedule options
+    parser.add_argument('--exp-decay',
+                        type=float,
+                        default=0.001,
+                        help='Exponential decay term'
                         )
     # Device options
     parser.add_argument('--device-id',
