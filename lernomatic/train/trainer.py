@@ -36,7 +36,7 @@ class Trainer(object):
         # Internal options
         self.verbose         = kwargs.pop('verbose', True)
         self.print_every     = kwargs.pop('print_every', 10)
-        self.save_every      = kwargs.pop('save_every', 1000)  # unit is iterations
+        self.save_every      = kwargs.pop('save_every', -1)  # unit is iterations, -1 = save every epoch
         # Device options
         self.device_id       = kwargs.pop('device_id', -1)
         # dataset/loader options
@@ -336,6 +336,8 @@ class Trainer(object):
         TRAIN
         Standard training routine
         """
+        if self.save_every == -1:
+            self.save_every = len(self.train_loader)
         for n in range(self.num_epochs):
             self.train_epoch()
 

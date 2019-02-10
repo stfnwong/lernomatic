@@ -137,7 +137,7 @@ def get_parser():
     # Network options
     parser.add_argument('--resnet-depth',
                          type=int,
-                         default=28,
+                         default=9,
                          help='Number of layers to use for Resnet'
                          )
     # Training options
