@@ -158,8 +158,6 @@ class LogDecayScheduler(LRScheduler):
         return new_lr
 
 
-
-
 class ExponentialDecayScheduler(LRScheduler):
     def __init__(self, **kwargs):
         self.k = kwargs.pop('k', 0.001)

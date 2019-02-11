@@ -58,11 +58,12 @@ def triangular_sched():
 
     lr_finder.find()        # TODO: still need automatic lr range setting
 
-    lr_find_max = 1e-1
-    lr_find_min = 1e-2
+    lr_find_max = 0.001
+    lr_find_min = 0.006
 
     lr_scheduler = schedule.TriangularScheduler(
-        stepsize = int(len(triangular_sched_trainer.train_loader) / 4),
+        #stepsize = int(len(triangular_sched_trainer.train_loader) / 4),
+        stepsize = GLOBAL_OPTS['sched_stepsize'],
         lr_min = lr_find_min,
         lr_max = lr_find_max
     )
@@ -119,11 +120,12 @@ def triangular2_sched():
 
     lr_finder.find()        # TODO: still need automatic lr range setting
 
-    lr_find_max = 1e-1
-    lr_find_min = 1e-2
+    lr_find_max = 0.001
+    lr_find_min = 0.006
 
     lr_scheduler = schedule.Triangular2Scheduler(
-        stepsize = int(len(triangular2_sched_trainer.train_loader) / 4),
+        #stepsize = int(len(triangular2_sched_trainer.train_loader) / 4),
+        stepsize = GLOBAL_OPTS['sched_stepsize'],
         lr_min = lr_find_min,
         lr_max = lr_find_max
     )
@@ -180,11 +182,12 @@ def step_sched():
 
     lr_finder.find()        # TODO: still need automatic lr range setting
 
-    lr_find_max = 1e-1
-    lr_find_min = 1e-2
+    lr_find_max = 0.001
+    lr_find_min = 0.006
 
     lr_scheduler = schedule.StepScheduler(
-        stepsize = int(len(step_sched_trainer.train_loader) / 4),
+        #stepsize = int(len(step_sched_trainer.train_loader) / 4),
+        stepsize = GLOBAL_OPTS['sched_stepsize'],
         lr_min = lr_find_min,
         lr_max = lr_find_max,
         lr_decay_every = int(len(step_sched_trainer.train_loader) / 4),
@@ -243,11 +246,12 @@ def exp_decay_sched():
 
     lr_finder.find()        # TODO: still need automatic lr range setting
 
-    lr_find_max = 1e-1
-    lr_find_min = 1e-2
+    lr_find_max = 0.001
+    lr_find_min = 0.006
 
     lr_scheduler = schedule.ExponentialDecayScheduler(
-        stepsize = int(len(exp_decay_trainer.train_loader) / 4),
+        #stepsize = int(len(exp_decay_trainer.train_loader) / 4),
+        stepsize = GLOBAL_OPTS['sched_stepsize'],
         lr_min = lr_find_min,
         lr_max = lr_find_max,
         lr_decay_every = int(len(exp_decay_trainer.train_loader) / 4),
@@ -305,8 +309,8 @@ def triangular_exp_sched():
 
     lr_finder.find()        # TODO: still need automatic lr range setting
 
-    lr_find_max = 1e-1
-    lr_find_min = 1e-2
+    lr_find_max = 0.001
+    lr_find_min = 0.006
 
     lr_scheduler = schedule.TriangularExpScheduler(
         stepsize = int(len(triangular_exp_sched_trainer.train_loader) / 4),
@@ -367,11 +371,12 @@ def triangular2_exp_sched():
 
     lr_finder.find()        # TODO: still need automatic lr range setting
 
-    lr_find_max = 1e-1
-    lr_find_min = 1e-2
+    lr_find_max = 0.001
+    lr_find_min = 0.006
 
     lr_scheduler = schedule.Triangular2ExpScheduler(
-        stepsize = int(len(triangular2_exp_sched_trainer.train_loader) / 4),
+        #stepsize = int(len(triangular2_exp_sched_trainer.train_loader) / 4),
+        stepsize = GLOBAL_OPTS['sched_stepsize'],
         lr_min = lr_find_min,
         lr_max = lr_find_max,
         k = GLOBAL_OPTS['exp_decay']
@@ -428,11 +433,11 @@ def warm_restart_sched():
 
     lr_finder.find()        # TODO: still need automatic lr range setting
 
-    lr_find_max = 1e-1
-    lr_find_min = 1e-2
+    lr_find_max = 0.001
+    lr_find_min = 0.006
 
     lr_scheduler = schedule.WarmRestartScheduler(
-        stepsize = int(len(warm_restart_trainer.train_loader) / 4),
+        stepsize = GLOBAL_OPTS['sched_stepsize'],
         lr_min = lr_find_min,
         lr_max = lr_find_max,
         lr_decay_every = int(len(warm_restart_trainer.train_loader) / 4),
@@ -515,6 +520,11 @@ def get_parser():
                         type=float,
                         default=0.001,
                         help='Exponential decay term'
+                        )
+    parser.add_argument('--sched-stepsize',
+                        type=int,
+                        default=4000,
+                        help='Size of step for learning rate scheduler'
                         )
     # Device options
     parser.add_argument('--device-id',
