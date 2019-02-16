@@ -10,11 +10,10 @@ import sys
 import unittest
 import argparse
 # units under test
-from lernomatic.data import split
-
+from lernomatic.data import data_split
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -32,7 +31,7 @@ class TestListSplitter(unittest.TestCase):
     def test_gen_split(self):
         print('======== TestListSplitter.test_gen_split ')
 
-        splitter = split.ListSplitter(
+        splitter = data_split.ListSplitter(
             split_ratios    = self.test_split_ratios,
             split_names     = self.test_split_names,
             split_method    = self.test_split_method,
