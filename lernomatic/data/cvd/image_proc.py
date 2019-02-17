@@ -21,6 +21,7 @@ class ImageDataProc(object):
         self.image_dataset_name = kwargs.pop('image_dataset_name', 'images')
         self.image_dataset_size = kwargs.pop('image_dataset_size', (3, 224, 224))
         self.label_dataset_name = kwargs.pop('label_dataset_name', 'labels')
+        self.label_dataset_size = kwargs.pop('label_dataset_size', 1)
         self.id_dataset_name    = kwargs.pop('id_dataset_name', 'ids')
 
     def __repr__(self):
@@ -38,12 +39,12 @@ class ImageDataProc(object):
             )
             ids = fp.create_dataset(
                 self.id_dataset_name,
-                (len(data_split), 1),
+                (len(data_split), self.label_dataset_size),
                 dtype=int
             )
             labels = fp.create_dataset(
                 self.label_dataset_name,
-                (len(data_split), 1),
+                (len(data_split), self.label_dataset_size),
                 dtype=int
             )
 
@@ -67,7 +68,7 @@ class ImageDataProc(object):
 
                 images[n] = img
                 ids[n] = int(img_id)
-                labels[n] = int(label)
+                labels[n] = label
 
         if self.verbose:
             print('%d invalid files found out of %d total (%.3f %%)' %\

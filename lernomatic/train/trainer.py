@@ -26,7 +26,7 @@ class Trainer(object):
         self.learning_rate   = kwargs.pop('learning_rate', 1e-4)
         self.momentum        = kwargs.pop('momentum', 0.5)
         self.weight_decay    = kwargs.pop('weight_decay', 1e-5)
-        self.loss_function   = kwargs.pop('loss_function', 'BCELoss')
+        self.loss_function   = kwargs.pop('loss_function', 'CrossEntropyLoss')
         self.optim_function  = kwargs.pop('optim_function', 'Adam')
         self.cur_epoch       = 0
         # validation options
@@ -84,7 +84,6 @@ class Trainer(object):
     def _init_optimizer(self):
         if self.model is not None:
             if hasattr(torch.optim, self.optim_function):
-                #self.optimizer = torch.optim.Adam(
                 self.optimizer = getattr(torch.optim, self.optim_function)(
                     self.model.parameters(),
                     lr = self.learning_rate,
@@ -130,7 +129,7 @@ class Trainer(object):
         else:
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset,
-                batch_size = self.batch_size,
+                batch_size = self.test_batch_size,
                 shuffle    = self.shuffle
             )
 
