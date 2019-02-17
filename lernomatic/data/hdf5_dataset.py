@@ -29,6 +29,7 @@ class HDF5Dataset(Dataset):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
         feature = torch.FloatTensor(self.fp[self.feature_name][idx][:])
+        #label   = torch.LongTensor(self.fp[self.label_name][idx][:])
         label   = torch.FloatTensor(self.fp[self.label_name][idx][:])
 
         if len(feature.shape) == 2:

@@ -12,7 +12,10 @@ import torch.nn as nn
 
 from lernomatic.models import cvdnet
 from lernomatic.train import trainer
+from lernomatic.train import cvd_trainer
 from lernomatic.data import hdf5_dataset
+
+from lernomatic.vis import vis_loss_history
 
 # debug
 from pudb import set_trace; set_trace()
@@ -51,13 +54,12 @@ def main():
 
     model = cvdnet.CVDNet2()
 
-    cvd_train = trainer.Trainer(
+    #cvd_train = trainer.Trainer(
+    cvd_train = cvd_trainer.CVDTrainer(
         model,
         # dataset options
         train_dataset   = cvd_train_dataset,
         test_dataset    = cvd_test_dataset,
-        #train_dataset   = GLOBAL_OPTS['train_dataset'],
-        #test_dataset    = GLOBAL_OPTS['test_dataset'],
         # training options
         loss_function   = 'BCELoss',
         learning_rate   = GLOBAL_OPTS['learning_rate'],
@@ -77,6 +79,20 @@ def main():
     )
 
     cvd_train.train()
+
+    # Show results
+    fig, ax = vis_loss_history.get_figure_subplots(num_subplots=2)
+    vis_loss_history.plot_train_history_2subplots(
+        ax,
+        cvd_train.get_loss_history(),
+        acc_history = cvd_train.get_acc_history(),
+        iter_per_epoch = cvd_train.iter_per_epoch,
+        loss_title = 'CVD Loss',
+        acc_title = 'CVD Acc',
+        cur_epoch = cvd_train.cur_epoch
+    )
+
+    fig.savefig('figures/cvd_train.fig')
 
 
 def get_parser():

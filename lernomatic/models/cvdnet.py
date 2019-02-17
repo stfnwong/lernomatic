@@ -8,7 +8,7 @@ import torch.nn as nn
 import torchvision
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 class CVDNet(nn.Module):
     def __init__(self, **kwargs):
@@ -45,11 +45,13 @@ class CVDNet2(nn.Module):
             param.required_grad = False
 
         nf = self.sub_model.fc.in_features
-        self.sub_model.fc = nn.Linear(nf, 2)
+        self.sub_model.fc = nn.Linear(nf, 1)
         self.sig = nn.Sigmoid()
+        #self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, X):
         out = self.sub_model(X)
         out = self.sig(out)
+        #out = self.softmax(out)
 
         return out

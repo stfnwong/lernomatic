@@ -12,7 +12,7 @@ from lernomatic.data import data_split
 from lernomatic.data.cvd import image_proc
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -32,10 +32,10 @@ def main():
     cat_ids  = os.listdir(cats_path)
     dog_ids  = os.listdir(dogs_path)
 
-    #label_list = [GLOBAL_OPTS['cat_label']] * len(cat_list) +\
-    #             [GLOBAL_OPTS['dog_label']] * len(dog_list)
-    label_list = [np.asarray([1, 0])] * len(cat_list) +\
-                 [np.asarray([0, 1])] * len(dog_list)
+    label_list = [GLOBAL_OPTS['cat_label']] * len(cat_list) +\
+                 [GLOBAL_OPTS['dog_label']] * len(dog_list)
+    #label_list = [np.asarray([1, 0])] * len(cat_list) +\
+    #             [np.asarray([0, 1])] * len(dog_list)
 
     id_list = []
     for data in cat_ids + dog_ids:
@@ -88,7 +88,7 @@ def main():
 
     # Process each split
     proc = image_proc.ImageDataProc(
-        label_dataset_size = 2,
+        label_dataset_size = 1,
         verbose = GLOBAL_OPTS['verbose']
     )
 
