@@ -5,9 +5,11 @@ Example of Kaggle Cats vs Dogs challenge
 Stefan Wong 2019
 """
 
+import os
 import argparse
 import torchvision
 from torchvision import transforms
+from torchvision import datasets
 import torch.nn as nn
 
 from lernomatic.models import cvdnet
@@ -26,22 +28,50 @@ GLOBAL_OPTS = dict()
 # TODO : add parameter finders later
 def main():
 
+    train_dataset_transform = transforms.Compose([
+        transforms.RandomRotation(5),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomResizedCrop(224, scale=(0.96, 1.0), ratio=(0.95, 1.05)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    test_dataset_transform = transforms.Compose([
+        transforms.Resize([224,224]),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225])
+    # HDF5 Datasets
     # Create datasets
-    cvd_train_dataset = hdf5_dataset.HDF5Dataset(
-        GLOBAL_OPTS['train_dataset'],
-        feature_name = 'images',
-        label_name = 'labels',
-        transform=normalize
+    #cvd_train_dataset = hdf5_dataset.HDF5Dataset(
+    #    GLOBAL_OPTS['train_dataset'],
+    #    feature_name = 'images',
+    #    label_name = 'labels',
+    #    transform=normalize
+    #)
+
+    #cvd_test_dataset = hdf5_dataset.HDF5Dataset(
+    #    GLOBAL_OPTS['test_dataset'],
+    #    feature_name = 'images',
+    #    label_name = 'labels',
+    #    transform=normalize
+    #)
+
+    cvd_train_dir = '/home/kreshnik/ml-data/cats-vs-dogs/train'
+    # ImageFolder dataset
+    cvd_train_dataset = datasets.ImageFolder(
+        cvd_train_dir,
+        train_dataset_transform
     )
 
-    cvd_test_dataset = hdf5_dataset.HDF5Dataset(
-        GLOBAL_OPTS['test_dataset'],
-        feature_name = 'images',
-        label_name = 'labels',
-        transform=normalize
+    cvd_test_dir = '/home/kreshnik/ml-data/cats-vs-dogs/test'
+    cvd_test_dataset = datasets.ImageFolder(
+        cvd_test_dir,
+        test_dataset_transform
     )
 
     # Just use a pre-trained resnet34 here
@@ -61,7 +91,7 @@ def main():
         train_dataset   = cvd_train_dataset,
         test_dataset    = cvd_test_dataset,
         # training options
-        loss_function   = 'BCELoss',
+        loss_function   = 'CrossEntropyLoss',
         learning_rate   = GLOBAL_OPTS['learning_rate'],
         weight_decay    = GLOBAL_OPTS['weight_decay'],
         momentum        = GLOBAL_OPTS['momentum'],
@@ -92,7 +122,7 @@ def main():
         cur_epoch = cvd_train.cur_epoch
     )
 
-    fig.savefig('figures/cvd_train.fig')
+    fig.savefig('figures/cvd_train.png')
 
 
 def get_parser():

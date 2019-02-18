@@ -71,10 +71,12 @@ class CVDTrainer(trainer.Trainer):
 
             # accuracy
             _, pred = torch.max(output, 1)
-            if self.device_id >= 0:
-                correct += torch.sum(pred == labels.data.type(torch.cuda.LongTensor))
-            else:
-                correct += torch.sum(pred == labels.data)
+            correct += torch.sum(pred == labels.data).item()
+            #if self.device_id < 0:
+            #    correct += torch.sum(pred == labels.data).item()
+            #else:
+            #    correct += torch.sum(pred.type(torch.cuda.LongTensor) == labels.data.type(torch.cuda.LongTensor)).item()
+            #    #correct += pred.eq(labels.data.view(1, -1).expand_as(pred))
 
             #output = output.t()
             #correct += output.eq(labels.data.view(1, -1).expand_as(output))
@@ -82,9 +84,11 @@ class CVDTrainer(trainer.Trainer):
             #correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
             if (n % self.print_every) == 0:
-                print('[TEST]  :   Epoch       iteration         Test Loss')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), loss.item()))
+                print('[TEST]  :   Epoch       iteration         Test Loss    Correct    Total ')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f    %d     %d' %\
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), loss.item(),
+                       correct, len(self.test_loader.dataset))
+                )
 
             self.test_loss_history[self.test_loss_iter] = loss.item()
             self.test_loss_iter += 1

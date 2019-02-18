@@ -248,9 +248,9 @@ class Trainer(object):
             target = target.to(self.device)
 
             # optimization
-            self.optimizer.zero_grad()
             output = self.model(data)
             loss   = self.criterion(output, target)
+            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
 
