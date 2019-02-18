@@ -28,6 +28,8 @@ class LRFinder(object):
         self.explode_thresh = kwargs.pop('explode_thresh', 4.0)      # fast.ai uses 4 * min_smoothed_loss
         self.beta           = kwargs.pop('beta', 0.999)
         self.gamma          = kwargs.pop('gamma', 0.999995)
+        self.lr_min_factor  = kwargs.pop('lr_min_factor', 4.0)
+        self.lr_max_scale   = kwargs.pop('lr_max_scale', 1.0)
         # gradient params
         self.grad_thresh    = kwargs.pop('grad_thresh', 0.002)
         # other
@@ -93,6 +95,13 @@ class LRFinder(object):
 
     def find_lr(self):
         raise NotImplementedError('This method should be implemented in subclass')
+
+    def get_lr_range(self):
+        # Heuristically get a range
+        lr_max = (10.0 ** self.log_lr_history[-2]) * self.lr_max_scale
+        lr_min = lr_max / self.lr_min_factor
+
+        return (lr_min, lr_max)
 
 
 class LogFinder(LRFinder):

@@ -56,10 +56,9 @@ def triangular_sched():
         print_every    = GLOBAL_OPTS['find_print_every']
     )
 
-    lr_finder.find()        # TODO: still need automatic lr range setting
-
-    lr_find_max = 0.001
-    lr_find_min = 0.006
+    lr_finder.find()
+    lr_find_min, lr_find_max = lr_finder.get_lr_range()
+    print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     lr_scheduler = schedule.TriangularScheduler(
         #stepsize = int(len(triangular_sched_trainer.train_loader) / 4),
@@ -119,9 +118,8 @@ def triangular2_sched():
     )
 
     lr_finder.find()        # TODO: still need automatic lr range setting
-
-    lr_find_max = 0.001
-    lr_find_min = 0.006
+    lr_find_min, lr_find_max = lr_finder.get_lr_range()
+    print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     lr_scheduler = schedule.Triangular2Scheduler(
         #stepsize = int(len(triangular2_sched_trainer.train_loader) / 4),
@@ -181,9 +179,8 @@ def step_sched():
     )
 
     lr_finder.find()        # TODO: still need automatic lr range setting
-
-    lr_find_max = 0.001
-    lr_find_min = 0.006
+    lr_find_min, lr_find_max = lr_finder.get_lr_range()
+    print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     lr_scheduler = schedule.StepScheduler(
         #stepsize = int(len(step_sched_trainer.train_loader) / 4),
@@ -245,9 +242,8 @@ def exp_decay_sched():
     )
 
     lr_finder.find()        # TODO: still need automatic lr range setting
-
-    lr_find_max = 0.001
-    lr_find_min = 0.006
+    lr_find_min, lr_find_max = lr_finder.get_lr_range()
+    print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     lr_scheduler = schedule.ExponentialDecayScheduler(
         #stepsize = int(len(exp_decay_trainer.train_loader) / 4),
@@ -308,9 +304,8 @@ def triangular_exp_sched():
     )
 
     lr_finder.find()        # TODO: still need automatic lr range setting
-
-    lr_find_max = 0.001
-    lr_find_min = 0.006
+    lr_find_min, lr_find_max = lr_finder.get_lr_range()
+    print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     lr_scheduler = schedule.TriangularExpScheduler(
         stepsize = int(len(triangular_exp_sched_trainer.train_loader) / 4),
@@ -370,9 +365,8 @@ def triangular2_exp_sched():
     )
 
     lr_finder.find()        # TODO: still need automatic lr range setting
-
-    lr_find_max = 0.001
-    lr_find_min = 0.006
+    lr_find_min, lr_find_max = lr_finder.get_lr_range()
+    print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     lr_scheduler = schedule.Triangular2ExpScheduler(
         #stepsize = int(len(triangular2_exp_sched_trainer.train_loader) / 4),
@@ -432,9 +426,8 @@ def warm_restart_sched():
     )
 
     lr_finder.find()        # TODO: still need automatic lr range setting
-
-    lr_find_max = 0.001
-    lr_find_min = 0.006
+    lr_find_min, lr_find_max = lr_finder.get_lr_range()
+    print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     lr_scheduler = schedule.WarmRestartScheduler(
         stepsize = GLOBAL_OPTS['sched_stepsize'],

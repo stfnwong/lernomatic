@@ -115,10 +115,7 @@ def main():
         )
         lr_fig.savefig('figures/ex_lr_finder_lr_vs_acc.png', bbox_inches='tight')
 
-    # try to find the critical points on the graph
-    # TODO : automatic setting!
-    lr_find_max = 1e-1
-    lr_find_min = 1e-2
+    lr_find_min, lr_find_max = lr_finder.get_lr_range()
 
     lr_scheduler = schedule.TriangularScheduler(
         stepsize = int(len(trainer.train_loader) / 4),
