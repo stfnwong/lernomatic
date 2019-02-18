@@ -15,7 +15,7 @@ from lernomatic.data.coco import word_map
 from lernomatic.data.coco import coco_proc
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 

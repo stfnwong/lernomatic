@@ -39,19 +39,20 @@ class Trainer(object):
         self.test_batch_size = kwargs.pop('test_batch_size', 0)
         self.train_dataset   = kwargs.pop('train_dataset', None)
         self.test_dataset    = kwargs.pop('test_dataset', None)
+        self.val_dataset     = kwargs.pop('val_dataset', None)
         self.shuffle         = kwargs.pop('shuffle', True)
         self.num_workers     = kwargs.pop('num_workers' , 1)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
 
-        # Setup optimizer. If we have no model then assume it will be
-        self._init_optimizer()
         # set up device
         self._init_device()
         # Init the internal dataloader options. If nothing provided assume that
         # we will load options in later (eg: from checkpoint)
         self._init_dataloaders()
+        # Setup optimizer. If we have no model then assume it will be
+        self._init_optimizer()
         # Init the loss and accuracy history. If no train_loader is provided
         # then we assume that one will be loaded later (eg: in some checkpoint
         # data)
@@ -111,6 +112,15 @@ class Trainer(object):
         else:
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset,
+                batch_size = self.test_batch_size,
+                shuffle    = self.shuffle
+            )
+
+        if self.val_dataset is None:
+            self.val_loader = None
+        else:
+            self.val_loader = torch.utils.data.DataLoader(
+                self.val_dataset,
                 batch_size = self.batch_size,
                 shuffle    = self.shuffle
             )

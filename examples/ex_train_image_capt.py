@@ -20,7 +20,7 @@ GLOBAL_OPTS = dict()
 def main():
 
     if GLOBAL_OPTS['train_data_path'] is None:
-        raise ValueError('Must supply a train data path')
+        raise ValueError('Must supply a train data path with argument --train-data-path')
 
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
@@ -28,7 +28,7 @@ def main():
     )
 
     wmap = word_map.WordMap()
-    wmap.load(GLOBAL_OPTS['wordmap_fname'])
+    wmap.load(GLOBAL_OPTS['wordmap'])
 
     # Set up encoder and decoder
     decoder = image_caption.DecoderAtten(
@@ -286,7 +286,7 @@ def get_parser():
                         help='Overwrite existing processed data files'
                         )
     # word map options
-    parser.add_argument('--wordmap-fname',
+    parser.add_argument('--wordmap',
                         type=str,
                         default='wordmap.json',
                         help='Name of wordmap file to load'

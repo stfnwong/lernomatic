@@ -52,6 +52,9 @@ def ica_accuracy(scores, targets, k):
 
     return correct_total.item() * (100.0 / batch_size)
 
+
+
+
 class ImageCaptTrainer(trainer.Trainer):
     """
     IMAGECAPTTRAINER
@@ -60,33 +63,22 @@ class ImageCaptTrainer(trainer.Trainer):
     def __init__(self, encoder, decoder, **kwargs):
         self.encoder = encoder
         self.decoder = decoder
-        super(ImageCaptTrainer, self).__init__(None, **kwargs)
         # Deal with keyword args
-        self.verbose = kwargs.pop('verbose', False)
         self.dec_lr    = kwargs.pop('dec_lr', 1e-4)
+        self.dec_mom   = kwargs.pop('dec_mom', 0.0)
+        self.dec_wd    = kwargs.pop('dec_wd', 0.0)
         self.enc_lr    = kwargs.pop('enc_lr', 1e-4)
+        self.enc_mom   = kwargs.pop('enc_mon', 0.0)
+        self.enc_wd    = kwargs.pop('enc_wd', 0.0)
         self.alpha_c   = kwargs.pop('alpha_c', 1.0)
         self.grad_clip = kwargs.pop('grad_clip', None)
         self.word_map  = kwargs.pop('word_map', None)
-        # paths to datasets
-
-        # optimizer
-        if self.decoder is None or self.encoder is None or self.train_loader is None:
-            self.decoder = image_caption.DecoderAtten()
-            self.encoder = image_caption.Encoder()
-            self.decoder_optim = None
-            self.encoder_optim = None
-        else:
-            self.decoder_optim = torch.optim.Adam(
-                params = filter(lambda p : p.requires_grad, self.decoder.parameters()),
-                lr = self.dec_lr
-            )
-            self.encoder_optim = torch.optim.Adam(
-                params = filter(lambda p : p.requires_grad, self.encoder.parameters()),
-                lr = self.enc_lr
-            )
+        super(ImageCaptTrainer, self).__init__(None, **kwargs)
 
         self.criterion = torch.nn.CrossEntropyLoss()
+        self._init_optimizer()
+        self._send_to_device()
+
 
     def __repr__(self):
         return 'ImageCaptTrainer'
@@ -101,17 +93,168 @@ class ImageCaptTrainer(trainer.Trainer):
 
         return ''.join(s)
 
+    def _init_optimizer(self):
+        # optimizer
+        if self.decoder is None or self.encoder is None or self.train_loader is None:
+            self.decoder = image_caption.DecoderAtten()
+            self.encoder = image_caption.Encoder()
+            self.decoder_optim = None
+            self.encoder_optim = None
+        else:
+            self.decoder_optim = torch.optim.Adam(
+                params = filter(lambda p : p.requires_grad, self.decoder.parameters()),
+                lr = self.dec_lr,
+                #momentum = self.dec_mom
+            )
+            self.encoder_optim = torch.optim.Adam(
+                params = filter(lambda p : p.requires_grad, self.encoder.parameters()),
+                lr = self.enc_lr,
+                #momentum = self.enc_mom
+            )
+
     def _send_to_device(self):
         if self.decoder is not None:
             self.decoder = self.decoder.to(self.device)
         if self.encoder is not None:
             self.encoder = self.encoder.to(self.device)
 
-    # TODO : checkpoints, history, etc
+    def get_trainer_params(self):
+        return {
+            # image caption specific parameters
+            'dec_lr'          : self.dec_lr,
+            'dec_mom'         : self.dec_mom,
+            'dec_wd'          : self.dec_wd,
+            'enc_lr'          : self.enc_lr,
+            'enc_mom'         : self.enc_mom,
+            'enc_wd'          : self.enc_wd,
+            'alpha_c'         : self.alpha_c,
+            'grad_clip'       : self.grad_clip,
+            'word_map'        : self.word_map,
+            # training params
+            'num_epochs'      : self.num_epochs,
+            'batch_size'      : self.batch_size,
+            'test_batch_tize' : self.test_batch_size,
+            # data params
+            'shuffle'         : self.shuffle,
+            'num_workers'     : self.num_workers,
+            # checkpoint params
+            'checkpoint_name' : self.checkpoint_name,
+            'checkpoint_dir'  : self.checkpoint_dir,
+            'save_every'      : self.save_every,
+            # display params
+            'print_every'     : self.print_every,
+            'verbose'         : self.verbose,
+            # other
+            'device_id'       : self.device_id,
+        }
 
-    def check_acc(self):
+    def set_trainer_params(self, params):
+        self.dec_lr          = params['dec_lr']
+        self.dec_mom         = params['dec_mom']
+        self.dec_wd          = params['dec_wd']
+        self.enc_lr          = params['enc_lr']
+        self.enc_mom         = params['enc_mom']
+        self.enc_wd          = params['enc_wd']
+        self.alpha_c         = params['alpha_c']
+        self.grad_clip       = params['grad_clip']
+        self.word_map        = params['word_map']
+        self.num_epochs      = params['num_epochs']
+        self.batch_size      = params['batch_size']
+        self.test_batch_size = params['test_batch_size']
+        self.shuffle         = params['shuffle']
+        self.num_workers     = params['num_workers']
+        self.checkpoint_name = params['checkpoint_name']
+        self.checkpoint_dir  = params['checkpoint_dir']
+        self.save_every      = params['save_every']
+        self.print_every     = params['print_every']
+        self.verbose         = params['verbose']
+        self.device_id       = params['device_id']
+
+    def save_checkpoint(self, fname):
+        trainer_params = self.get_trainer_params()
+        checkpoint_data = {
+            # networks
+            'encoder' : self.encoder.state_dict(),
+            'decoder' : self.decoder.state_dict(),
+            'encoder_params' : self.encoder.get_params(),
+            'decoder_params' : self.decoder.get_params(),
+            # solvers
+            'encoder_optim' : self.encoder_optim.state_dict(),
+            'decoder_optim' : self.decoder_optim.state_dict(),
+            # loaders?
+            # object params
+            'trainer_state' : trainer_params,
+        }
+        torch.save(checkpoint_data, fname)
+
+    def load_checkpoint(self, fname):
+        checkpoint = torch.load(fname)
+        self.set_trainer_params(checkpoint['trainer_state'])
+        # set meta data
+        self.encoder.set_params(checkpoint['encoder_params'])
+        self.decoder.set_params(checkpoint['decoder_params'])
+        # load weights from checkpoint
+        self.encoder.load_state_dict(checkpoint['encoder'])
+        self.decoder.load_state_dict(checkpoint['decoder'])
+        self.decoder_optim = torch.optim.Adam(self.decoder.parameters())
+        self.encoder_optim = torch.optim.Adam(self.encoder.parameters())
+        self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
+        self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
+
+        if self.device_map is not None:
+            if self.device_map < 0:
+                device = torch.device('cpu')
+            else:
+                device = torch.device('cuda:%d' % self.device_map)
+            # transfer decoder optimizer
+            if self.decoder_optim is not None:
+                for state in self.decoder_optim.state.values():
+                    for k, v in state.items():
+                        if isinstance(v, torch.Tensor):
+                            state[k] = v.to(device)
+            # trasfer encoder optimizer
+            if self.encoder_optim is not None:
+                for state in self.encoder_optim.state.values():
+                    for k, v in state.items():
+                        if isinstance(v, torch.Tensor):
+                            state[k] = v.to(device)
+            self.device = self.device_map
+        self._init_device()
+        self._init_dataloaders()
+        self.send_to_device()
+
+    def save_history(self, fname):
+        history = dict()
+        history['loss_history']   = self.loss_history
+        history['loss_iter']      = self.loss_iter
+        history['cur_epoch']      = self.cur_epoch
+        history['iter_per_epoch'] = self.iter_per_epoch
+        if self.test_loss_history is not None:
+            history['test_loss_history'] = self.test_loss_history
+        if self.acc_history is not None:
+            history['acc_history'] = self.acc_history
+            history['acc_iter']    = self.acc_iter
+
+        torch.save(history, fname)
+
+    def load_history(self, fname):
+        history = torch.load(fname)
+        self.loss_history   = history['loss_history']
+        self.loss_iter      = history['loss_iter']
+        self.cur_epoch      = history['cur_epoch']
+        self.iter_per_epoch = history['iter_per_epoch']
+        if 'test_loss_history' in history:
+            self.test_loss_history = history['test_loss_history']
+        if 'acc_history' in history:
+            self.acc_history       = history['acc_history']
+            self.acc_iter          = history['acc_iter']
+        else:
+            self.acc_iter = 0
+
+    # TODO: change these back to VAL?
+    def test_epoch(self):
         """
-        CHECK_ACC
+        TEST_EPOCH
         Evaluate accuracy of classifier
         """
         self.decoder.eval()
@@ -216,8 +359,8 @@ class ImageCaptTrainer(trainer.Trainer):
             caplens = caplens.to(self.device)
 
             # forward pass
-            imgs = self.encoder(imgs)
-            scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder(imgs, caps, caplens)
+            enc_imgs = self.encoder(imgs)
+            scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder(enc_imgs, caps, caplens)
             # since we decoded stating with <start> the targets are all words after
             # <start> and up to <end>
             targets = caps_sorted[:, 1:]
@@ -266,9 +409,9 @@ class ImageCaptTrainer(trainer.Trainer):
             # save training checkpoint
             if (self.loss_iter % self.save_every) == 0 and self.loss_iter > 0:
                 if self.checkpoint_dir is not None:
-                    ck_name = str(self.checkpoint_dir) + '/' + str(self.checkpoint_prefix) + '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                    ck_name = str(self.checkpoint_dir) + '/' + str(self.checkpoint_name) + '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
                 else:
-                    ck_name = str(self.checkpoint_prefix) + '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                    ck_name = str(self.checkpoint_name) + '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s], epoch %d, iter %d' % (str(ck_name), self.cur_epoch, self.loss_iter))
                 self.save_checkpoint(ck_name)
