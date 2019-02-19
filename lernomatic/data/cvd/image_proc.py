@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 class ImageDataProc(object):
     def __init__(self, **kwargs):

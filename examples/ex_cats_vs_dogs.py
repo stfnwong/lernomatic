@@ -25,8 +25,13 @@ from pudb import set_trace; set_trace()
 GLOBAL_OPTS = dict()
 
 
-# TODO : add parameter finders later
+GLOBAL_USE_HDF5 = True      # until I figure out what is up with HDF5 data
+
 def main():
+
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225])
 
     train_dataset_transform = transforms.Compose([
         transforms.RandomRotation(5),
@@ -42,46 +47,36 @@ def main():
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225])
     # HDF5 Datasets
-    # Create datasets
-    #cvd_train_dataset = hdf5_dataset.HDF5Dataset(
-    #    GLOBAL_OPTS['train_dataset'],
-    #    feature_name = 'images',
-    #    label_name = 'labels',
-    #    transform=normalize
-    #)
+    if GLOBAL_USE_HDF5 is True:
+        cvd_train_dataset = hdf5_dataset.HDF5Dataset(
+            GLOBAL_OPTS['train_dataset'],
+            feature_name = 'images',
+            label_name = 'labels',
+            transform=normalize
+        )
 
-    #cvd_test_dataset = hdf5_dataset.HDF5Dataset(
-    #    GLOBAL_OPTS['test_dataset'],
-    #    feature_name = 'images',
-    #    label_name = 'labels',
-    #    transform=normalize
-    #)
+        cvd_test_dataset = hdf5_dataset.HDF5Dataset(
+            GLOBAL_OPTS['test_dataset'],
+            feature_name = 'images',
+            label_name = 'labels',
+            transform=normalize
+        )
+    else:
+        cvd_train_dir = '/home/kreshnik/ml-data/cats-vs-dogs/train'
+        # ImageFolder dataset
+        cvd_train_dataset = datasets.ImageFolder(
+            cvd_train_dir,
+            train_dataset_transform
+        )
 
-    cvd_train_dir = '/home/kreshnik/ml-data/cats-vs-dogs/train'
-    # ImageFolder dataset
-    cvd_train_dataset = datasets.ImageFolder(
-        cvd_train_dir,
-        train_dataset_transform
-    )
+        cvd_test_dir = '/home/kreshnik/ml-data/cats-vs-dogs/test'
+        cvd_test_dataset = datasets.ImageFolder(
+            cvd_test_dir,
+            test_dataset_transform
+        )
 
-    cvd_test_dir = '/home/kreshnik/ml-data/cats-vs-dogs/test'
-    cvd_test_dataset = datasets.ImageFolder(
-        cvd_test_dir,
-        test_dataset_transform
-    )
-
-    # Just use a pre-trained resnet34 here
-    #model = torchvision.models.resnet34(pretrained=True)
-    ## Adjust the model for our purposes
-    #for param in model.parameters():
-    #    param.requires_grad = False
-    #num_features = model.fc.in_features
-    #model.fc = nn.Linear(num_features, 2)
-
+    # get a network
     model = cvdnet.CVDNet2()
 
     #cvd_train = trainer.Trainer(

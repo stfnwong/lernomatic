@@ -15,7 +15,6 @@ from pudb import set_trace; set_trace()
 
 class CVDTrainer(trainer.Trainer):
     def __init__(self, model, **kwargs):
-
         super(CVDTrainer, self).__init__(model, **kwargs)
 
     def __repr__(self):
