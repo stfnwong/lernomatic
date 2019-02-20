@@ -396,12 +396,18 @@ class EpochSetScheduler(LRScheduler):
 
 
 # ---- Momentum ----- #
-class MScheduler(object):
+class MtmScheduler(object):
     def __init__(self, **kwargs):
-        self.mom_min = kwargs.pop('mom_min', 1e-3)
-        self.mom_max = kwargs.pop('mom_max', 0.9)
+        self.mtm_min = kwargs.pop('mtm_min', 1e-3)
+        self.mtm_max = kwargs.pop('mtm_max', 0.9)
+
+    def __repr__(self):
+        return 'MtmScheduler'
 
 
-class TriangularMScheduler(MScheduler):
+class TriangularMtmScheduler(MtmScheduler):
     def __init__(self, **kwargs):
-        super(TriangularMScheduler, self).__init__(**kwargs)
+        super(TriangularMtmScheduler, self).__init__(**kwargs)
+
+    def get_mtm(self):
+        pass

@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 from lernomatic.param import learning_rate
 from lernomatic.vis import vis_lr
 # we use CIFAR-10 for this example
-from lernomatic.models import cifar10
-from lernomatic.train import cifar10_trainer
+from lernomatic.models import cifar
+from lernomatic.train import cifar_trainer
 from lernomatic.train import schedule
 # vis tools
 from lernomatic.vis import vis_loss_history
@@ -25,9 +25,9 @@ GLOBAL_OPTS = dict()
 
 def triangular_sched():
     # get a model and trainer
-    triangular_sched_model = cifar10.CIFAR10Net()
+    triangular_sched_model = cifar.CIFAR10Net()
     #model = resnets.WideResnet(28, 10)
-    triangular_sched_trainer = cifar10_trainer.CIFAR10Trainer(
+    triangular_sched_trainer = cifar_trainer.CIFAR10Trainer(
         triangular_sched_model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
@@ -86,9 +86,9 @@ def triangular_sched():
 
 def triangular2_sched():
     # get a model and trainer
-    triangular2_sched_model = cifar10.CIFAR10Net()
+    triangular2_sched_model = cifar.CIFAR10Net()
     #model = resnets.WideResnet(28, 10)
-    triangular2_sched_trainer = cifar10_trainer.CIFAR10Trainer(
+    triangular2_sched_trainer = cifar_trainer.CIFAR10Trainer(
         triangular2_sched_model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
@@ -147,9 +147,9 @@ def triangular2_sched():
 
 def step_sched():
     # get a model and trainer
-    step_sched_model = cifar10.CIFAR10Net()
+    step_sched_model = cifar.CIFAR10Net()
     #model = resnets.WideResnet(28, 10)
-    step_sched_trainer = cifar10_trainer.CIFAR10Trainer(
+    step_sched_trainer = cifar_trainer.CIFAR10Trainer(
         step_sched_model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
@@ -210,9 +210,9 @@ def step_sched():
 
 def exp_decay_sched():
     # get a model and trainer
-    exp_decay_model = cifar10.CIFAR10Net()
+    exp_decay_model = cifar.CIFAR10Net()
     #model = resnets.WideResnet(28, 10)
-    exp_decay_trainer = cifar10_trainer.CIFAR10Trainer(
+    exp_decay_trainer = cifar_trainer.CIFAR10Trainer(
         exp_decay_model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
@@ -272,9 +272,9 @@ def exp_decay_sched():
 
 def triangular_exp_sched():
     # get a model and trainer
-    triangular_sched_model = cifar10.CIFAR10Net()
+    triangular_sched_model = cifar.CIFAR10Net()
     #model = resnets.WideResnet(28, 10)
-    triangular_exp_sched_trainer = cifar10_trainer.CIFAR10Trainer(
+    triangular_exp_sched_trainer = cifar_trainer.CIFAR10Trainer(
         triangular_sched_model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
@@ -333,9 +333,9 @@ def triangular_exp_sched():
 
 def triangular2_exp_sched():
     # get a model and trainer
-    triangular_sched_model = cifar10.CIFAR10Net()
+    triangular_sched_model = cifar.CIFAR10Net()
     #model = resnets.WideResnet(28, 10)
-    triangular2_exp_sched_trainer = cifar10_trainer.CIFAR10Trainer(
+    triangular2_exp_sched_trainer = cifar_trainer.CIFAR10Trainer(
         triangular_sched_model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
@@ -394,9 +394,9 @@ def triangular2_exp_sched():
 
 
 def warm_restart_sched():
-    warm_restart_model = cifar10.CIFAR10Net()
+    warm_restart_model = cifar.CIFAR10Net()
     #model = resnets.WideResnet(28, 10)
-    warm_restart_trainer = cifar10_trainer.CIFAR10Trainer(
+    warm_restart_trainer = cifar_trainer.CIFAR10Trainer(
         warm_restart_model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],

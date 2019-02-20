@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 from lernomatic.param import learning_rate
 from lernomatic.vis import vis_lr
 # we use CIFAR-10 for this example
-from lernomatic.models import cifar10
-from lernomatic.train import cifar10_trainer
+from lernomatic.models import cifar
+from lernomatic.train import cifar_trainer
 from lernomatic.train import schedule
 # vis tools
 from lernomatic.vis import vis_loss_history
@@ -45,9 +45,9 @@ def differentiate_smooth(function, beta=0.98):
 def main():
 
     # get a model and trainer
-    model = cifar10.CIFAR10Net()
+    model = cifar.CIFAR10Net()
     #model = resnets.WideResnet(28, 10)
-    trainer = cifar10_trainer.CIFAR10Trainer(
+    trainer = cifar_trainer.CIFAR10Trainer(
         model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
@@ -143,8 +143,8 @@ def main():
 
     # How does this compare to training without the scheduler?
     print('Creating trainer with no scheduler...')
-    no_sched_model = cifar10.CIFAR10Net()
-    no_sched_trainer = cifar10_trainer.CIFAR10Trainer(
+    no_sched_model = cifar.CIFAR10Net()
+    no_sched_trainer = cifar_trainer.CIFAR10Trainer(
         no_sched_model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
@@ -178,6 +178,17 @@ def main():
         acc_title = 'CIFAR-10 LR Finder Accuracy  (no scheduling)'
     )
     ns_train_fig.savefig('figures/ex_lr_finder_train_no_sched_output.png', bbox_inches='tight')
+
+    # Plot accuracy comparison
+    acc_fig, acc_ax = plt.subplots()
+    acc_ax.plot(np.arange(len(no_sched_trainer.get_acc_history())), no_sched_trainer.get_acc_history())
+    acc_ax.plot(np.arange(len(trainer.get_acc_history())), trainer.get_acc_history())
+    acc_ax.set_title('Accuracy comparison')
+    acc_ax.set_xlabel('Epochs')
+    acc_ax.set_ylabel('Accuracy')
+    acc_ax.legend(['no scheduling', 'Triangular scheduling'])
+
+    acc_fig.savefig('figures/ex_lr_finder_acc_compare.png')
 
 
 def get_parser():
@@ -226,7 +237,7 @@ def get_parser():
                         )
     parser.add_argument('--lr-min',
                         type=float,
-                        default=2e-4,
+                        default=2e-6,
                         help='Minimum range to search for learning rate'
                         )
     parser.add_argument('--lr-max',
