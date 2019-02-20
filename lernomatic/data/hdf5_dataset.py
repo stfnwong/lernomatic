@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import Dataset
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class HDF5Dataset(Dataset):
@@ -40,6 +40,10 @@ class HDF5Dataset(Dataset):
             feature = feature.unsqueeze(0)
 
         if self.label_max_dim > 0 and len(label.shape) > self.label_max_dim:
+            label = torch.squeeze(label, self.label_max_dim-1)
+
+        # Sort of hack...
+        if self.label_max_dim == 1:
             label = torch.squeeze(label, 0)
 
         if self.transform is not None:

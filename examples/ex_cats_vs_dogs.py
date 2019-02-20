@@ -53,6 +53,7 @@ def main():
             GLOBAL_OPTS['train_dataset'],
             feature_name = 'images',
             label_name = 'labels',
+            label_max_dim = 1,
             transform=normalize
         )
 
@@ -60,6 +61,7 @@ def main():
             GLOBAL_OPTS['test_dataset'],
             feature_name = 'images',
             label_name = 'labels',
+            label_max_dim = 1,
             transform=normalize
         )
     else:
