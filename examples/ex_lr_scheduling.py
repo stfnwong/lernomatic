@@ -83,6 +83,8 @@ def triangular_sched():
     )
     train_fig.savefig('figures/ex_triangular_sched_cifar10.png', bbox_inches='tight')
 
+    return triangular_sched_trainer.get_acc_history()
+
 
 def triangular2_sched():
     # get a model and trainer
@@ -144,6 +146,7 @@ def triangular2_sched():
     )
     train_fig.savefig('figures/ex_triangular2_sched_cifar10.png', bbox_inches='tight')
 
+    return triangular2_sched_trainer.get_acc_history()
 
 def step_sched():
     # get a model and trainer
@@ -207,6 +210,7 @@ def step_sched():
     )
     train_fig.savefig('figures/ex_step_sched_cifar10.png', bbox_inches='tight')
 
+    return step_sched_trainer.get_acc_history()
 
 def exp_decay_sched():
     # get a model and trainer
@@ -270,6 +274,8 @@ def exp_decay_sched():
     )
     train_fig.savefig('figures/ex_exp_decay_sched_cifar10.png', bbox_inches='tight')
 
+    return exp_decay_trainer.get_acc_history()
+
 def triangular_exp_sched():
     # get a model and trainer
     triangular_sched_model = cifar.CIFAR10Net()
@@ -329,6 +335,8 @@ def triangular_exp_sched():
         acc_title = 'CIFAR-10 LR Finder Accuracy '
     )
     train_fig.savefig('figures/ex_triangular_exp_sched_cifar10.png', bbox_inches='tight')
+
+    return triangular_exp_sched_trainer.get_acc_history()
 
 
 def triangular2_exp_sched():
@@ -392,6 +400,7 @@ def triangular2_exp_sched():
     )
     train_fig.savefig('figures/ex_triangular2_exp_sched_cifar10.png', bbox_inches='tight')
 
+    return triangular2_exp_sched_trainer.get_acc_history()
 
 def warm_restart_sched():
     warm_restart_model = cifar.CIFAR10Net()
@@ -453,6 +462,7 @@ def warm_restart_sched():
     )
     train_fig.savefig('figures/ex_warm_restart_sched_cifar10.png', bbox_inches='tight')
 
+    return warm_restart_trainer.get_acc_history()
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -595,10 +605,36 @@ if __name__ == '__main__':
             print('%s : %s' % (str(k), str(v)))
 
     # Execute each of the trainers in turn
-    triangular_sched()
-    triangular2_sched()
-    step_sched()
-    exp_decay_sched()
-    triangular_exp_sched()
-    triangular2_exp_sched()
+    tri_acc = triangular_sched()
+    tri2_acc = triangular2_sched()
+    step_acc = step_sched()
+    exp_decay_acc = exp_decay_sched()
+    tri_exp_acc = triangular_exp_sched()
+    tri2_exp_acc = triangular2_exp_sched()
     #warm_restart_sched()
+
+    legend_list = ['tri',
+                   'tri2',
+                   'step',
+                   'exp_decay',
+                   'tri_exp_decay',
+                   'tri2_exp_decay'
+                   ]
+    acc_list = [tri_acc,
+                tri2_acc,
+                step_acc,
+                exp_decay_acc,
+                tri_exp_acc,
+                tri2_exp_acc]
+
+    acc_fig, acc_ax = plt.subplots()
+
+    for acc in acc_list:
+        acc_ax.plot(np.arange(len(acc)), acc)
+    acc_ax.set_xlabel('Epoch')
+    acc_ax.set_ylabel('Accuracy')
+    acc_ax.legend(legend_list)
+    acc_ax.set_title('Accuracy comparison for learning rate schedules')
+
+    print('Saving figure...')
+    acc_fig.savefig('figures/ex_lr_schedule_acc_compare.png')

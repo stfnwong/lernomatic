@@ -16,9 +16,9 @@ import torchvision
 # data split stuff
 #from sklearn.model_selection import test_train_split
 # unit under test
-from lernomatic.train import cifar10_trainer
+from lernomatic.train import cifar_trainer
 # we use a CIFAR-10 model for testing the trainer
-from lernomatic.models import cifar10
+from lernomatic.models import cifar
 # vis tools
 from lernomatic.vis import vis_loss_history
 
@@ -53,10 +53,10 @@ class TestTrainer(unittest.TestCase):
         test_checkpoint = 'checkpoint/trainer_test_save_load.pkl'
 
         # get a model
-        model = cifar10.CIFAR10Net()
+        model = cifar.CIFAR10Net()
         # get a trainer
         test_num_epochs = 1
-        src_tr = cifar10_trainer.CIFAR10Trainer(
+        src_tr = cifar_trainer.CIFAR10Trainer(
             model,
             num_epochs = test_num_epochs,
             save_every = 0,
@@ -74,7 +74,7 @@ class TestTrainer(unittest.TestCase):
         src_tr.save_checkpoint(test_checkpoint)
         # Make a new trainer and load all parameters into that
         # I guess we need to put some kind of loader and model here...
-        dst_tr = cifar10_trainer.CIFAR10Trainer(
+        dst_tr = cifar_trainer.CIFAR10Trainer(
             model,
             device_id = GLOBAL_OPTS['device_id']
         )
@@ -121,10 +121,10 @@ class TestTrainer(unittest.TestCase):
 
         test_checkpoint = 'checkpoint/trainer_test_save_load_acc.pkl'
 
-        model = cifar10.CIFAR10Net()
+        model = cifar.CIFAR10Net()
         # Get trainer object
         test_num_epochs = 10
-        src_tr = cifar10_trainer.CIFAR10Trainer(
+        src_tr = cifar_trainer.CIFAR10Trainer(
             model,
             save_every = 0,
             print_every = 50,
@@ -147,7 +147,7 @@ class TestTrainer(unittest.TestCase):
         # Now try to load a checkpoint and ensure that there is an
         # acc history attribute that is not None
         # TODO : check that we restore the loaders  as well
-        dst_tr = cifar10_trainer.CIFAR10Trainer(
+        dst_tr = cifar_trainer.CIFAR10Trainer(
             model,
             device_id = GLOBAL_OPTS['device_id'],
             verbose = self.verbose
@@ -196,10 +196,10 @@ class TestTrainer(unittest.TestCase):
         print('======== TestTrainer.test_train ')
 
         test_checkpoint = 'checkpoint/trainer_train_test.pkl'
-        model = cifar10.CIFAR10Net()
+        model = cifar.CIFAR10Net()
         # Get trainer object
         test_num_epochs = 10
-        trainer = cifar10_trainer.CIFAR10Trainer(
+        trainer = cifar_trainer.CIFAR10Trainer(
             model,
             save_every = 0,
             print_every = 50,

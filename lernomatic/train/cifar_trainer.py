@@ -28,7 +28,6 @@ class CIFAR10Trainer(trainer.Trainer):
         param = self.get_trainer_params()
         for k, v in param.items():
             s.append('\t [%s] : %s\n' % (str(k), str(v)))
-
         return ''.join(s)
 
     def _init_optimizer(self):

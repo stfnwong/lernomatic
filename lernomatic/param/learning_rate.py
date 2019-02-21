@@ -33,7 +33,7 @@ class LRFinder(object):
         # gradient params
         self.grad_thresh    = kwargs.pop('grad_thresh', 0.002)
         # other
-        self.acc_test       = kwargs.pop('acc_test', False)
+        self.acc_test       = kwargs.pop('acc_test', True)
         self.print_every    = kwargs.pop('print_every', 20)
         self.verbose        = kwargs.pop('verbose', False)
 
@@ -93,9 +93,6 @@ class LRFinder(object):
         if self.trainer.test_loader is None:
             raise ValueError('No test_loader in trainer')
 
-    def find_lr(self):
-        raise NotImplementedError('This method should be implemented in subclass')
-
     def get_lr_range(self):
         # Heuristically get a range
         lr_max = (10.0 ** self.log_lr_history[-2]) * self.lr_max_scale
@@ -103,6 +100,46 @@ class LRFinder(object):
 
         return (lr_min, lr_max)
 
+    def find(self):
+        raise NotImplementedError('This method should be implemented in subclass')
+
+    # plotting
+    def plot_lr_vs_acc(self, ax, itle=None, log=False):
+        if len(self.log_lr_history) < 1:
+            raise ValueError('[%s] no learning rate history' % repr(self))
+        if len(self.acc_history) < 1:
+            raise ValueError('[%s] no accuracy history' % repr(self))
+
+        if log is True:
+            ax.plot(np.asarray(self.log_lr_history), np.asarray(self.acc_history))
+        else:
+            ax.plot(10 ** np.asarray(self.log_lr_history), np.asarray(self.acc_history))
+        ax.set_xlabel('Learning rate')
+        ax.set_ylabel('Accuracy')
+        if title is not None:
+            ax.set_title(title)
+        else:
+            ax.set_title('Accuracy vs. Learning rate')
+
+    def plot_lr_vs_loss(self, ax, title=None, log=False):
+        if len(self.log_lr_history) < 1:
+            raise ValueError('[%s] no learning rate history' % repr(self))
+        if len(self.acc_history) < 1:
+            raise ValueError('[%s] no accuracy history' % repr(self))
+
+        if log is True:
+            ax.plot(np.asarray(self.lr_log_history), np.asarray(self.smooth_loss_history))
+        else:
+            ax.plot(10 ** np.asarray(self.lr_log_history), np.asarray(self.smooth_loss_history))
+        ax.set_xlabel('Learning Rate')
+        ax.set_ylabel('Smooth loss')
+        if title is not None:
+            ax.set_title(title)
+        else:
+            ax.set_title('Learning rate vs. Loss')
+
+
+# ======== Finder schedules ========  #
 
 class LogFinder(LRFinder):
     """
@@ -171,16 +208,9 @@ class LogFinder(LRFinder):
                 # accuracy test
                 if self.acc_test is True:
                     if self.trainer.test_loader is not None:
-                        self.acc_test(self.trainer.test_loader, batch_idx)
+                        self.acc(self.trainer.test_loader, batch_idx)
                     else:
-                        self.acc_test(self.trainer.train_loader, batch_idx)
-
-                if smooth_loss > self.explode_thresh * self.best_loss:
-                    explode = True
-                    print('[FIND_LR] loss hit explode threshold [%.3f x best (%f)]' %\
-                          (self.explode_thresh, self.best_loss)
-                    )
-                    break
+                        self.acc(self.trainer.train_loader, batch_idx)
 
                 # update history
                 self.smooth_loss_history.append(smooth_loss)
@@ -192,6 +222,13 @@ class LogFinder(LRFinder):
                 self.learning_rate *= self.lr_mult
                 self.trainer.set_learning_rate(self.learning_rate)
 
+                if smooth_loss > self.explode_thresh * self.best_loss:
+                    explode = True
+                    print('[FIND_LR] loss hit explode threshold [%.3f x best (%f)]' %\
+                          (self.explode_thresh, self.best_loss)
+                    )
+                    break
+
             if explode is True:
                 break
 
@@ -201,12 +238,9 @@ class LogFinder(LRFinder):
         print('[FIND_LR] : restoring model state')
         self.trainer.model.state_dict(self.load_model_params())
 
-    def find_range(self):
-        return NotImplementedError
-
-    def acc_test(self, data_loader, batch_idx):
+    def acc(self, data_loader, batch_idx):
         """
-        acc_test()
+        acc()
         Collect accuracy stats while finding learning rate
         """
         test_loss = 0.0

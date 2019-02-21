@@ -8,6 +8,7 @@ Stefan Wong 2019
 import argparse
 from lernomatic.train import cifar_trainer
 from lernomatic.models import cifar
+from lernomatic.vis import vis_loss_history
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -41,6 +42,20 @@ def main():
 
     trainer.train()
 
+    # Visualise the output
+    train_fig, train_ax = vis_loss_history.get_figure_subplots()
+    vis_loss_history.plot_train_history_2subplots(
+        train_ax,
+        trainer.get_loss_history(),
+        acc_history = trainer.get_acc_history(),
+        cur_epoch = trainer.cur_epoch,
+        iter_per_epoch = trainer.iter_per_epoch,
+        loss_title = 'CIFAR-10 Training Loss',
+        acc_title = 'CIFAR-10 Training Accuracy '
+    )
+    train_fig.savefig(GLOBAL_OPTS['fig_name'], bbox_inches='tight')
+
+
 def get_parser():
     parser = argparse.ArgumentParser()
     # General opts
@@ -63,6 +78,11 @@ def get_parser():
                         type=int,
                         default=1,
                         help='Number of workers to use when generating HDF5 files'
+                        )
+    parser.add_argument('--fig-name',
+                        type=str,
+                        default='figures/cifar10net_train.png',
+                        help='Name of file to place output figure into'
                         )
     # Device options
     parser.add_argument('--device-id',
