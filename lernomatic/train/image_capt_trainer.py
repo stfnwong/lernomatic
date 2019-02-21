@@ -352,6 +352,9 @@ class ImageCaptTrainer(trainer.Trainer):
 
         start = time.time()
         for n, (imgs, caps, caplens) in enumerate(self.train_loader):
+            #print('Processing batch [%d / %d] imgs.shape : %s, caps.shape: %s, caplens.shape %s' %\
+            #      (n, len(self.train_loader), str(imgs.shape), str(caps.shape), str(caplens.shape))
+            #)
             data_time.update(time.time() - start)
             # move data to device
             imgs    = imgs.to(self.device)
@@ -360,17 +363,26 @@ class ImageCaptTrainer(trainer.Trainer):
 
             # forward pass
             enc_imgs = self.encoder(imgs)
+            #print('Processing batch [%d / %d] , enc_img.shape : %s' % (n, len(self.train_loader), str(enc_imgs.shape)))
             scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder(enc_imgs, caps, caplens)
             # since we decoded stating with <start> the targets are all words after
             # <start> and up to <end>
             targets = caps_sorted[:, 1:]
             # remove timesteps that we didn't decode at or are pads
             # pack_padded_sequence is an easy trick to do this
-            scores, _  = pack_padded_sequence(scores, decode_lengths, batch_first=True)
-            targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
+            packed_scores  = pack_padded_sequence(scores, decode_lengths, batch_first=True)
+            packed_targets = pack_padded_sequence(targets, decode_lengths, batch_first=True)
+
+            #print('scores.shape : %s   targets.shape  : %s' % (str(packed_scores[0].shape), str(packed_targets[0].shape)))
+            # Hack to modify lengths <- NOTE: this doesn't work
+            #if packed_scores[0].shape[0] != packed_targets[0].shape[0]:
+            #    packed_scores[0] = packed_scores[0][0 : packed_targets[0].shape[0], :]
+            #    print('Hacked packed_scores length on batch %d, new packed_scores.shape : %s' %\
+            #          (n, str(packed_scores[0].shape))
+            #)
 
             # compute loss
-            loss = self.criterion(scores, targets)
+            loss = self.criterion(packed_scores[0], packed_targets[0])
             # add doubly-stochastic attention regularization
             loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
             # backprop
@@ -391,7 +403,7 @@ class ImageCaptTrainer(trainer.Trainer):
                 self.encoder_optim.step()
 
             # track metrics
-            top5 = ica_accuracy(scores, targets, 5)
+            top5 = ica_accuracy(packed_scores[0], packed_targets[0], 5)
             losses.update(loss.item(), sum(decode_lengths))
             top_5_acc.update(top5, sum(decode_lengths))
             batch_time.update(time.time() - start)
@@ -400,8 +412,8 @@ class ImageCaptTrainer(trainer.Trainer):
 
             # print status
             if n % self.print_every == 0:
-                print('[TRAIN] Epoch : [%d] iter [%d/%d]' % (self.cur_epoch, n, len(self.train_loader)), end=' ')
-                print('Data time  {data_time.val:.3f}  ({data_time.avg:.3f})'.format(data_time=data_time), end='  ')
+                print('[TRAIN] Epoch : [%d / %d]    iter [%d/%d]' % (self.cur_epoch, self.num_epochs, n, len(self.train_loader)))
+                print('[TRAIN] Data time  {data_time.val:.3f}  ({data_time.avg:.3f})'.format(data_time=data_time), end='  ')
                 print('Batch time {batch_time.val:.3f} ({batch_time.avg:.3f})'.format(batch_time=batch_time))
                 print('[TRAIN] Loss       {loss.val:.4f}       ({loss.avg:.4f})'.format(loss=losses))
                 print('[TRAIN] Top-5 Acc  {top5.val:.3f}       ({top5.avg:.3f})'.format(top5=top_5_acc))
