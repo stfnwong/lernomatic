@@ -13,7 +13,6 @@ import numpy as np
 #from pudb import set_trace; set_trace()
 
 
-# TODO : layer freeze/unfreeze ?
 class Trainer(object):
     """
     Trainer
@@ -39,6 +38,7 @@ class Trainer(object):
         self.verbose         = kwargs.pop('verbose', True)
         self.print_every     = kwargs.pop('print_every', 10)
         self.save_every      = kwargs.pop('save_every', 1000)  # unit is iterations
+        self.save_best       = kwargs.pop('save_best', False)
         # Device options
         self.device_id       = kwargs.pop('device_id', -1)
         # dataset/loader options
@@ -55,6 +55,8 @@ class Trainer(object):
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
         self.best_acc = 0.0
+        if self.save_every > 0:
+            self.save_best = True
 
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()
@@ -236,6 +238,25 @@ class Trainer(object):
             return None
         return self.acc_history[0 : self.acc_iter]
 
+    # Layer freeze / unfreeze
+    def freeze_to(self, layer_num):
+        """
+        Freeze layers in model from the start of the network forwards
+        """
+        for n, param in enumerate(self.model.parameters()):
+            param.requires_grad = False
+            if n >= layer_num:
+                break
+
+    def unfreeze_to(self, layer_num):
+        """
+        Unfreeze layers in model from the start of the network forwards
+        """
+        for n, param in enumerate(self.model.parameters()):
+            param.requires_grad = True
+            if n >= layer_num:
+                break
+
     # Basic training/test routines. Specialize these when needed
     def train_epoch(self):
         """
@@ -322,8 +343,8 @@ class Trainer(object):
         # save the best weights
         if acc > self.best_acc:
             self.best_acc = acc
-            if self.save_every > 0:
-                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name
+            if self.save_best is True:
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name + '.pkl'
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
@@ -342,7 +363,5 @@ class Trainer(object):
 
             if self.test_loader is not None:
                 self.test_epoch()
-            # TODO: another validation fold?
-            #if self.val_loader is not None:
-            #    self.val_epoch()
+
             self.cur_epoch += 1

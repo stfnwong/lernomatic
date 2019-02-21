@@ -71,16 +71,6 @@ class CVDTrainer(trainer.Trainer):
             # accuracy
             _, pred = torch.max(output, 1)
             correct += torch.sum(pred == labels.data).item()
-            #if self.device_id < 0:
-            #    correct += torch.sum(pred == labels.data).item()
-            #else:
-            #    correct += torch.sum(pred.type(torch.cuda.LongTensor) == labels.data.type(torch.cuda.LongTensor)).item()
-            #    #correct += pred.eq(labels.data.view(1, -1).expand_as(pred))
-
-            #output = output.t()
-            #correct += output.eq(labels.data.view(1, -1).expand_as(output))
-            #pred = output.data.max(1, keepdim=True)[1]
-            #correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
             if (n % self.print_every) == 0:
                 print('[TEST]  :   Epoch       iteration         Test Loss    Correct    Total ')
