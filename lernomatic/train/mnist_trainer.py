@@ -97,3 +97,5 @@ class MNISTTrainer(trainer.Trainer):
         self.model.load_state_dict(checkpoint['model'])
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint['optimizer'])
+        self._init_device()
+        self._send_to_device()

@@ -95,7 +95,8 @@ class WideResnet(nn.Module):
         super(WideResnet, self).__init__()
 
         num_channels = [16, 16 * w_factor, 32 * w_factor, 64 * w_factor]
-        assert((depth - 4) % 6 == 0)
+        if (depth-4) % 6 != 0:
+            raise ValueError('depth-4 must be divisible by 6 (current depth = %d' % depth)
         n = int((depth - 4) / 6)
 
         # first conv layer before  any network block

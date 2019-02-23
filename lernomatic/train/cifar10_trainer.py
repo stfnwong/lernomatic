@@ -17,12 +17,19 @@ class CIFAR10Trainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs):
         self.data_dir       = kwargs.pop('data_dir', 'data/')
         super(CIFAR10Trainer, self).__init__(model, **kwargs)
-
-        # init the criterion for MNIST
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def __repr__(self):
-        return 'MNISTTrainer'
+        return 'CIFAR10Trainer'
+
+    def __str__(self):
+        s = []
+        s.append('CIFAR10Trainer :\n')
+        param = self.get_trainer_params()
+        for k, v in param.items():
+            s.append('\t [%s] : %s\n' % (str(k), str(v)))
+
+        return ''.join(s)
 
     def _init_optimizer(self):
         if self.model is not None:
@@ -103,7 +110,7 @@ class CIFAR10Trainer(trainer.Trainer):
     def load_checkpoint(self, fname):
         checkpoint = torch.load(fname)
         self.set_trainer_params(checkpoint['trainer'])
-        self.model = cifar10.CIFAR10()
+        self.model = cifar10.CIFAR10Net()
         self.model.load_state_dict(checkpoint['model'])
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint['optimizer'])

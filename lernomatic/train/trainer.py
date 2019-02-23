@@ -12,8 +12,14 @@ import numpy as np
 # debug
 #from pudb import set_trace; set_trace()
 
-# Other trainers should inherit from this...
+
 class Trainer(object):
+    """
+    Trainer
+
+    Base class for model trainers in lernomatic. Note that this is not
+    an abstract class and can be instantiated.
+    """
     def __init__(self, model=None, **kwargs):
         self.model           = model
         # Training loop options
@@ -21,7 +27,7 @@ class Trainer(object):
         self.learning_rate   = kwargs.pop('learning_rate', 1e-4)
         self.momentum        = kwargs.pop('momentum', 0.5)
         self.weight_decay    = kwargs.pop('weight_decay', 1e-5)
-        self.loss_function   = kwargs.pop('loss_function', 'BCELoss')
+        self.loss_function   = kwargs.pop('loss_function', 'CrossEntropyLoss')
         self.optim_function  = kwargs.pop('optim_function', 'Adam')
         self.cur_epoch       = 0
         # validation options
@@ -32,6 +38,7 @@ class Trainer(object):
         self.verbose         = kwargs.pop('verbose', True)
         self.print_every     = kwargs.pop('print_every', 10)
         self.save_every      = kwargs.pop('save_every', 1000)  # unit is iterations
+        self.save_best       = kwargs.pop('save_best', False)
         # Device options
         self.device_id       = kwargs.pop('device_id', -1)
         # dataset/loader options
@@ -42,9 +49,14 @@ class Trainer(object):
         self.val_dataset     = kwargs.pop('val_dataset', None)
         self.shuffle         = kwargs.pop('shuffle', True)
         self.num_workers     = kwargs.pop('num_workers' , 1)
+        # parameter scheduling
+        self.lr_scheduler    = kwargs.pop('lr_scheduler', None)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
+        self.best_acc = 0.0
+        if self.save_every > 0:
+            self.save_best = True
 
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()
@@ -64,10 +76,18 @@ class Trainer(object):
     def __repr__(self):
         return 'Trainer (%d epochs)' % self.num_epochs
 
+    def __str__(self):
+        s = []
+        s.append('Trainer :\n')
+        param = self.get_trainer_params()
+        for k, v in param.items():
+            s.append('\t [%s] : %s\n' % (str(k), str(v)))
+
+        return ''.join(s)
+
     def _init_optimizer(self):
         if self.model is not None:
             if hasattr(torch.optim, self.optim_function):
-                #self.optimizer = torch.optim.Adam(
                 self.optimizer = getattr(torch.optim, self.optim_function)(
                     self.model.parameters(),
                     lr = self.learning_rate,
@@ -80,7 +100,8 @@ class Trainer(object):
 
         # Get a loss function
         if hasattr(nn, self.loss_function):
-            self.criterion = nn.BCELoss()
+            loss_obj = getattr(nn, self.loss_function)
+            self.criterion = loss_obj()
         else:
             raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
 
@@ -112,7 +133,7 @@ class Trainer(object):
         else:
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset,
-                batch_size = self.batch_size,
+                batch_size = self.test_batch_size,
                 shuffle    = self.shuffle
             )
 
@@ -125,7 +146,7 @@ class Trainer(object):
     def _send_to_device(self):
         self.model = self.model.to(self.device)
 
-    # default param options
+    # ======== getters, setters
     def get_trainer_params(self):
         params = dict()
         params['num_epochs']      = self.num_epochs
@@ -170,15 +191,73 @@ class Trainer(object):
             return None
         return self.model.state_dict()
 
-    # Default save and load methods
-    def save_state(self, fname):
-        raise NotImplementedError('This method should be implemented in the derived class')
+    # common getters/setters
+    def get_learning_rate(self):
+        return self.optimizer.param_groups[0]['lr']
+        #optim_state = self.optimizer.state_dict()
+        #return optim_state['lr']
 
-    def load_state(self, fname):
-        raise NotImplementedError('This method should be implemented in the derived class')
+    def get_momentum(self):
+        optim_state = self.optimizer.state_dict()
+        if 'momentum' in optim_state:
+            return optim_state['momentum']
+        return None
+
+    def set_learning_rate(self, lr, param_zero=True):
+        if param_zero:
+            self.optimizer.param_groups[0]['lr'] = lr
+        else:
+            for g in self.optimizer.param_groups:
+                g['lr'] = lr
+
+    def set_momentum(self, momentum):
+        optim_state = self.optimizer.state_dict()
+        if 'momentum' in optim_state:
+            for g in self.optimizer.param_groups:
+                g['momentum'] = momentum
+
+    def set_lr_scheduler(self, lr_scheduler):
+        self.lr_scheduler = lr_scheduler
+
+    def get_lr_scheduler(self):
+        return self.lr_scheduler
+
+    # history getters - these provide the history up to the current iteration
+    def get_loss_history(self):
+        if self.loss_iter == 0:
+            return None
+        return self.loss_history[0 : self.loss_iter]
+
+    def get_test_loss_history(self):
+        if self.test_loss_iter == 0:
+            return None
+        return self.test_loss_history[0 : self.test_loss_iter]
+
+    def get_acc_history(self):
+        if self.acc_iter == 0:
+            return None
+        return self.acc_history[0 : self.acc_iter]
+
+    # Layer freeze / unfreeze
+    def freeze_to(self, layer_num):
+        """
+        Freeze layers in model from the start of the network forwards
+        """
+        for n, param in enumerate(self.model.parameters()):
+            param.requires_grad = False
+            if n >= layer_num:
+                break
+
+    def unfreeze_to(self, layer_num):
+        """
+        Unfreeze layers in model from the start of the network forwards
+        """
+        for n, param in enumerate(self.model.parameters()):
+            param.requires_grad = True
+            if n >= layer_num:
+                break
 
     # Basic training/test routines. Specialize these when needed
-
     def train_epoch(self):
         """
         TRAIN_EPOCH
@@ -192,9 +271,9 @@ class Trainer(object):
             target = target.to(self.device)
 
             # optimization
-            self.optimizer.zero_grad()
             output = self.model(data)
             loss   = self.criterion(output, target)
+            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
 
@@ -217,7 +296,16 @@ class Trainer(object):
                     '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
                 self.save_history(hist_name)
 
+            # perform any scheduling
+            if self.lr_scheduler is not None:
+                new_lr = self.lr_scheduler.get_lr(self.loss_iter)
+                self.set_learning_rate(new_lr)
+
     def test_epoch(self):
+        """
+        TEST_EPOCH
+        Run a single epoch on the test dataset
+        """
         self.model.eval()
         test_loss = 0.0
         correct = 0
@@ -247,17 +335,32 @@ class Trainer(object):
         acc = correct / len(self.test_loader.dataset)
         self.acc_history[self.acc_iter] = acc
         self.acc_iter += 1
-        print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+        print('[TEST]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
               (avg_test_loss, correct, len(self.test_loader.dataset),
                100.0 * acc)
         )
 
+        # save the best weights
+        if acc > self.best_acc:
+            self.best_acc = acc
+            if self.save_best is True:
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name + '.pkl'
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+                self.save_checkpoint(ck_name)
+                hist_name = self.checkpoint_dir + '/' + 'best_' + self.checkpoint_name + '_history.pkl'
+                if self.verbose:
+                    print('\t Saving history to file [%s] ' % str(hist_name))
+                self.save_history(hist_name)
+
     def train(self):
+        """
+        TRAIN
+        Standard training routine
+        """
         for n in range(self.num_epochs):
             self.train_epoch()
 
             if self.test_loader is not None:
                 self.test_epoch()
-            #if self.val_loader is not None:
-            #    self.val_epoch()
             self.cur_epoch += 1
