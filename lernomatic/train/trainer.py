@@ -28,6 +28,7 @@ class Trainer(object):
         self.weight_decay    = kwargs.pop('weight_decay', 1e-5)
         self.loss_function   = kwargs.pop('loss_function', 'BCELoss')
         self.optim_function  = kwargs.pop('optim_function', 'Adam')
+        self.start_epoch     = kwargs.pop('start_epoch', 0)
         self.cur_epoch       = 0
         # validation options
         # checkpoint options
@@ -36,7 +37,7 @@ class Trainer(object):
         # Internal options
         self.verbose         = kwargs.pop('verbose', True)
         self.print_every     = kwargs.pop('print_every', 10)
-        self.save_every      = kwargs.pop('save_every', 1000)  # unit is iterations
+        self.save_every      = kwargs.pop('save_every', -1)  # unit is iterations, -1 = save every epoch
         # Device options
         self.device_id       = kwargs.pop('device_id', -1)
         # dataset/loader options
@@ -49,6 +50,7 @@ class Trainer(object):
         self.num_workers     = kwargs.pop('num_workers' , 1)
         # parameter scheduling
         self.lr_scheduler    = kwargs.pop('lr_scheduler', None)
+        self.mtm_scheduler   = kwargs.pop('mtm_scheduler', None)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
@@ -143,6 +145,12 @@ class Trainer(object):
     def _send_to_device(self):
         self.model = self.model.to(self.device)
 
+    def save_checkpoint(self, fname):
+        raise NotImplementedError
+
+    def load_checkpoint(self, fname):
+        raise NotImplementedError
+
     # ======== getters, setters
     def get_trainer_params(self):
         params = dict()
@@ -191,14 +199,6 @@ class Trainer(object):
     # common getters/setters
     def get_learning_rate(self):
         return self.optimizer.param_groups[0]['lr']
-        #optim_state = self.optimizer.state_dict()
-        #return optim_state['lr']
-
-    def get_momentum(self):
-        optim_state = self.optimizer.state_dict()
-        if 'momentum' in optim_state:
-            return optim_state['momentum']
-        return None
 
     def set_learning_rate(self, lr, param_zero=True):
         if param_zero:
@@ -206,6 +206,12 @@ class Trainer(object):
         else:
             for g in self.optimizer.param_groups:
                 g['lr'] = lr
+
+    def get_momentum(self):
+        optim_state = self.optimizer.state_dict()
+        if 'momentum' in optim_state:
+            return optim_state['momentum']
+        return None
 
     def set_momentum(self, momentum):
         optim_state = self.optimizer.state_dict()
@@ -218,6 +224,12 @@ class Trainer(object):
 
     def get_lr_scheduler(self):
         return self.lr_scheduler
+
+    def set_mtm_scheduler(self, mtm_scheduler):
+        self.mtm_scheduler = mtm_scheduler
+
+    def get_mtm_scheduler(self):
+        return self.mtm_scheduler
 
     # history getters - these provide the history up to the current iteration
     def get_loss_history(self):
@@ -279,6 +291,10 @@ class Trainer(object):
                 new_lr = self.lr_scheduler.get_lr(self.loss_iter)
                 self.set_learning_rate(new_lr)
 
+            if self.mtm_scheduler is not None:
+                new_mtm = self.mtm_scheduler.get_mtm(self.loss_iter)
+                self.set_momentum(new_mtm)
+
     def test_epoch(self):
         """
         TEST_EPOCH
@@ -336,6 +352,8 @@ class Trainer(object):
         TRAIN
         Standard training routine
         """
+        if self.save_every == -1:
+            self.save_every = len(self.train_loader)
         for n in range(self.num_epochs):
             self.train_epoch()
 
