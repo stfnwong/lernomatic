@@ -9,14 +9,26 @@ import sys
 import argparse
 import unittest
 import torch
+import matplotlib.pyplot as plt
 # units under test
 from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
+from lernomatic.vis import vis_loss_history
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
+
+def get_figure_subplots(num_subplots=2):
+    fig = plt.figure()
+    ax = []
+    for p in range(num_subplots):
+        sub_ax = fig.add_subplot(num_subplots, 1, (p+1))
+        ax.append(sub_ax)
+
+    return fig, ax
+
 
 class TestResnetTrainer(unittest.TestCase):
     def setUp(self):
@@ -46,9 +58,6 @@ class TestResnetTrainer(unittest.TestCase):
             learning_rate = self.test_learning_rate,
             # device
             device_id = GLOBAL_OPTS['device_id'],
-            # checkpoint
-            #checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
-            #checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
             # display,
             print_every = GLOBAL_OPTS['print_every'],
             save_every = 0,
@@ -115,8 +124,73 @@ class TestResnetTrainer(unittest.TestCase):
         for n in range(len(src_tr.acc_history)):
             self.assertEqual(src_tr.acc_history[n], dst_tr.acc_history[n])
 
+        fig, ax = get_figure_subplots()
+        vis_loss_history.plot_train_history_2subplots(
+            ax,
+            src_tr.loss_history,
+            acc_history = src_tr.acc_history,
+            cur_epoch = src_tr.cur_epoch,
+            iter_per_epoch = src_tr.iter_per_epoch
+        )
+        fig.savefig('figures/resnet_trainer_train_test_history.png', bbox_inches='tight')
 
         print('======== TestResnetTrainer.save_load_checkpoint_train_test <END>')
+
+    def test_train(self):
+        print('======== TestResnetTrainer.test_train ')
+
+        test_checkpoint_name = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_train_checkpoint.pkl'
+        test_history_name    = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_train_history.pkl'
+        train_num_epochs = 100
+        train_batch_size = 128
+        # get a model
+        model = resnets.WideResnet(
+            self.resnet_depth,
+            10,     # using CIFAR-10 data
+            1
+        )
+        # get a traner
+        trainer = resnet_trainer.ResnetTrainer(
+            model,
+            # training parameters
+            batch_size = train_batch_size,
+            num_epochs = train_num_epochs,
+            learning_rate = self.test_learning_rate,
+            # device
+            device_id = GLOBAL_OPTS['device_id'],
+            # checkpoint
+            checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
+            checkpoint_name = 'resnet_trainer_test',
+            # display,
+            print_every = GLOBAL_OPTS['print_every'],
+            save_every = 5000,
+            verbose = self.verbose
+        )
+
+        if self.verbose:
+            print('Created %s object' % repr(trainer))
+            print(trainer)
+
+        print('Training model %s for %d epochs (batch size = %d)' %\
+              (repr(trainer), train_num_epochs, train_batch_size)
+        )
+        trainer.train()
+
+        # save the final checkpoint
+        trainer.save_checkpoint(test_checkpoint_name)
+        trainer.save_history(test_history_name)
+
+        fig, ax = get_figure_subplots()
+        vis_loss_history.plot_train_history_2subplots(
+            ax,
+            trainer.loss_history,
+            acc_history = trainer.acc_history,
+            cur_epoch = trainer.cur_epoch,
+            iter_per_epoch = trainer.iter_per_epoch
+        )
+        fig.savefig('figures/resnet_trainer_train_history.png', bbox_inches='tight')
+
+        print('======== TestResnetTrainer.test_train <END>')
 
 
 # Entry point

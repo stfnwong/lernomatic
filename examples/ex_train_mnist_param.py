@@ -1,27 +1,38 @@
 """
-EX_TRAIN_CIFAR10
-Train a classifier on the CIFAR10 dataset
+EX_TRAIN_MNIST
+Train a classifier on the MNIST handwritten digits example
 
 Stefan Wong 2019
 """
 
 import argparse
-from lernomatic.train import cifar_trainer
-from lernomatic.models import cifar
-from lernomatic.vis import vis_loss_history
+import numpy as np
+import matplotlib.pyplot as plt
+from lernomatic.train import mnist_trainer
+from lernomatic.models import mnist
+# add learning rate scheduler
+from lernomatic.train import schedule
+from lernomatic.param import learning_rate
 
 # debug
 #from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
+def differentiate(function):
+    dx = np.zeros(len(function))
+    for n in range(len(function)-1):
+        dx[n] = function[n+1] - function[n]
+
+    return dx
+
 def main():
 
     # Get a model
-    model = cifar.CIFAR10Net()
+    model = mnist.MNISTNet()
 
     # Get a trainer
-    trainer = cifar_trainer.CIFAR10Trainer(
+    trainer = mnist_trainer.MNISTTrainer(
         model,
         # training parameters
         batch_size = GLOBAL_OPTS['batch_size'],
@@ -40,20 +51,34 @@ def main():
         verbose = GLOBAL_OPTS['verbose']
     )
 
-    trainer.train()
-
-    # Visualise the output
-    train_fig, train_ax = vis_loss_history.get_figure_subplots()
-    vis_loss_history.plot_train_history_2subplots(
-        train_ax,
-        trainer.get_loss_history(),
-        acc_history = trainer.get_acc_history(),
-        cur_epoch = trainer.cur_epoch,
-        iter_per_epoch = trainer.iter_per_epoch,
-        loss_title = 'CIFAR-10 Training Loss',
-        acc_title = 'CIFAR-10 Training Accuracy '
+    # get an LRFinder object
+    find_num_epochs = 8
+    lr_finder = learning_rate.LogSearcher(
+        trainer,
+        lr_min       = GLOBAL_OPTS['lr_min'],
+        lr_max       = GLOBAL_OPTS['lr_max'],
+        num_epochs   = find_num_epochs,
+        explode_thresh = 10,
+        print_every  = 20
     )
-    train_fig.savefig(GLOBAL_OPTS['fig_name'], bbox_inches='tight')
+    print(lr_finder)
+
+    lr_finder.find_lr()
+
+    dx_smooth_loss = differentiate(lr_finder.loss_grad_history)
+    loss_fig, loss_ax = plt.subplots()
+    loss_ax.plot(np.arange(len(lr_finder.smooth_loss_history)), lr_finder.smooth_loss_history, 'b')
+    loss_ax.plot(np.arange(len(lr_finder.loss_grad_history)), lr_finder.loss_grad_history, 'g')
+    loss_ax.plot(np.arange(len(dx_smooth_loss)), dx_smooth_loss, 'r')
+    loss_ax.set_xlabel('Iteration')
+    loss_ax.set_ylabel('2nd order smoothed loss')
+    loss_ax.set_title('Second derivative of smoothed loss')
+    loss_ax.legend(['smoothed loss', 'smooth loss dx', 'smooth loss d2x'])
+    loss_fig.savefig('figures/ex_lr_finder_smooth_loss_d2x.png', bbox_inches='tight')
+
+    #lr_schedule = schedule.TriangularLRSchedule(
+    #)
+    trainer.train()
 
 
 def get_parser():
@@ -78,11 +103,6 @@ def get_parser():
                         type=int,
                         default=1,
                         help='Number of workers to use when generating HDF5 files'
-                        )
-    parser.add_argument('--fig-name',
-                        type=str,
-                        default='figures/cifar10net_train.png',
-                        help='Name of file to place output figure into'
                         )
     # Device options
     parser.add_argument('--device-id',
@@ -135,7 +155,7 @@ def get_parser():
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='cifar10',
+                        default='mnist',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',

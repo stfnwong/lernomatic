@@ -91,16 +91,18 @@ class NetworkBlock(nn.Module):
 
 
 class WideResnet(nn.Module):
-    def __init__(self, depth, num_classes, w_factor=1, drop_rate=0.0):
+    def __init__(self, depth, num_classes, input_channels=3, w_factor=1, drop_rate=0.0):
         super(WideResnet, self).__init__()
 
+        self.depth = depth      # for __str___()
         num_channels = [16, 16 * w_factor, 32 * w_factor, 64 * w_factor]
-        assert((depth - 4) % 6 == 0)
+        if (depth-4) % 6 != 0:
+            raise ValueError('depth-4 must be divisible by 6 (current depth = %d' % depth)
         n = int((depth - 4) / 6)
 
         # first conv layer before  any network block
         self.conv1 = nn.Conv2d(
-            3,
+            input_channels,
             num_channels[0],
             kernel_size = 3,
             stride = 1,
@@ -149,6 +151,13 @@ class WideResnet(nn.Module):
                 m.bias.data.zero_()
             elif isinstance(m, nn.Linear):
                 m.bias.data.zero_()
+
+    def __str__(self):
+        s = []
+        s.append('WideResnet-%d\n' % self.depth)
+        s.append(str(self))
+
+        return ''.join(s)
 
     def forward(self, X):
         out = self.conv1(X)

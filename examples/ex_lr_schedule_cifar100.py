@@ -1,59 +1,28 @@
 """
-EX_TRAIN_CIFAR10
-Train a classifier on the CIFAR10 dataset
+EX_LR_SCHEDULE_CIFAR100
+CIFAR-100 example using the LR Scheduler
 
 Stefan Wong 2019
 """
 
 import argparse
-from lernomatic.train import cifar_trainer
+import numpy as np
+import matplotlib.pyplot as plt
+from lernomatic.param import learning_rate
+from lernomatic.vis import vis_lr
+# we use CIFAR-10 for this example
 from lernomatic.models import cifar
+from lernomatic.train import cifar_trainer
+from lernomatic.train import schedule
+# vis tools
 from lernomatic.vis import vis_loss_history
 
 # debug
 #from pudb import set_trace; set_trace()
 
-GLOBAL_OPTS = dict()
 
 def main():
-
-    # Get a model
-    model = cifar.CIFAR10Net()
-
-    # Get a trainer
-    trainer = cifar_trainer.CIFAR10Trainer(
-        model,
-        # training parameters
-        batch_size = GLOBAL_OPTS['batch_size'],
-        num_epochs = GLOBAL_OPTS['num_epochs'],
-        learning_rate = GLOBAL_OPTS['learning_rate'],
-        momentum = GLOBAL_OPTS['momentum'],
-        weight_decay = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
-        # display,
-        print_every = GLOBAL_OPTS['print_every'],
-        save_every = GLOBAL_OPTS['save_every'],
-        verbose = GLOBAL_OPTS['verbose']
-    )
-
-    trainer.train()
-
-    # Visualise the output
-    train_fig, train_ax = vis_loss_history.get_figure_subplots()
-    vis_loss_history.plot_train_history_2subplots(
-        train_ax,
-        trainer.get_loss_history(),
-        acc_history = trainer.get_acc_history(),
-        cur_epoch = trainer.cur_epoch,
-        iter_per_epoch = trainer.iter_per_epoch,
-        loss_title = 'CIFAR-10 Training Loss',
-        acc_title = 'CIFAR-10 Training Accuracy '
-    )
-    train_fig.savefig(GLOBAL_OPTS['fig_name'], bbox_inches='tight')
+    pass
 
 
 def get_parser():
@@ -63,6 +32,11 @@ def get_parser():
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
+                        )
+    parser.add_argument('--draw-plot',
+                        default=False,
+                        action='store_true',
+                        help='Display plots'
                         )
     parser.add_argument('--print-every',
                         type=int,
@@ -79,10 +53,31 @@ def get_parser():
                         default=1,
                         help='Number of workers to use when generating HDF5 files'
                         )
-    parser.add_argument('--fig-name',
-                        type=str,
-                        default='figures/cifar10net_train.png',
-                        help='Name of file to place output figure into'
+    # Learning rate finder options
+    parser.add_argument('--find-print-every',
+                        type=int,
+                        default=20,
+                        help='How often to print output from learning rate finder'
+                        )
+    parser.add_argument('--find-num-epochs',
+                        type=int,
+                        default=8,
+                        help='Maximum number of epochs to attempt to find learning rate'
+                        )
+    parser.add_argument('--find-explode-thresh',
+                        type=float,
+                        default=4.5,
+                        help='Threshold at which to stop increasing learning rate'
+                        )
+    parser.add_argument('--lr-min',
+                        type=float,
+                        default=2e-4,
+                        help='Minimum range to search for learning rate'
+                        )
+    parser.add_argument('--lr-max',
+                        type=float,
+                        default=1e-1,
+                        help='Maximum range to search for learning rate'
                         )
     # Device options
     parser.add_argument('--device-id',
@@ -92,6 +87,16 @@ def get_parser():
                         )
     # Network options
     # Training options
+    parser.add_argument('--batch-size',
+                        type=int,
+                        default=64,
+                        help='Batch size to use during training'
+                        )
+    parser.add_argument('--test-batch-size',
+                        type=int,
+                        default=64,
+                        help='Batch size to use during testing'
+                        )
     parser.add_argument('--start-epoch',
                         type=int,
                         default=0,
@@ -102,30 +107,16 @@ def get_parser():
                         default=20,
                         help='Epoch to stop training at'
                         )
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
+
     parser.add_argument('--weight-decay',
                         type=float,
-                        default=1e-4,
+                        default=0.0,
                         help='Weight decay to use for optimizer'
                         )
     parser.add_argument('--learning-rate',
                         type=float,
                         default=1e-3,
                         help='Learning rate for optimizer'
-                        )
-    parser.add_argument('--momentum',
-                        type=float,
-                        default=0.5,
-                        help='Momentum for SGD'
-                        )
-    parser.add_argument('--grad-clip',
-                        type=float,
-                        default=5.0,
-                        help='Clip gradients at this (absolute) value'
                         )
     # Data options
     parser.add_argument('--checkpoint-dir',
@@ -135,7 +126,7 @@ def get_parser():
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='cifar10',
+                        default='lr_find_ex_cifar10',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',

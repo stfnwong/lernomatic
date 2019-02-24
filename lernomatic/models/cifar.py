@@ -5,6 +5,7 @@ Model for CIFAR10 example
 Stefan Wong 2019
 """
 
+import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -27,3 +28,18 @@ class CIFAR10Net(nn.Module):
     x = F.relu(self.fc2(x))
     x = self.fc3(x)
     return x
+
+
+# Try CIFAR100 with a pretrained resnet34
+class CIFAR100NetR34(nn.Module):
+    def __init__(self, grad=False):
+        self.net = torchvision.models.resnet56(pretrained=True)
+        for param in self.net.parameters():
+            param.requires_grad = grad
+
+        # update FC section
+        nf = self.net.fc.in_features
+        self.net.fc = nn.Linear(nf, 100)
+
+    def forward(self, X):
+        return self.net(X)

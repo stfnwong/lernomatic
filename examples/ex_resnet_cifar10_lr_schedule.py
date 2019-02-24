@@ -1,13 +1,19 @@
 """
-EX_TRAIN_CIFAR10
-Train a classifier on the CIFAR10 dataset
+EX_RESET_CIFAR10_LR_SCHEDULE
+Example using LRScheduler objects with a resnet trained
+on CIFAR10
 
 Stefan Wong 2019
 """
-
+import sys
 import argparse
-from lernomatic.train import cifar_trainer
-from lernomatic.models import cifar
+import matplotlib.pyplot as plt
+
+from lernomatic.train import schedule
+from lernomatic.train import resnet_trainer
+from lernomatic.models import resnets
+from lernomatic.param import learning_rate
+# vis stuff
 from lernomatic.vis import vis_loss_history
 
 # debug
@@ -15,34 +21,49 @@ from lernomatic.vis import vis_loss_history
 
 GLOBAL_OPTS = dict()
 
+
 def main():
+    if GLOBAL_OPTS['load_checkpoint'] is not None:
+        print('Loading checkpoints is not yet implemented')
 
-    # Get a model
-    model = cifar.CIFAR10Net()
-
-    # Get a trainer
-    trainer = cifar_trainer.CIFAR10Trainer(
+    # get a model
+    model = resnets.WideResnet(GLOBAL_OPTS['resnet_depth'], 10)
+    trainer = resnet_trainer.ResnetTrainer(
         model,
-        # training parameters
-        batch_size = GLOBAL_OPTS['batch_size'],
-        num_epochs = GLOBAL_OPTS['num_epochs'],
-        learning_rate = GLOBAL_OPTS['learning_rate'],
-        momentum = GLOBAL_OPTS['momentum'],
-        weight_decay = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
+        # training time
+        num_epochs      = GLOBAL_OPTS['num_epochs'],
+        learning_rate   = GLOBAL_OPTS['learning_rate'],   # this will be overwritten by lr_finder later
+        batch_size      = GLOBAL_OPTS['batch_size'],
+        test_batch_size = GLOBAL_OPTS['test_batch_size'],
+        # other
+        device_id       = GLOBAL_OPTS['device_id'],
+        verbose         = GLOBAL_OPTS['verbose'],
+        # checkpoint options
+        save_every      = GLOBAL_OPTS['save_every'],
         checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
-        # display,
-        print_every = GLOBAL_OPTS['print_every'],
-        save_every = GLOBAL_OPTS['save_every'],
-        verbose = GLOBAL_OPTS['verbose']
+        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
     )
 
+    # prepare lr_finder
+    lr_finder = learning_rate.LogFinder(
+        trainer,
+        lr_min         = GLOBAL_OPTS['lr_min'],
+        lr_max         = GLOBAL_OPTS['lr_max'],
+        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
+        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
+        print_every    = 20
+    )
+    lr_finder.find()
+
+    # prepare learning schedule
+    lr_schedule = schedule.TriangularScheduler(
+        stepsize = int(len(trainer.train_loader) / 4)
+    )
+
+    trainer.set_lr_scheduler(lr_schedule)
     trainer.train()
 
-    # Visualise the output
+    # Plot outputs (optional)
     train_fig, train_ax = vis_loss_history.get_figure_subplots()
     vis_loss_history.plot_train_history_2subplots(
         train_ax,
@@ -50,10 +71,15 @@ def main():
         acc_history = trainer.get_acc_history(),
         cur_epoch = trainer.cur_epoch,
         iter_per_epoch = trainer.iter_per_epoch,
-        loss_title = 'CIFAR-10 Training Loss',
-        acc_title = 'CIFAR-10 Training Accuracy '
+        loss_title = 'CIFAR-10 Resnet LR Finder Loss (example with scheduling)',
+        acc_title = 'CIFAR-10 Resnet LR Finder Accuracy (example with scheduling)'
     )
-    train_fig.savefig(GLOBAL_OPTS['fig_name'], bbox_inches='tight')
+    train_fig.savefig('figures/resnet_cifar10_lr_schedule.png')
+
+    if GLOBAL_OPTS['draw_plot']:
+        plt.show()
+
+    # TODO :reference with no scheduling
 
 
 def get_parser():
@@ -63,6 +89,11 @@ def get_parser():
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
+                        )
+    parser.add_argument('--draw-plot',
+                        default=False,
+                        action='store_true',
+                        help='Display plots'
                         )
     parser.add_argument('--print-every',
                         type=int,
@@ -79,10 +110,26 @@ def get_parser():
                         default=1,
                         help='Number of workers to use when generating HDF5 files'
                         )
-    parser.add_argument('--fig-name',
-                        type=str,
-                        default='figures/cifar10net_train.png',
-                        help='Name of file to place output figure into'
+    # Learning rate finder options
+    parser.add_argument('--find-num-epochs',
+                        type=int,
+                        default=10,
+                        help='Maximum number of epochs to attempt to find learning rate'
+                        )
+    parser.add_argument('--find-explode-thresh',
+                        type=float,
+                        default=4.0,
+                        help='Maximum number of epochs to attempt to find learning rate'
+                        )
+    parser.add_argument('--lr-min',
+                        type=float,
+                        default=2e-8,
+                        help='Minimum range to search for learning rate'
+                        )
+    parser.add_argument('--lr-max',
+                        type=float,
+                        default=5e-1,
+                        help='Maximum range to search for learning rate'
                         )
     # Device options
     parser.add_argument('--device-id',
@@ -91,6 +138,11 @@ def get_parser():
                         help='Set device id (-1 for CPU)'
                         )
     # Network options
+    parser.add_argument('--resnet-depth',
+                         type=int,
+                         default=9,
+                         help='Number of layers to use for Resnet'
+                         )
     # Training options
     parser.add_argument('--start-epoch',
                         type=int,
@@ -107,6 +159,11 @@ def get_parser():
                         default=64,
                         help='Batch size to use during training'
                         )
+    parser.add_argument('--test-batch-size',
+                        type=int,
+                        default=64,
+                        help='Batch size to use during testing'
+                        )
     parser.add_argument('--weight-decay',
                         type=float,
                         default=1e-4,
@@ -117,16 +174,6 @@ def get_parser():
                         default=1e-3,
                         help='Learning rate for optimizer'
                         )
-    parser.add_argument('--momentum',
-                        type=float,
-                        default=0.5,
-                        help='Momentum for SGD'
-                        )
-    parser.add_argument('--grad-clip',
-                        type=float,
-                        default=5.0,
-                        help='Clip gradients at this (absolute) value'
-                        )
     # Data options
     parser.add_argument('--checkpoint-dir',
                         type=str,
@@ -135,7 +182,7 @@ def get_parser():
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='cifar10',
+                        default='resnet_cifar10_schedule',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',

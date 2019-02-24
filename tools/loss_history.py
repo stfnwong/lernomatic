@@ -38,7 +38,6 @@ def main():
     else:
         test_loss_history = None
 
-
     # plot the visualization
     vis_loss_history.plot_loss_history(
         ax,
@@ -56,7 +55,10 @@ def main():
     if GLOBAL_OPTS['print_acc']:
         print(str(acc_history))
 
-    plt.show()
+    if GLOBAL_OPTS['plot_filename'] is not None:
+        fig.savefig(GLOBAL_OPTS['plot_filename'])
+    else:
+        plt.show()
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -75,6 +77,11 @@ def get_parser():
                         type=str,
                         default=None,
                         help='Title for plot output'
+                        )
+    parser.add_argument('--plot-filename',
+                        type=str,
+                        default=None,
+                        help='If specified, write the plot to this file rather than display'
                         )
     # other opts
     parser.add_argument('--print-loss',

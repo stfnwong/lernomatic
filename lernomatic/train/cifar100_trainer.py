@@ -1,6 +1,6 @@
 """
-CIFAR10_TRAINERS
-Example trainer for CIFAR10 dataset
+CIFAR100_TRAINERS
+Example trainer for CIFAR100 dataset
 
 Stefan Wong 2019
 """
@@ -13,16 +13,23 @@ from lernomatic.models import cifar10
 # debug
 #from pudb import set_trace; set_trace()
 
-class CIFAR10Trainer(trainer.Trainer):
+class CIFAR100Trainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs):
         self.data_dir       = kwargs.pop('data_dir', 'data/')
-        super(CIFAR10Trainer, self).__init__(model, **kwargs)
-
-        # init the criterion for MNIST
+        super(CIFAR100Trainer, self).__init__(model, **kwargs)
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def __repr__(self):
-        return 'MNISTTrainer'
+        return 'CIFAR100Trainer'
+
+    def __str__(self):
+        s = []
+        s.append('CIFAR100Trainer :\n')
+        param = self.get_trainer_params()
+        for k, v in param.items():
+            s.append('\t [%s] : %s\n' % (str(k), str(v)))
+
+        return ''.join(s)
 
     def _init_optimizer(self):
         if self.model is not None:
@@ -42,7 +49,7 @@ class CIFAR10Trainer(trainer.Trainer):
 
         # training data
         self.train_loader = torch.utils.data.DataLoader(
-            torchvision.datasets.CIFAR10(
+            torchvision.datasets.CIFAR100(
                 self.data_dir,
                 train = True,
                 download = True,
@@ -54,7 +61,7 @@ class CIFAR10Trainer(trainer.Trainer):
         )
         # validation data
         self.test_loader = torch.utils.data.DataLoader(
-            torchvision.datasets.CIFAR10(
+            torchvision.datasets.CIFAR100(
                 self.data_dir,
                 train = False,
                 download = True,
@@ -103,7 +110,7 @@ class CIFAR10Trainer(trainer.Trainer):
     def load_checkpoint(self, fname):
         checkpoint = torch.load(fname)
         self.set_trainer_params(checkpoint['trainer'])
-        self.model = cifar10.CIFAR10()
+        self.model = cifar10.CIFAR10Net()
         self.model.load_state_dict(checkpoint['model'])
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint['optimizer'])
