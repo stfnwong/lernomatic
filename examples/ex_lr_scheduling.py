@@ -12,6 +12,7 @@ from lernomatic.param import learning_rate
 from lernomatic.vis import vis_lr
 # we use CIFAR-10 for this example
 from lernomatic.models import cifar
+from lernomatic.models import resnets
 from lernomatic.train import cifar_trainer
 from lernomatic.train import schedule
 # vis tools
@@ -23,12 +24,60 @@ from lernomatic.vis import vis_loss_history
 GLOBAL_OPTS = dict()
 
 
-def triangular_sched():
-    # get a model and trainer
-    triangular_sched_model = cifar.CIFAR10Net()
-    #model = resnets.WideResnet(28, 10)
-    triangular_sched_trainer = cifar_trainer.CIFAR10Trainer(
-        triangular_sched_model,
+# Helper functions for models
+def get_model():
+    if GLOBAL_OPTS['model'] == 'resnet':
+        model = resnets.WideResnet(
+            GLOBAL_OPTS['resnet_depth'],
+            10,
+            input_channels = 3
+        )
+    elif GLOBAL_OPTS['model'] == 'cifar':
+        model = cifar.CIFAR10Net()
+    else:
+        raise ValueError('Unknown model type [%s]' % str(GLOBAL_OPTS['model']))
+
+    return model
+
+
+# Helper function for finder
+def get_lr_finder(trainer, find_type='LogFinder'):
+
+    if not hasattr(learning_rate, find_type):
+        raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
+
+    lr_find_obj = getattr(learning_rate, find_type)
+    lr_finder = lr_find_obj(
+        trainer,
+        lr_min         = GLOBAL_OPTS['lr_min'],
+        lr_max         = GLOBAL_OPTS['lr_max'],
+        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
+        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
+        print_every    = GLOBAL_OPTS['find_print_every']
+    )
+
+    return lr_finder
+
+
+def get_scheduler(lr_min, lr_max, sched_type='TriangularScheduler'):
+
+    if not hasattr(schedule, sched_type):
+        raise ValueError('Unknown scheduler type [%s]' % str(sched_type))
+
+    lr_sched_obj = getattr(schedule, sched_type)
+    lr_scheduler = lr_sched_obj(
+        # TODO : how to select optimal stepsize?
+        stepsize = GLOBAL_OPTS['sched_stepsize'],
+        lr_min = lr_min,
+        lr_max = lr_max
+    )
+
+    return lr_scheduler
+
+
+def get_trainer(model, checkpoint_name):
+    trainer = cifar_trainer.CIFAR10Trainer(
+        model,
         batch_size      = GLOBAL_OPTS['batch_size'],
         test_batch_size = GLOBAL_OPTS['test_batch_size'],
         num_epochs      = GLOBAL_OPTS['num_epochs'],
@@ -39,32 +88,35 @@ def triangular_sched():
         device_id       = GLOBAL_OPTS['device_id'],
         # checkpoint
         checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'triangular_schedule_cifar10',
+        checkpoint_name = checkpoint_name,
         # display,
         print_every     = GLOBAL_OPTS['print_every'],
         save_every      = GLOBAL_OPTS['save_every'],
         verbose         = GLOBAL_OPTS['verbose']
     )
 
-    # get an LRFinder object
-    lr_finder = learning_rate.LogFinder(
-        triangular_sched_trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
+    return trainer
+
+
+def triangular_sched():
+    # get a model and trainer
+    triangular_sched_model = get_model()
+    #model = resnets.WideResnet(28, 10)
+    triangular_sched_trainer = get_trainer(
+        triangular_sched_model,
+        'triangular_schedule_cifar10'
     )
 
+    # get an LRFinder object
+    lr_finder = get_lr_finder(triangular_sched_trainer)
     lr_finder.find()
     lr_find_min, lr_find_max = lr_finder.get_lr_range()
     print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
-    lr_scheduler = schedule.TriangularScheduler(
-        #stepsize = int(len(triangular_sched_trainer.train_loader) / 4),
-        stepsize = GLOBAL_OPTS['sched_stepsize'],
-        lr_min = lr_find_min,
-        lr_max = lr_find_max
+    lr_scheduler = get_scheduler(
+        lr_find_min,
+        lr_find_max,
+        'TriangularScheduler'
     )
 
     triangular_sched_trainer.set_lr_scheduler(lr_scheduler)
@@ -88,48 +140,23 @@ def triangular_sched():
 
 def triangular2_sched():
     # get a model and trainer
-    triangular2_sched_model = cifar.CIFAR10Net()
+    triangular2_sched_model = get_model()
     #model = resnets.WideResnet(28, 10)
-    triangular2_sched_trainer = cifar_trainer.CIFAR10Trainer(
+    triangular2_sched_trainer = get_trainer(
         triangular2_sched_model,
-        batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
-        num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = GLOBAL_OPTS['learning_rate'],
-        #momentum = GLOBAL_OPTS['momentum'],
-        weight_decay    = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id       = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'triangular2_schedule_cifar10',
-        # display,
-        print_every     = GLOBAL_OPTS['print_every'],
-        save_every      = GLOBAL_OPTS['save_every'],
-        verbose         = GLOBAL_OPTS['verbose']
+        'triangular2_schedule_cifar10'
     )
 
-    # get an LRFinder object
-    lr_finder = learning_rate.LogFinder(
-        triangular2_sched_trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
-    )
-
-    lr_finder.find()        # TODO: still need automatic lr range setting
+    lr_finder = get_lr_finder(triangular2_sched_trainer)
+    lr_finder.find()
     lr_find_min, lr_find_max = lr_finder.get_lr_range()
     print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
-    lr_scheduler = schedule.Triangular2Scheduler(
-        #stepsize = int(len(triangular2_sched_trainer.train_loader) / 4),
-        stepsize = GLOBAL_OPTS['sched_stepsize'],
-        lr_min = lr_find_min,
-        lr_max = lr_find_max
+    lr_scheduler = get_scheduler(
+        lr_find_min,
+        lr_find_max,
+        'Triangular2Scheduler'
     )
-
     triangular2_sched_trainer.set_lr_scheduler(lr_scheduler)
     triangular2_sched_trainer.train()
 
@@ -148,50 +175,25 @@ def triangular2_sched():
 
     return triangular2_sched_trainer.get_acc_history()
 
+
 def step_sched():
     # get a model and trainer
-    step_sched_model = cifar.CIFAR10Net()
-    #model = resnets.WideResnet(28, 10)
-    step_sched_trainer = cifar_trainer.CIFAR10Trainer(
+    step_sched_model = get_model()
+    step_sched_trainer = get_trainer(
         step_sched_model,
-        batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
-        num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = GLOBAL_OPTS['learning_rate'],
-        #momentum = GLOBAL_OPTS['momentum'],
-        weight_decay    = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id       = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'step_schedule_cifar10',
-        # display,
-        print_every     = GLOBAL_OPTS['print_every'],
-        save_every      = GLOBAL_OPTS['save_every'],
-        verbose         = GLOBAL_OPTS['verbose']
+        'step_schedule_cifar10',
     )
 
-    # get an LRFinder object
-    lr_finder = learning_rate.LogFinder(
-        step_sched_trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
-    )
-
-    lr_finder.find()        # TODO: still need automatic lr range setting
+    lr_finder = get_lr_finder(step_sched_trainer)
+    lr_finder.find()
     lr_find_min, lr_find_max = lr_finder.get_lr_range()
+
     print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
-    lr_scheduler = schedule.StepScheduler(
-        #stepsize = int(len(step_sched_trainer.train_loader) / 4),
-        stepsize = GLOBAL_OPTS['sched_stepsize'],
-        lr_min = lr_find_min,
-        lr_max = lr_find_max,
-        lr_decay_every = int(len(step_sched_trainer.train_loader) / 4),
-        lr_decay = 0.001
+    lr_scheduler = get_scheduler(
+        lr_find_min,
+        lr_find_max,
+        'StepScheduler'
     )
 
     step_sched_trainer.set_lr_scheduler(lr_scheduler)
@@ -212,50 +214,24 @@ def step_sched():
 
     return step_sched_trainer.get_acc_history()
 
+
 def exp_decay_sched():
     # get a model and trainer
-    exp_decay_model = cifar.CIFAR10Net()
-    #model = resnets.WideResnet(28, 10)
-    exp_decay_trainer = cifar_trainer.CIFAR10Trainer(
+    exp_decay_model = get_model()
+    exp_decay_trainer = get_trainer(
         exp_decay_model,
-        batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
-        num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = GLOBAL_OPTS['learning_rate'],
-        #momentum = GLOBAL_OPTS['momentum'],
-        weight_decay    = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id       = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'exp_decay_schedule_cifar10',
-        # display,
-        print_every     = GLOBAL_OPTS['print_every'],
-        save_every      = GLOBAL_OPTS['save_every'],
-        verbose         = GLOBAL_OPTS['verbose']
+        'exp_decay_schedule_cifar10',
     )
 
-    # get an LRFinder object
-    lr_finder = learning_rate.LogFinder(
-        exp_decay_trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
-    )
-
-    lr_finder.find()        # TODO: still need automatic lr range setting
+    lr_finder = get_lr_finder(exp_decay_trainer)
+    lr_finder.find()
     lr_find_min, lr_find_max = lr_finder.get_lr_range()
     print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
-    lr_scheduler = schedule.ExponentialDecayScheduler(
-        #stepsize = int(len(exp_decay_trainer.train_loader) / 4),
-        stepsize = GLOBAL_OPTS['sched_stepsize'],
-        lr_min = lr_find_min,
-        lr_max = lr_find_max,
-        lr_decay_every = int(len(exp_decay_trainer.train_loader) / 4),
-        lr_decay = 0.001
+    lr_scheduler = get_scheduler(
+        lr_find_min,
+        lr_find_max,
+        'ExponentialDecayScheduler'
     )
 
     exp_decay_trainer.set_lr_scheduler(lr_scheduler)
@@ -276,48 +252,24 @@ def exp_decay_sched():
 
     return exp_decay_trainer.get_acc_history()
 
+
 def triangular_exp_sched():
     # get a model and trainer
-    triangular_sched_model = cifar.CIFAR10Net()
+    triangular_sched_model = get_model()
     #model = resnets.WideResnet(28, 10)
-    triangular_exp_sched_trainer = cifar_trainer.CIFAR10Trainer(
+    triangular_exp_sched_trainer = get_trainer(
         triangular_sched_model,
-        batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
-        num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = GLOBAL_OPTS['learning_rate'],
-        #momentum = GLOBAL_OPTS['momentum'],
-        weight_decay    = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id       = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'triangular_exp_schedule_cifar10',
-        # display,
-        print_every     = GLOBAL_OPTS['print_every'],
-        save_every      = GLOBAL_OPTS['save_every'],
-        verbose         = GLOBAL_OPTS['verbose']
+        'triangular_exp_schedule_cifar10',
     )
 
-    # get an LRFinder object
-    lr_finder = learning_rate.LogFinder(
-        triangular_exp_sched_trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
-    )
-
-    lr_finder.find()        # TODO: still need automatic lr range setting
+    lr_finder = get_lr_finder(triangular_exp_sched_trainer)
+    lr_finder.find()
     lr_find_min, lr_find_max = lr_finder.get_lr_range()
     print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
-
-    lr_scheduler = schedule.TriangularExpScheduler(
-        stepsize = int(len(triangular_exp_sched_trainer.train_loader) / 4),
-        lr_min = lr_find_min,
-        lr_max = lr_find_max,
-        k = GLOBAL_OPTS['exp_decay']
+    lr_scheduler = get_scheduler(
+        lr_find_min,
+        lr_find_max,
+        'TriangularExpScheduler'
     )
 
     triangular_exp_sched_trainer.set_lr_scheduler(lr_scheduler)
@@ -341,47 +293,22 @@ def triangular_exp_sched():
 
 def triangular2_exp_sched():
     # get a model and trainer
-    triangular_sched_model = cifar.CIFAR10Net()
+    triangular_sched_model = get_model()
     #model = resnets.WideResnet(28, 10)
-    triangular2_exp_sched_trainer = cifar_trainer.CIFAR10Trainer(
+    triangular2_exp_sched_trainer = get_trainer(
         triangular_sched_model,
-        batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
-        num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = GLOBAL_OPTS['learning_rate'],
-        #momentum = GLOBAL_OPTS['momentum'],
-        weight_decay    = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id       = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'triangular2_exp_schedule_cifar10',
-        # display,
-        print_every     = GLOBAL_OPTS['print_every'],
-        save_every      = GLOBAL_OPTS['save_every'],
-        verbose         = GLOBAL_OPTS['verbose']
+        'triangular2_exp_schedule_cifar10',
     )
 
-    # get an LRFinder object
-    lr_finder = learning_rate.LogFinder(
-        triangular2_exp_sched_trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
-    )
-
-    lr_finder.find()        # TODO: still need automatic lr range setting
+    lr_finder = get_lr_finder(triangular2_exp_sched_trainer)
+    lr_finder.find()
     lr_find_min, lr_find_max = lr_finder.get_lr_range()
     print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
-    lr_scheduler = schedule.Triangular2ExpScheduler(
-        #stepsize = int(len(triangular2_exp_sched_trainer.train_loader) / 4),
-        stepsize = GLOBAL_OPTS['sched_stepsize'],
-        lr_min = lr_find_min,
-        lr_max = lr_find_max,
-        k = GLOBAL_OPTS['exp_decay']
+    lr_scheduler = get_scheduler(
+        lr_find_min,
+        lr_find_max,
+        'Triangular2ExpScheduler'
     )
 
     triangular2_exp_sched_trainer.set_lr_scheduler(lr_scheduler)
@@ -402,48 +329,24 @@ def triangular2_exp_sched():
 
     return triangular2_exp_sched_trainer.get_acc_history()
 
+
 def warm_restart_sched():
-    warm_restart_model = cifar.CIFAR10Net()
+    warm_restart_model = get_model()
     #model = resnets.WideResnet(28, 10)
-    warm_restart_trainer = cifar_trainer.CIFAR10Trainer(
+    warm_restart_trainer = get_trainer(
         warm_restart_model,
-        batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
-        num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = GLOBAL_OPTS['learning_rate'],
-        #momentum = GLOBAL_OPTS['momentum'],
-        weight_decay    = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id       = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'warm_restart_sched_cifar10',
-        # display,
-        print_every     = GLOBAL_OPTS['print_every'],
-        save_every      = GLOBAL_OPTS['save_every'],
-        verbose         = GLOBAL_OPTS['verbose']
+        'warm_restart_sched_cifar10'
     )
 
-    # get an LRFinder object
-    lr_finder = learning_rate.LogFinder(
-        warm_restart_trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
-    )
-
-    lr_finder.find()        # TODO: still need automatic lr range setting
+    lr_finder = get_lr_finder(warm_restart_trainer)
+    lr_finder.find()
     lr_find_min, lr_find_max = lr_finder.get_lr_range()
     print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
-    lr_scheduler = schedule.WarmRestartScheduler(
-        stepsize = GLOBAL_OPTS['sched_stepsize'],
-        lr_min = lr_find_min,
-        lr_max = lr_find_max,
-        lr_decay_every = int(len(warm_restart_trainer.train_loader) / 4),
-        lr_decay = 0.001
+    lr_scheduler = get_scheduler(
+        lr_find_min,
+        lr_find_max,
+        'WarmRestartScheduler'
     )
 
     warm_restart_trainer.set_lr_scheduler(lr_scheduler)
@@ -466,27 +369,12 @@ def warm_restart_sched():
 
 
 def no_sched():
-    no_sched_model = cifar.CIFAR10Net()
+    no_sched_model = get_model()
     #model = resnets.WideResnet(28, 10)
-    no_sched_trainer = cifar_trainer.CIFAR10Trainer(
+    no_sched_trainer = get_scheduler(
         no_sched_model,
-        batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
-        num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = GLOBAL_OPTS['learning_rate'],
-        #momentum = GLOBAL_OPTS['momentum'],
-        weight_decay    = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id       = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'warm_restart_sched_cifar10',
-        # display,
-        print_every     = GLOBAL_OPTS['print_every'],
-        save_every      = GLOBAL_OPTS['save_every'],
-        verbose         = GLOBAL_OPTS['verbose']
+        'warm_restart_sched_cifar10',
     )
-
     no_sched_trainer.train()
 
     # generate loss history plot
@@ -532,6 +420,17 @@ def get_parser():
                         type=int,
                         default=1,
                         help='Number of workers to use when generating HDF5 files'
+                        )
+    # model, size options
+    parser.add_argument('--model',
+                        type=str,
+                        default='resnet',
+                        help='Type of model to use in example. (default: resnet)'
+                        )
+    parser.add_argument('--resnet-depth',
+                        type=int,
+                        default=58,
+                        help='Depth of resnet to use for resnet models'
                         )
     # Learning rate finder options
     parser.add_argument('--find-print-every',

@@ -92,7 +92,7 @@ class NetworkBlock(nn.Module):
 
 
 class WideResnet(nn.Module):
-    def __init__(self, depth, num_classes, w_factor=1, drop_rate=0.0):
+    def __init__(self, depth, num_classes, input_channels=3, w_factor=1, drop_rate=0.0):
         super(WideResnet, self).__init__()
 
         self.depth = depth      # for __str___()
@@ -103,7 +103,7 @@ class WideResnet(nn.Module):
 
         # first conv layer before  any network block
         self.conv1 = nn.Conv2d(
-            3,
+            input_channels,
             num_channels[0],
             kernel_size = 3,
             stride = 1,
