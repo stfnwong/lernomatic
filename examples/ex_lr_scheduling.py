@@ -331,12 +331,24 @@ if __name__ == '__main__':
     assert len(schedulers) == len(figure_names)
 
     trainers = []
+    acc_list = []
     for idx in range(len(schedulers)):
         trainer, lr_min, lr_max = run_schedule(
             checkpoint_names[idx],
             schedulers[idx]
         )
-        #trainers.append(trainer)
+        trainers.append(trainer)
+        acc_list.append(trainer.get_acc_history())
         loss_title = str(schedulers[idx]) + ' Loss : LR range (%.3f -> %.3f)' % (lr_min, lr_max)
         acc_title = str(schedulers[idx]) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_min, lr_max)
         generate_plot(trainer, loss_title, acc_title, figure_names[idx])
+
+
+    # Make one more plot of comparing accuracies
+    acc_fig, acc_ax = plt.subplots()
+    for acc in acc_list:
+        acc_ax.plot(np.arange(len(acc)), acc)
+    acc_ax.set_xlabel('Epoch')
+    acc_ax.set_ylabel('Accuracy')
+    acc_ax.legend(checkpoint_names)
+    acc_ax.set_title('Accuracy comparison for learning rate schedules')
