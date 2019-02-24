@@ -464,6 +464,47 @@ def warm_restart_sched():
 
     return warm_restart_trainer.get_acc_history()
 
+
+def no_sched():
+    no_sched_model = cifar.CIFAR10Net()
+    #model = resnets.WideResnet(28, 10)
+    no_sched_trainer = cifar_trainer.CIFAR10Trainer(
+        no_sched_model,
+        batch_size      = GLOBAL_OPTS['batch_size'],
+        test_batch_size = GLOBAL_OPTS['test_batch_size'],
+        num_epochs      = GLOBAL_OPTS['num_epochs'],
+        learning_rate   = GLOBAL_OPTS['learning_rate'],
+        #momentum = GLOBAL_OPTS['momentum'],
+        weight_decay    = GLOBAL_OPTS['weight_decay'],
+        # device
+        device_id       = GLOBAL_OPTS['device_id'],
+        # checkpoint
+        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
+        checkpoint_name = 'warm_restart_sched_cifar10',
+        # display,
+        print_every     = GLOBAL_OPTS['print_every'],
+        save_every      = GLOBAL_OPTS['save_every'],
+        verbose         = GLOBAL_OPTS['verbose']
+    )
+
+    no_sched_trainer.train()
+
+    # generate loss history plot
+    train_fig, train_ax = vis_loss_history.get_figure_subplots()
+    vis_loss_history.plot_train_history_2subplots(
+        train_ax,
+        no_sched_trainer.get_loss_history(),
+        acc_history = no_sched_trainer.get_acc_history(),
+        cur_epoch = no_sched_trainer.cur_epoch,
+        iter_per_epoch = no_sched_trainer.iter_per_epoch,
+        loss_title = 'CIFAR-10 LR Finder Loss\n (lr = %f' % no_sched_trainer.get_learning_rate(),
+        acc_title = 'CIFAR-10  Accuracy (no scheduling)'
+    )
+    train_fig.savefig('figures/ex_no_sched_cifar10.png', bbox_inches='tight')
+
+    return no_sched_trainer.get_acc_history()
+
+
 def get_parser():
     parser = argparse.ArgumentParser()
     # General opts
@@ -611,6 +652,7 @@ if __name__ == '__main__':
     exp_decay_acc = exp_decay_sched()
     tri_exp_acc = triangular_exp_sched()
     tri2_exp_acc = triangular2_exp_sched()
+    no_sched_acc = no_sched()
     #warm_restart_sched()
 
     legend_list = ['tri',
@@ -618,14 +660,16 @@ if __name__ == '__main__':
                    'step',
                    'exp_decay',
                    'tri_exp_decay',
-                   'tri2_exp_decay'
+                   'tri2_exp_decay',
+                   'no scheduling'
                    ]
     acc_list = [tri_acc,
                 tri2_acc,
                 step_acc,
                 exp_decay_acc,
                 tri_exp_acc,
-                tri2_exp_acc]
+                tri2_exp_acc,
+                no_sched_acc]
 
     acc_fig, acc_ax = plt.subplots()
 

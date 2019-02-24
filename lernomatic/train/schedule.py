@@ -46,9 +46,20 @@ class LRScheduler(object):
     def _update_lr_history(self, lr):
         if self.lr_history is None:
             return
-
         self.lr_history[self.lr_history_ptr] = lr
         self.lr_history_ptr += 1
+
+    def plot_history(self, ax, title=None):
+        if self.lr_history_ptr == 0 or self.lr_history is None:
+            raise ValueError('No history recorded in %s' % repr(self))
+
+        ax.plot(np.arange(self.lr_history_ptr), self.lr_history[0 : self.lr_history_ptr])
+        ax.set_xlabel('Iteration')
+        ax.set_ylabel('Learning rate')
+        if title is not None:
+            ax.set_title(title)
+        else:
+            ax.set_title('[%s] learning rate history' % repr(self))
 
     def get_lr(self, cur_iter):
         raise NotImplementedError('This should be implemented in the derived class')
@@ -393,6 +404,12 @@ class EpochSetScheduler(LRScheduler):
             self.learning_rate = self.schedule[cur_epoch]
 
         return self.learning_rate
+
+
+
+class DecayWhenEpoch(LRScheduler):
+    def __init__(self, **kwargs):
+        super(DecayWhenEpoch, self).__init__(**kwargs)
 
 
 # ---- Momentum ----- #
