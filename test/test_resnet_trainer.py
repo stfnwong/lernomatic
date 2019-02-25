@@ -20,15 +20,6 @@ from lernomatic.vis import vis_loss_history
 
 GLOBAL_OPTS = dict()
 
-def get_figure_subplots(num_subplots=2):
-    fig = plt.figure()
-    ax = []
-    for p in range(num_subplots):
-        sub_ax = fig.add_subplot(num_subplots, 1, (p+1))
-        ax.append(sub_ax)
-
-    return fig, ax
-
 
 class TestResnetTrainer(unittest.TestCase):
     def setUp(self):
@@ -47,7 +38,8 @@ class TestResnetTrainer(unittest.TestCase):
         model = resnets.WideResnet(
             self.resnet_depth,
             10,     # using CIFAR-10 data
-            1
+            input_channels=3,
+            w_factor = 1
         )
         # get a traner
         src_tr = resnet_trainer.ResnetTrainer(
@@ -124,7 +116,7 @@ class TestResnetTrainer(unittest.TestCase):
         for n in range(len(src_tr.acc_history)):
             self.assertEqual(src_tr.acc_history[n], dst_tr.acc_history[n])
 
-        fig, ax = get_figure_subplots()
+        fig, ax = vis_loss_history.get_figure_subplots()
         vis_loss_history.plot_train_history_2subplots(
             ax,
             src_tr.loss_history,
@@ -141,13 +133,14 @@ class TestResnetTrainer(unittest.TestCase):
 
         test_checkpoint_name = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_train_checkpoint.pkl'
         test_history_name    = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_train_history.pkl'
-        train_num_epochs = 100
+        train_num_epochs = 10
         train_batch_size = 128
         # get a model
         model = resnets.WideResnet(
             self.resnet_depth,
             10,     # using CIFAR-10 data
-            1
+            input_channels=3,
+            w_factor=1
         )
         # get a traner
         trainer = resnet_trainer.ResnetTrainer(
@@ -180,7 +173,7 @@ class TestResnetTrainer(unittest.TestCase):
         trainer.save_checkpoint(test_checkpoint_name)
         trainer.save_history(test_history_name)
 
-        fig, ax = get_figure_subplots()
+        fig, ax = vis_loss_history.get_figure_subplots()
         vis_loss_history.plot_train_history_2subplots(
             ax,
             trainer.loss_history,

@@ -32,7 +32,6 @@ def smooth_loss(loss_history, beta=0.98):
 
 
 def plot_train_history(ax, loss_history, **kwargs):
-
     test_loss_history = kwargs.pop('test_loss_history', None)
     acc_history       = kwargs.pop('acc_history', None)
     plot_title      = kwargs.pop('title', 'Loss curve')

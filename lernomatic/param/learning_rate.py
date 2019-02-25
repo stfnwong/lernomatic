@@ -104,7 +104,7 @@ class LRFinder(object):
         raise NotImplementedError('This method should be implemented in subclass')
 
     # plotting
-    def plot_lr_vs_acc(self, ax, itle=None, log=False):
+    def plot_lr_vs_acc(self, ax, title=None, log=False):
         if len(self.log_lr_history) < 1:
             raise ValueError('[%s] no learning rate history' % repr(self))
         if len(self.acc_history) < 1:
@@ -128,9 +128,9 @@ class LRFinder(object):
             raise ValueError('[%s] no accuracy history' % repr(self))
 
         if log is True:
-            ax.plot(np.asarray(self.lr_log_history), np.asarray(self.smooth_loss_history))
+            ax.plot(np.asarray(self.log_lr_history), np.asarray(self.smooth_loss_history))
         else:
-            ax.plot(10 ** np.asarray(self.lr_log_history), np.asarray(self.smooth_loss_history))
+            ax.plot(10 ** np.asarray(self.log_lr_history), np.asarray(self.smooth_loss_history))
         ax.set_xlabel('Learning Rate')
         ax.set_ylabel('Smooth loss')
         if title is not None:

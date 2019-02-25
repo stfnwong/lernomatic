@@ -48,17 +48,6 @@ def get_figure():
     return fig, ax
 
 
-def get_figure_subplots(num_subplots=2):
-    fig = plt.figure()
-    ax = []
-    for p in range(num_subplots):
-        sub_ax = fig.add_subplot(num_subplots, 1, (p+1))
-        ax.append(sub_ax)
-
-    return fig, ax
-
-
-
 GLOBAL_TEST_PARAMS = {
         'test_batch_size'        : 32,
         'test_learning_rate'     : 0.001,
@@ -98,7 +87,6 @@ class TestLogFinder(unittest.TestCase):
     def setUp(self):
         self.verbose = GLOBAL_OPTS['verbose']
 
-
     def test_find_lr(self):
         print('======== TestLogFinder.test_find_lr ')
 
@@ -134,7 +122,7 @@ class TestLogFinder(unittest.TestCase):
         trainer.print_every = 200
         trainer.train()
 
-        train_fig, train_ax = get_figure_subplots()
+        train_fig, train_ax = vis_loss_history.get_figure_subplots()
         vis_loss_history.plot_train_history_2subplots(
             train_ax,
             trainer.get_loss_history(),
@@ -184,7 +172,7 @@ class TestLogFinder(unittest.TestCase):
         trainer.print_every = 200
         trainer.train()
 
-        fig2, ax2 = plt.subplots()
+        fig2, ax2 = vis_loss_history.get_figure_subplots()
         vis_loss_history.plot_train_history_2subplots(
             ax2,
             trainer.get_loss_history(),

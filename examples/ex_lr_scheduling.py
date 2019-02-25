@@ -307,24 +307,24 @@ if __name__ == '__main__':
     ]
 
     checkpoint_names = [
-        'triangular_sched_cifar10',
-        'triangular2_sched_cifar10',
-        'exp_decay_sched_cifar10',
-        'warm_restart_sched_cifar10',
-        'triangular_exp_sched_cifar10',
-        'triangular2_exp_sched_cifar10',
-        'no_sched_cifar10'
+        str(GLOBAL_OPTS['model']) + '_triangular_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_triangular2_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_exp_decay_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_warm_restart_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_triangular_exp_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_triangular2_exp_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_no_sched_cifar10'
     ]
 
     figure_dir = 'figures/'
     figure_names = [
-        figure_dir + 'ex_triangular_sched_cifar10.png',
-        figure_dir + 'ex_triangular2_sched_cifar10.png',
-        figure_dir + 'ex_exp_decay_sched_cifar10.png',
-        figure_dir + 'ex_warm_restart_sched_cifar10.png',
-        figure_dir + 'ex_triangular_exp_sched_cifar10.png',
-        figure_dir + 'ex_triangula2_exp_sched_cifar10.png',
-        figure_dir + 'ex_no_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_triangular_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_triangular2_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_exp_decay_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_warm_restart_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_triangular_exp_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_triangular2_exp_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_no_sched_cifar10.png',
     ]
 
     assert len(schedulers) == len(checkpoint_names)
@@ -352,3 +352,5 @@ if __name__ == '__main__':
     acc_ax.set_ylabel('Accuracy')
     acc_ax.legend(checkpoint_names)
     acc_ax.set_title('Accuracy comparison for learning rate schedules')
+    acc_fig.tight_layout()
+    acc_fig.savefig('figures/[%s]_ex_lr_scheduling_acc_compare.png' % str(GLOBAL_OPTS['model']))
