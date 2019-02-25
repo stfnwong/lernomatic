@@ -114,6 +114,10 @@ def run_schedule(checkpoint_name, sched_type):
     lr_finder.find()
     lr_find_min, lr_find_max = lr_finder.get_lr_range()
     print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
+
+    if GLOBAL_OPTS['find_only'] is True:
+        return lr_finder
+
     # get scheduler
     lr_scheduler = get_scheduler(
         lr_find_min,
@@ -172,6 +176,11 @@ def get_parser():
                         type=int,
                         default=1,
                         help='Number of workers to use when generating HDF5 files'
+                        )
+    parser.add_argument('--find-only',
+                        action='store_true',
+                        default=False,
+                        help='Only perform the parameter find step (no training)'
                         )
     # model, size options
     parser.add_argument('--model',
@@ -333,24 +342,44 @@ if __name__ == '__main__':
     trainers = []
     acc_list = []
     for idx in range(len(schedulers)):
-        trainer, lr_min, lr_max = run_schedule(
-            checkpoint_names[idx],
-            schedulers[idx]
-        )
-        trainers.append(trainer)
-        acc_list.append(trainer.get_acc_history())
-        loss_title = str(schedulers[idx]) + ' Loss : LR range (%.3f -> %.3f)' % (lr_min, lr_max)
-        acc_title = str(schedulers[idx]) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_min, lr_max)
-        generate_plot(trainer, loss_title, acc_title, figure_names[idx])
+        if GLOBAL_OPTS['find_only'] is True:
+            lr_finder = run_schedule(
+                checkpoint_names[idx],
+                schedulers[idx]
+            )
+            # create plots
+            lr_acc_title = '[' + str(GLOBAL_OPTS['model']) + '] ' +\
+                str(schedulers[idx]) + ' learning rate vs acc (log)'
+            lr_loss_title = '[' + str(GLOBAL_OPTS['model']) + '] ' +\
+                str(schedulers[idx]) + ' learning rate vs loss (log)'
+            lr_fig, lr_ax = vis_loss_history.get_figure_subplots(2)
+            lr_finder.plot_lr_vs_acc(lr_ax[0], lr_acc_title, log=True)
+            lr_finder.plot_lr_vs_loss(lr_ax[1], lr_loss_title, log=True)
+            # save
+            lr_fig.tight_layout()
+            lr_fig.savefig('figures/[%s]_%s_lr_finder_output.png' % (str(GLOBAL_OPTS['model']), str(schedulers[idx])))
+
+        else:
+            trainer, lr_min, lr_max = run_schedule(
+                checkpoint_names[idx],
+                schedulers[idx]
+            )
+            # create plots
+            trainers.append(trainer)
+            acc_list.append(trainer.get_acc_history())
+            loss_title = str(schedulers[idx]) + ' Loss : LR range (%.3f -> %.3f)' % (lr_min, lr_max)
+            acc_title = str(schedulers[idx]) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_min, lr_max)
+            generate_plot(trainer, loss_title, acc_title, figure_names[idx])
 
 
     # Make one more plot of comparing accuracies
-    acc_fig, acc_ax = plt.subplots()
-    for acc in acc_list:
-        acc_ax.plot(np.arange(len(acc)), acc)
-    acc_ax.set_xlabel('Epoch')
-    acc_ax.set_ylabel('Accuracy')
-    acc_ax.legend(checkpoint_names)
-    acc_ax.set_title('Accuracy comparison for learning rate schedules')
-    acc_fig.tight_layout()
-    acc_fig.savefig('figures/[%s]_ex_lr_scheduling_acc_compare.png' % str(GLOBAL_OPTS['model']))
+    if GLOBAL_OPTS['find_only'] is False:
+        acc_fig, acc_ax = plt.subplots()
+        for acc in acc_list:
+            acc_ax.plot(np.arange(len(acc)), acc)
+        acc_ax.set_xlabel('Epoch')
+        acc_ax.set_ylabel('Accuracy')
+        acc_ax.legend(checkpoint_names)
+        acc_ax.set_title('Accuracy comparison for learning rate schedules')
+        acc_fig.tight_layout()
+        acc_fig.savefig('figures/[%s]_ex_lr_scheduling_acc_compare.png' % str(GLOBAL_OPTS['model']))

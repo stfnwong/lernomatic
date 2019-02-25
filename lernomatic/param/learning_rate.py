@@ -93,7 +93,17 @@ class LRFinder(object):
         if self.trainer.test_loader is None:
             raise ValueError('No test_loader in trainer')
 
+    def get_lr_history(self):
+        if len(self.log_lr_history) < 1:
+            return None
+        return self.log_lr_history
+
     def get_lr_range(self):
+        # NOTE: if I move to having a fixed (pre-allocated) array for history
+        # then this test needs to change
+        if len(self.log_lr_history) < 1:
+            return (None, None)
+
         # Heuristically get a range
         lr_max = (10.0 ** self.log_lr_history[-2]) * self.lr_max_scale
         lr_min = lr_max / self.lr_min_factor
@@ -114,6 +124,13 @@ class LRFinder(object):
             ax.plot(np.asarray(self.log_lr_history), np.asarray(self.acc_history))
         else:
             ax.plot(10 ** np.asarray(self.log_lr_history), np.asarray(self.acc_history))
+
+        # Add vertical bars showing learning rate ranges
+        lr_min, lr_max = self.get_lr_range()
+        if lr_min is not None and lr_max is not None:
+            ax.axvline(x=lr_min, color='r', label='lr_min')
+            ax.axvline(x=lr_max, color='r', label='lr_max')
+
         ax.set_xlabel('Learning rate')
         ax.set_ylabel('Accuracy')
         if title is not None:
@@ -131,6 +148,13 @@ class LRFinder(object):
             ax.plot(np.asarray(self.log_lr_history), np.asarray(self.smooth_loss_history))
         else:
             ax.plot(10 ** np.asarray(self.log_lr_history), np.asarray(self.smooth_loss_history))
+
+        # Add vertical bars showing learning rate ranges
+        lr_min, lr_max = self.get_lr_range()
+        if lr_min is not None and lr_max is not None:
+            ax.axvline(x=lr_min, color='r', label='lr_min')
+            ax.axvline(x=lr_max, color='r', label='lr_max')
+
         ax.set_xlabel('Learning Rate')
         ax.set_ylabel('Smooth loss')
         if title is not None:
