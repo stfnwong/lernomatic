@@ -272,7 +272,7 @@ def get_parser():
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='cifar10',
+                        default='nic_image_capt',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',

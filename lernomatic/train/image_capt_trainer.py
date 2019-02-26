@@ -17,6 +17,7 @@ from lernomatic.util import util
 # debug
 from pudb import set_trace; set_trace()
 
+
 def clip_gradient(optimizer, grad_clip):
     """
     CLIP_GRADIENT
@@ -61,24 +62,25 @@ class ImageCaptTrainer(trainer.Trainer):
     Trainer object for image captioning experiments
     """
     def __init__(self, encoder, decoder, **kwargs):
-        self.encoder = encoder
-        self.decoder = decoder
+        self.encoder          = encoder
+        self.decoder          = decoder
         # Deal with keyword args
-        self.dec_lr    = kwargs.pop('dec_lr', 1e-4)
-        self.dec_mom   = kwargs.pop('dec_mom', 0.0)
-        self.dec_wd    = kwargs.pop('dec_wd', 0.0)
-        self.enc_lr    = kwargs.pop('enc_lr', 1e-4)
-        self.enc_mom   = kwargs.pop('enc_mon', 0.0)
-        self.enc_wd    = kwargs.pop('enc_wd', 0.0)
-        self.alpha_c   = kwargs.pop('alpha_c', 1.0)
-        self.grad_clip = kwargs.pop('grad_clip', None)
-        self.word_map  = kwargs.pop('word_map', None)
+        self.dec_lr           = kwargs.pop('dec_lr', 1e-4)
+        self.dec_mom          = kwargs.pop('dec_mom', 0.0)
+        self.dec_wd           = kwargs.pop('dec_wd', 0.0)
+        self.enc_lr           = kwargs.pop('enc_lr', 1e-4)
+        self.enc_mom          = kwargs.pop('enc_mon', 0.0)
+        self.enc_wd           = kwargs.pop('enc_wd', 0.0)
+        self.alpha_c          = kwargs.pop('alpha_c', 1.0)
+        self.grad_clip        = kwargs.pop('grad_clip', None)
+        self.word_map         = kwargs.pop('word_map', None)
+        self.dec_lr_scheduler = kwargs.pop('dec_lr_scheduler', None)
+        self.enc_lr_scheduler = kwargs.pop('endec_lr_scheduler', None)
         super(ImageCaptTrainer, self).__init__(None, **kwargs)
 
         self.criterion = torch.nn.CrossEntropyLoss()
         self._init_optimizer()
         self._send_to_device()
-
 
     def __repr__(self):
         return 'ImageCaptTrainer'
@@ -94,23 +96,41 @@ class ImageCaptTrainer(trainer.Trainer):
         return ''.join(s)
 
     def _init_optimizer(self):
-        # optimizer
-        if self.decoder is None or self.encoder is None or self.train_loader is None:
-            self.decoder = image_caption.DecoderAtten()
-            self.encoder = image_caption.Encoder()
+        # TODO : ADAM kwargs are betas, eps, weight_decay
+        if self.decoder is None:
             self.decoder_optim = None
-            self.encoder_optim = None
         else:
             self.decoder_optim = torch.optim.Adam(
                 params = filter(lambda p : p.requires_grad, self.decoder.parameters()),
                 lr = self.dec_lr,
-                #momentum = self.dec_mom
             )
+
+        if self.encoder is None or (self.encoder.do_fine_tune is False):
+            self.encoder_optim = None
+        else:
             self.encoder_optim = torch.optim.Adam(
                 params = filter(lambda p : p.requires_grad, self.encoder.parameters()),
                 lr = self.enc_lr,
-                #momentum = self.enc_mom
             )
+
+    #def _init_optimizer(self):
+    #    # optimizer
+    #    if self.decoder is None or self.encoder is None or self.train_loader is None:
+    #        self.decoder = image_caption.DecoderAtten()
+    #        self.encoder = image_caption.Encoder()
+    #        self.decoder_optim = None
+    #        self.encoder_optim = None
+    #    else:
+    #        self.decoder_optim = torch.optim.Adam(
+    #            params = filter(lambda p : p.requires_grad, self.decoder.parameters()),
+    #            lr = self.dec_lr,
+    #            #momentum = self.dec_mom
+    #        )
+    #        self.encoder_optim = torch.optim.Adam(
+    #            params = filter(lambda p : p.requires_grad, self.encoder.parameters()),
+    #            lr = self.enc_lr,
+    #            #momentum = self.enc_mom
+    #        )
 
     def _send_to_device(self):
         if self.decoder is not None:
@@ -176,11 +196,11 @@ class ImageCaptTrainer(trainer.Trainer):
             # networks
             'encoder' : self.encoder.state_dict(),
             'decoder' : self.decoder.state_dict(),
-            'encoder_params' : self.encoder.get_params(),
-            'decoder_params' : self.decoder.get_params(),
+            'encoder_params' : self.encoder.get_params() if self.encoder is not None else None,
+            'decoder_params' : self.decoder.get_params() if self.decoder is not None else None,
             # solvers
-            'encoder_optim' : self.encoder_optim.state_dict(),
-            'decoder_optim' : self.decoder_optim.state_dict(),
+            'encoder_optim' : self.encoder_optim.state_dict() if self.encoder_optim is not None else None,
+            'decoder_optim' : self.decoder_optim.state_dict() if self.decoder_optim is not None else None,
             # loaders?
             # object params
             'trainer_state' : trainer_params,
@@ -251,184 +271,156 @@ class ImageCaptTrainer(trainer.Trainer):
         else:
             self.acc_iter = 0
 
-    # TODO: change these back to VAL?
-    def test_epoch(self):
-        """
-        TEST_EPOCH
-        Evaluate accuracy of classifier
-        """
-        self.decoder.eval()
-        if self.encoder is not None:
-            self.encoder.eval()
+    # set learning rates for the two optimizers
+    def set_learning_rate(self, lr, param_zero=True):
+        if param_zero:
+            self.dec_optimizer.param_groups[0]['lr'] = lr
+            self.enc_optimizer.param_groups[0]['lr'] = lr
+        else:
+            for g in self.dec_optimizer.param_groups:
+                g['lr'] = lr
+            for g in self.enc_optimizer.param_groups:
+                g['lr'] = lr
 
-        batch_time = util.AverageMeter()
-        losses     = util.AverageMeter()
-        top_5_acc  = util.AverageMeter()
+    def set_dec_learning_rate(self, lr, param_zero=True):
+        if param_zero:
+            self.dec_optimizer.param_groups[0]['lr'] = lr
+        else:
+            for g in self.dec_optimizer.param_groups:
+                g['lr'] = lr
 
-        start = time.time()
+    def set_enc_learning_rate(self, lr, param_zero=True):
+        if param_zero:
+            self.enc_optimizer.param_groups[0]['lr'] = lr
+        else:
+            for g in self.enc_optimizer.param_groups:
+                g['lr'] = lr
 
-        references = list()     # references (true captions) for calculating BLEU-4 score
-        hypotheses = list()     # hypotheses (predictions)
+    # Overload set_lr_scheduler
+    def set_lr_scheduler(self, lr_scheduler):
+        self.dec_lr_scheduler = lr_scheduler
+        self.enc_lr_scheduler = lr_scheduler
 
-        for n, (imgs, caps, caplens, allcaps) in enumerate(self.test_loader):
-            # move to device
-            imgs = imgs.to(self.device)
-            caps = caps.to(self.device)
-            caplens = caplens.to(self.device)
-            if self.encoder is not None:
-                imgs = self.encoder(imgs)
+    def set_dec_lr_scheduler(self, lr_scheduler):
+        self.dec_lr_scheduler = lr_scheduler
 
-            scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder(imgs, caps, caplens)
-            # since we decoded starting with <start> the targets are all words
-            # after <start> up until <end>
-            targets = caps_sorted[:, 1:]
-            # Remove timesteps that we didn't decode at, or are pads
-            scores_copy = scores.clone()
-            scores, _ = pack_padded_sequence(scores, decode_lengths, batch_first=True)
-            targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
-            # Compute loss
-            loss = self.criterion(scores, targets)
-            # add doubly-stochastic attention regularization
-            loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
-            # Keep track of metrics
-            losses.update(loss.item(), sum(decode_lengths))
-            top5 = train_util.accuracy(scores, targets, 5)
-            top_5_acc.update(top5, sum(decode_lengths))
-            batch_time.update(time.time() - start)
+    def set_enc_lr_scheduler(self, lr_scheduler):
+        self.enc_lr_scheduler = lr_scheduler
 
-            start = time.time()
+    def get_dec_lr_scheduler(self):
+        return self.dec_lr_scheduler
 
-            if (n % self.print_every) == 0:
-                print('[VAL]   Validation [%d/%d]' % (n, len(self.val_loader)))
-                print('[VAL]   Batch time {batch_time.val:.3f} ({batch_time.avg:.3f})'.format(batch_time=batch_time))
-                print('[VAL]   Loss       {loss.val:.4f} ({loss.avg:.4f})'.format(loss=losses))
-                print('[VAL]   Top-5 Acc  {top5.val:.3f} ({top5.avg:.3f})'.format(top5=top_5_acc))
-
-            # References
-            allcaps = allcaps[sort_ind]
-            for j in range(allcaps.shape[0]):
-                img_caps = allcaps[j].tolist()
-                img_captions = list(
-                    map(lambda c: [w for w in c if w not in {self.word_map['<start>'], self.word_map['<pad>']}], img_caps))
-                references.append(img_captions)
-            # Hypotheses
-            _, preds = torch.max(scores_copy, dim=2)
-            preds = preds.tolist()
-            temp_preds = list()
-            # remove pads
-            for j, p in enumerate(preds):
-                temp_preds.append(preds[j][:decode_lengths[j]])
-            preds = temp_preds
-            hypotheses.extend(preds)
-
-            assert len(references) == len(hypotheses)
-
-        # compute the bleu-4 scores
-        bleu4 = corpus_bleu(references, hypotheses)
-
-        # dump some info to console
-        print('\n LOSS : {loss.avg:.3f}, Top-5 Acc : {top5.avg:.3f}, BLEU-4 : {bleu}\n'.format(
-            loss=losses,
-            top5=top_5_acc,
-            bleu=bleu4)
-        )
-
-        return bleu4
+    def get_enc_lr_scheduler(self):
+        return self.enc_lr_scheduler
 
 
+    # New training routine
     def train_epoch(self):
         """
-        TRAIN_EPOCH
-        Train the classifier for a single epoch
+        Train for one epoch
         """
         self.decoder.train()
         if self.encoder is not None:
             self.encoder.train()
 
-        batch_time = util.AverageMeter()        # forward prop + back prop time
-        data_time  = util.AverageMeter()        # data loading time
-        losses     = util.AverageMeter()        # loss (per word decoded)
-        top_5_acc  = util.AverageMeter()        # top5 accuracy
+        # TODO : can add batch time meters here later
 
-        start = time.time()
         for n, (imgs, caps, caplens) in enumerate(self.train_loader):
-            #print('Processing batch [%d / %d] imgs.shape : %s, caps.shape: %s, caplens.shape %s' %\
-            #      (n, len(self.train_loader), str(imgs.shape), str(caps.shape), str(caplens.shape))
-            #)
-            data_time.update(time.time() - start)
-            # move data to device
-            imgs    = imgs.to(self.device)
-            caps    = caps.to(self.device)
+            imgs = imgs.to(self.device)
+            caps = caps.to(self.device)
             caplens = caplens.to(self.device)
 
             # forward pass
-            enc_imgs = self.encoder(imgs)
-            #print('Processing batch [%d / %d] , enc_img.shape : %s' % (n, len(self.train_loader), str(enc_imgs.shape)))
-            scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder(enc_imgs, caps, caplens)
-            # since we decoded stating with <start> the targets are all words after
-            # <start> and up to <end>
+            imgs = self.encoder(imgs)
+            scores, caps_sorted, decode_lengths, alphas,  sort_ind = self.decoder(imgs, caps, caplens)
+            # remove the <start> token from the output captions
             targets = caps_sorted[:, 1:]
-            # remove timesteps that we didn't decode at or are pads
-            # pack_padded_sequence is an easy trick to do this
-            packed_scores  = pack_padded_sequence(scores, decode_lengths, batch_first=True)
-            packed_targets = pack_padded_sequence(targets, decode_lengths, batch_first=True)
-
-            #print('scores.shape : %s   targets.shape  : %s' % (str(packed_scores[0].shape), str(packed_targets[0].shape)))
-            # Hack to modify lengths <- NOTE: this doesn't work
-            #if packed_scores[0].shape[0] != packed_targets[0].shape[0]:
-            #    packed_scores[0] = packed_scores[0][0 : packed_targets[0].shape[0], :]
-            #    print('Hacked packed_scores length on batch %d, new packed_scores.shape : %s' %\
-            #          (n, str(packed_scores[0].shape))
-            #)
+            # remove timesteps that are pads or that we didn't do any decoding
+            # for
+            scores, _  = pack_padded_sequence(scores, decode_lengths, batch_first=True)
+            targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
             # compute loss
-            loss = self.criterion(packed_scores[0], packed_targets[0])
-            # add doubly-stochastic attention regularization
+            loss = self.criterion(scores, targets)
+            # add attention regularization
             loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
-            # backprop
+
+            # backward pass
             self.decoder_optim.zero_grad()
             if self.encoder_optim is not None:
                 self.encoder_optim.zero_grad()
             loss.backward()
 
-            # clip gradients
+            # perform gradient clip
             if self.grad_clip is not None:
-                train_util.clip_gradient(self.decoder_optim, self.grad_clip)
+                clip_gradient(self.decoder_optim, self.grad_clip)
                 if self.encoder_optim is not None:
-                    train_util.clip_gradient(self.encoder_optim, self.grad_clip)
+                    clip_gradient(self.encoder_optim, self.grad_clip)
 
-            # Update weights
+            # update weights
             self.decoder_optim.step()
             if self.encoder_optim is not None:
                 self.encoder_optim.step()
 
-            # track metrics
-            top5 = ica_accuracy(packed_scores[0], packed_targets[0], 5)
-            losses.update(loss.item(), sum(decode_lengths))
-            top_5_acc.update(top5, sum(decode_lengths))
-            batch_time.update(time.time() - start)
+            # Display
+            if (n % self.print_every) == 0:
+                print('[TRAIN] :   Epoch       iteration         Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
 
-            start = time.time()
+            # do scheduling
+            if self.dec_lr_scheduler is not None:
+                new_lr = self.dec_lr_scheduler.get_lr(self.loss_iter)
+                self.set_dec_learning_rate(new_lr)
+            if self.enc_lr_scheduler is not None:
+                new_lr = self.enc_lr_scheduler.get_lr(self.loss_iter)
+                self.set_enc_learning_rate(new_lr)
 
-            # print status
-            if n % self.print_every == 0:
-                print('[TRAIN] Epoch : [%d / %d]    iter [%d/%d]' % (self.cur_epoch, self.num_epochs, n, len(self.train_loader)))
-                print('[TRAIN] Data time  {data_time.val:.3f}  ({data_time.avg:.3f})'.format(data_time=data_time), end='  ')
-                print('Batch time {batch_time.val:.3f} ({batch_time.avg:.3f})'.format(batch_time=batch_time))
-                print('[TRAIN] Loss       {loss.val:.4f}       ({loss.avg:.4f})'.format(loss=losses))
-                print('[TRAIN] Top-5 Acc  {top5.val:.3f}       ({top5.avg:.3f})'.format(top5=top_5_acc))
-
-            # save training checkpoint
-            if (self.loss_iter % self.save_every) == 0 and self.loss_iter > 0:
-                if self.checkpoint_dir is not None:
-                    ck_name = str(self.checkpoint_dir) + '/' + str(self.checkpoint_name) + '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
-                else:
-                    ck_name = str(self.checkpoint_name) + '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
-                if self.verbose:
-                    print('\t Saving checkpoint to file [%s], epoch %d, iter %d' % (str(ck_name), self.cur_epoch, self.loss_iter))
-                self.save_checkpoint(ck_name)
-
-            # Save loss history
+            # update history
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
+            # save checkpoint
+            if n > 0 and (self.loss_iter % self.save_every == 0):
+                ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
+                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+                self.save_checkpoint(ck_name)
 
+
+    def test_epoch(self):
+        """
+        Run validation on one epoch of test data
+        """
+        self.decoder.eval()
+        if self.encoder is not None:
+            self.encoder.eval()
+
+        test_loss = 0.0
+        correct = 0
+        for n, (imgs, caps, caplens, allcaps) in enumerate(self.test_loader):
+            print('Skipping test phase...')
+            ## move data to device
+            #imgs = imgs.to(self.device)
+            #caps = caps.to(self.device)
+            #caplens = caplens.to(self.device)
+
+            #enc_imgs = self.encoder(imgs)
+
+            ## display
+            #if (n % self.print_every) == 0:
+            #    print('[TEST]  :   Epoch       iteration         Test Loss')
+            #    print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+            #          (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), loss.item()))
+
+            ## save the best weights
+            #if acc > self.best_acc:
+            #    self.best_acc = acc
+            #    if self.save_every > 0:
+            #        ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name
+            #        if self.verbose:
+            #            print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+            #        self.save_checkpoint(ck_name)
+
+            #self.test_loss_history[self.test_loss_iter] = loss.item()
+            #self.test_loss_iter += 1

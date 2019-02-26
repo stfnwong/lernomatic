@@ -12,8 +12,14 @@ import numpy as np
 # debug
 #from pudb import set_trace; set_trace()
 
-# Other trainers should inherit from this...
+
 class Trainer(object):
+    """
+    Trainer
+
+    Base class for model trainers in lernomatic. Note that this is not
+    an abstract class and can be instantiated.
+    """
     def __init__(self, model=None, **kwargs):
         self.model           = model
         # Training loop options
@@ -42,17 +48,20 @@ class Trainer(object):
         self.val_dataset     = kwargs.pop('val_dataset', None)
         self.shuffle         = kwargs.pop('shuffle', True)
         self.num_workers     = kwargs.pop('num_workers' , 1)
+        # parameter scheduling
+        self.lr_scheduler    = kwargs.pop('lr_scheduler', None)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
+        self.best_acc = 0.0
 
+        # Setup optimizer. If we have no model then assume it will be
+        self._init_optimizer()
         # set up device
         self._init_device()
         # Init the internal dataloader options. If nothing provided assume that
         # we will load options in later (eg: from checkpoint)
         self._init_dataloaders()
-        # Setup optimizer. If we have no model then assume it will be
-        self._init_optimizer()
         # Init the loss and accuracy history. If no train_loader is provided
         # then we assume that one will be loaded later (eg: in some checkpoint
         # data)
@@ -80,7 +89,8 @@ class Trainer(object):
 
         # Get a loss function
         if hasattr(nn, self.loss_function):
-            self.criterion = nn.BCELoss()
+            loss_obj = getattr(nn, self.loss_function)
+            self.criterion = loss_obj()
         else:
             raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
 
@@ -112,15 +122,6 @@ class Trainer(object):
         else:
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset,
-                batch_size = self.test_batch_size,
-                shuffle    = self.shuffle
-            )
-
-        if self.val_dataset is None:
-            self.val_loader = None
-        else:
-            self.val_loader = torch.utils.data.DataLoader(
-                self.val_dataset,
                 batch_size = self.batch_size,
                 shuffle    = self.shuffle
             )
@@ -132,10 +133,9 @@ class Trainer(object):
             self.device = torch.device('cuda:%d' % self.device_id)
 
     def _send_to_device(self):
-        if self.model is not None:
-            self.model = self.model.to(self.device)
+        self.model = self.model.to(self.device)
 
-    # default param options
+    # ======== getters, setters
     def get_trainer_params(self):
         params = dict()
         params['num_epochs']      = self.num_epochs
@@ -180,15 +180,39 @@ class Trainer(object):
             return None
         return self.model.state_dict()
 
-    # Default save and load methods
-    def save_state(self, fname):
-        raise NotImplementedError('This method should be implemented in the derived class')
+    # common getters/setters
+    def get_learning_rate(self):
+        return self.optimizer.param_groups[0]['lr']
+        #optim_state = self.optimizer.state_dict()
+        #return optim_state['lr']
 
-    def load_state(self, fname):
-        raise NotImplementedError('This method should be implemented in the derived class')
+    def get_momentum(self):
+        optim_state = self.optimizer.state_dict()
+        if 'momentum' in optim_state:
+            return optim_state['momentum']
+        return None
+
+    def set_learning_rate(self, lr, param_zero=True):
+        if param_zero:
+            self.optimizer.param_groups[0]['lr'] = lr
+        else:
+            for g in self.optimizer.param_groups:
+                g['lr'] = lr
+
+    def set_momentum(self, momentum):
+        optim_state = self.optimizer.state_dict()
+        if 'momentum' in optim_state:
+            for g in self.optimizer.param_groups:
+                g['momentum'] = momentum
+
+    def set_lr_scheduler(self, lr_scheduler):
+        self.lr_scheduler = lr_scheduler
+
+    def get_lr_scheduler(self):
+        return self.lr_scheduler
+
 
     # Basic training/test routines. Specialize these when needed
-
     def train_epoch(self):
         """
         TRAIN_EPOCH
@@ -223,49 +247,80 @@ class Trainer(object):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
-                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
-                self.save_history(hist_name)
 
+            # perform any scheduling
+            if self.lr_scheduler is not None:
+                new_lr = self.lr_scheduler.get_lr(self.loss_iter)
+                self.set_learning_rate(new_lr)
 
     def test_epoch(self):
         """
         TEST_EPOCH
-        Perform testing on one epoch of the test data
+        Run a single epoch on the test dataset
         """
         self.model.eval()
         test_loss = 0.0
-        correct = 0.0
+        correct = 0
 
-        with torch.no_grad():
-            for n, (data, target) in enumerate(self.test_loader):
-                data = data.to(self.device)
-                target = target.to(self.device)
-                if self.verbose:
-                    print('[VAL]   : element [%d / %d]' % (n+1, len(self.test_loader)), end='\r')
+        for n, (data, labels) in enumerate(self.test_loader):
+            data = data.to(self.device)
+            labels = labels.to(self.device)
+
+            with torch.no_grad():
                 output = self.model(data)
-                test_loss += self.criterion(output, target).item()
-                pred = output.data.max(1, keepdim=True)[1]
-                correct += pred.eq(target.data.view_as(pred)).sum().item()
+            loss = self.criterion(output, labels)
+            test_loss += loss.item()
 
-        if self.verbose:
-            print('\n ..done')
+            # accuracy
+            pred = output.data.max(1, keepdim=True)[1]
+            correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
-        test_loss /= len(self.test_loader)
-        self.test_loss_history[self.cur_epoch] = correct / len(self.test_loader.dataset)
-        # show output
-        print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-              (test_loss, correct, len(self.test_loader.dataset),
-               100.0 * correct / len(self.test_loader.dataset))
+            if (n % self.print_every) == 0:
+                print('[TEST]  :   Epoch       iteration         Test Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), loss.item()))
+
+            self.test_loss_history[self.test_loss_iter] = loss.item()
+            self.test_loss_iter += 1
+
+        avg_test_loss = test_loss / len(self.test_loader)
+        acc = correct / len(self.test_loader.dataset)
+        self.acc_history[self.acc_iter] = acc
+        self.acc_iter += 1
+        print('[TEST]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+              (avg_test_loss, correct, len(self.test_loader.dataset),
+               100.0 * acc)
         )
 
+        # save the best weights
+        if acc > self.best_acc:
+            self.best_acc = acc
+            if self.save_every > 0:
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+                self.save_checkpoint(ck_name)
+
     def train(self):
-        for n in range(self.num_epochs):
+        """
+        TRAIN
+        Standard training routine
+        """
+        if self.cur_epoch >= self.num_epochs:
+            return
+
+        for n in range(self.cur_epoch, self.num_epochs):
             self.train_epoch()
 
             if self.test_loader is not None:
                 self.test_epoch()
-            #if self.val_loader is not None:
-            #    self.val_epoch()
+
+            # save history at the end of each epoch
+            hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
+            if self.verbose:
+                print('\t Saving history to file [%s] ' % str(hist_name))
+            self.save_history(hist_name)
+
             self.cur_epoch += 1
 
+    # TODO : checkout the trainer module that has history getters

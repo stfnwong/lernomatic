@@ -10,7 +10,9 @@ import random
 import numpy as np
 from imageio import imread
 from tqdm import tqdm
+# TODO : replace with cv2
 from skimage.transform import resize
+
 
 def process_coco_data_split(split_data, word_map, fname, **kwargs):
     """

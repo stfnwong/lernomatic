@@ -9,6 +9,7 @@ import torch
 import torchvision
 from torch import nn
 
+
 class AttentionNet(nn.Module):
     def __init__(self, enc_dim=1, dec_dim=1, atten_dim=1):
         """
@@ -41,6 +42,9 @@ class AttentionNet(nn.Module):
                  (self.enc_dim, self.dec_dim, self.atten_dim))
         return ''.join(s)
 
+    def get_ln_id(self):
+        return 'AttentionNet-%d' % self.atten_dim
+
     def forward(self, enc_feature, dec_hidden):
         att1 = self.enc_att(enc_feature)        # shape : (N, num_pixels, atten_dim)
         att2 = self.dec_att(dec_hidden)         # shape : (N, atten_dim)
@@ -50,6 +54,7 @@ class AttentionNet(nn.Module):
         atten_w_enc = (enc_feature * alpha.unsqueeze(2)).sum(dim=1)     # shape : (N, enc_dim)
 
         return atten_w_enc, alpha
+
 
 class DecoderAtten(nn.Module):
     def __init__(self, atten_dim=1, embed_dim=1,
@@ -81,6 +86,9 @@ class DecoderAtten(nn.Module):
         self._init_network()
 
     def __repr__(self):
+        return 'DecoderAtten-%d' % self.dec_dim
+
+    def get_ln_id(self):
         return 'DecoderAtten-%d' % self.dec_dim
 
     def _init_device(self):
@@ -198,11 +206,13 @@ class DecoderAtten(nn.Module):
 
         # flatten image
         enc_feature = enc_feature.view(N, -1, enc_dim)  # aka : (N, num_pixels, enc_dim)
-        num_pixels = enc_feature.size(1)
+        num_pixels  = enc_feature.size(1)
+
         # Sort input data by decreasing lengths (why? see below)
         capt_lengths, sort_ind = capt_lengths.squeeze(1).sort(dim=0, descending=True)
         enc_feature = enc_feature[sort_ind]
         enc_capt = enc_capt[sort_ind]
+
         # Embeddings
         embeddings = self.embedding(enc_capt)       # shape = (N, dec_dim)
         # init LSTM state
@@ -213,7 +223,7 @@ class DecoderAtten(nn.Module):
         decode_lengths = (capt_lengths - 1).tolist()
         # Create tensors to hold word prediction scores and alphas
         predictions = torch.zeros(N, max(decode_lengths), vocab_size).to(self.device)
-        alphas = torch.zeros(N, max(decode_lengths), num_pixels).to(self.device)
+        alphas      = torch.zeros(N, max(decode_lengths), num_pixels).to(self.device)
 
         # At each time step we decode the by
         # 1) Attention-weighting the encoded features based the on the previous
@@ -241,6 +251,7 @@ class DecoderAtten(nn.Module):
 
         return predictions, enc_capt, decode_lengths, alphas, sort_ind
 
+
 class Encoder(nn.Module):
     """
     CNN Encoder
@@ -252,6 +263,9 @@ class Encoder(nn.Module):
         self.device_id    = kwargs.pop('device_id', -1)
         #  get network
         self._init_network()
+
+    def get_ln_id(self):
+        return 'Encoder'
 
     def _init_network(self):
         resnet = torchvision.models.resnet101(pretrained=True)
