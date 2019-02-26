@@ -390,37 +390,89 @@ class ImageCaptTrainer(trainer.Trainer):
 
     def test_epoch(self):
         """
-        Run validation on one epoch of test data
+        Find accuracy on test data
         """
         self.decoder.eval()
         if self.encoder is not None:
             self.encoder.eval()
 
-        test_loss = 0.0
+        references = list()     # true captions for computing BLEU-4 score
+        hypotheses = list()     # predicted captions
         correct = 0
+
         for n, (imgs, caps, caplens, allcaps) in enumerate(self.test_loader):
-            print('Skipping test phase...')
-            ## move data to device
-            #imgs = imgs.to(self.device)
-            #caps = caps.to(self.device)
-            #caplens = caplens.to(self.device)
+            # move data to device
+            imgs = imgs.to(self.device)
+            caps = caps.to(self.device)
+            caplens = caplens.to(self.device)
 
-            #enc_imgs = self.encoder(imgs)
+            if self.encoder is not None:
+                imgs = self.encoder(imgs)
 
-            ## display
-            #if (n % self.print_every) == 0:
-            #    print('[TEST]  :   Epoch       iteration         Test Loss')
-            #    print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-            #          (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), loss.item()))
+            scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder(imgs, caps, caplens)
+            # get rid of the <start> token
+            targets = caps_sorted[:, 1:]
+            # prune out extra timesteps
+            scores_copy = scores.clone()
+            scores, _  = pack_padded_sequence(scores, decode_lengths, batch_first=True)
+            targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
-            ## save the best weights
-            #if acc > self.best_acc:
-            #    self.best_acc = acc
-            #    if self.save_every > 0:
-            #        ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name
-            #        if self.verbose:
-            #            print('\t Saving checkpoint to file [%s] ' % str(ck_name))
-            #        self.save_checkpoint(ck_name)
+            # compute loss, add attention regularization
+            test_loss = self.criterion(scores, targets)
+            test_loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
 
-            #self.test_loss_history[self.test_loss_iter] = loss.item()
-            #self.test_loss_iter += 1
+            # display
+            if (n % self.print_every) == 0:
+                print('[TEST]  :   Epoch       iteration         Test Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), test_loss.item()))
+
+            self.test_loss_history[self.test_loss_iter] = test_loss.item()
+            self.test_loss_iter += 1
+
+            # references
+            allcaps = allcaps[sort_ind]     # decoder sorts images, we re-order here to match
+            for cap_idx in range(allcaps.shape[0]):
+                img_caps = allcaps[cap_idx].tolist()
+                # remove <start> and <pad> tokens
+                img_captions = list(
+                    map(lambda c: \
+                        [w for w in c if w not in {self.word_map.word_map['<start>'], self.word_map.word_map['<pad>']}], img_caps)
+                )
+
+                references.append(img_captions)
+
+            # hypotheses
+            _, preds = torch.max(scores_copy, dim=2)
+            preds = preds.tolist()
+            temp_preds = list()
+            for n, pred in enumerate(preds):
+                temp_preds.append(preds[n][0 : decode_lengths[n]])
+            preds = temp_preds
+            hypotheses.extend(preds)
+
+            if len(references) != len(hypotheses):
+                raise ValueError('len(references) <%d> != len(hypotheses) <%d>' %\
+                                 (len(references), len(hypotheses))
+                )
+
+
+        # compute the BLEU-4 score
+        bleu4 = corpus_bleu(references, hypotheses)
+        avg_test_loss = test_loss / len(self.test_loader)
+        self.acc_history[self.acc_iter] = bleu4
+        self.acc_iter += 1
+
+        print('[TEST]  : Avg. Test Loss : %.4f, BLEU-4 : (%.4f%%)' %\
+              (avg_test_loss, bleu4)
+        )
+
+        # save the best weights
+        if bleu4 > self.best_acc:
+            self.best_acc = bleu4
+            if self.save_every > 0:
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+                self.save_checkpoint(ck_name)
+
