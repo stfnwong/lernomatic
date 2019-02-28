@@ -463,7 +463,7 @@ class ImageCaptTrainer(trainer.Trainer):
         self.acc_history[self.acc_iter] = bleu4
         self.acc_iter += 1
 
-        print('[TEST]  : Avg. Test Loss : %.4f, BLEU-4 : (%.4f%%)' %\
+        print('[TEST]  : Avg. Test Loss : %.4f, BLEU-4 : (%.4f)' %\
               (avg_test_loss, bleu4)
         )
 
