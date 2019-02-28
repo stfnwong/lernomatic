@@ -17,12 +17,12 @@ from pudb import set_trace; set_trace()
 
 class DCGANTrainer(trainer.Trainer):
     def __init__(self, D, G, **kwargs):
-        self.D = D
-        self.G = G
-        self.beta1        = kwargs.pop('beta1', 0.5)
-        self.real_label   = kwargs.pop('real_label', 1)
-        self.fake_label   = kwargs.pop('fake_label', 0)
-        self.train_loader = None        # so that super() does not call _init_history()
+        self.discriminator = D
+        self.generator     = G
+        self.beta1         = kwargs.pop('beta1', 0.5)
+        self.real_label    = kwargs.pop('real_label', 1)
+        self.fake_label    = kwargs.pop('fake_label', 0)
+        self.train_loader  = None        # so that super() does not call _init_history()
         super(DCGANTrainer, self).__init__(None, **kwargs)
 
         self.train_dataset = kwargs.pop('train_dataset', None)
@@ -65,27 +65,27 @@ class DCGANTrainer(trainer.Trainer):
 
     def _init_optimizers(self):
         # generator
-        if self.G is None:
+        if self.generator is None:
             self.optim_g = None
         else:
             self.optim_g = torch.optim.Adam(
-                self.G.parameters(),
+                self.generator.parameters(),
                 lr = self.learning_rate,
                 betas = (self.beta1, 0.999)
             )
         # discriminator
-        if self.D is None:
+        if self.discriminator is None:
             self.optim_d = None
         else:
             self.optim_d = torch.optim.Adam(
-                self.D.parameters(),
+                self.discriminator.parameters(),
                 lr = self.learning_rate,
                 betas = (self.beta1, 0.999)
             )
 
     def _send_to_device(self):
-        self.G = self.G.to(self.device)
-        self.D = self.D.to(self.device)
+        self.generator = self.generator.to(self.device)
+        self.discriminator = self.discriminator.to(self.device)
 
     def _weight_init(self,  model):
         # The orignal paper suggests that the weights should be initialized
@@ -98,10 +98,10 @@ class DCGANTrainer(trainer.Trainer):
             nn.init.constant_(model.bias.data, 0)
 
     def set_discriminator(self, D):
-        self.D = D
+        self.discriminator = D
 
     def set_generator(self, G):
-        self.G = G
+        self.generator = G
 
     def get_trainer_params(self):
         params = {
@@ -123,8 +123,8 @@ class DCGANTrainer(trainer.Trainer):
     def save_checkpoint(self, fname):
         checkpoint = {
             'trainer_params' : self.get_trainer_params,
-            'discriminator'  : self.D.state_dict(),
-            'generator'      : self.G.state_dict(),
+            'discriminator'  : self.discriminator.state_dict(),
+            'generator'      : self.generator.state_dict(),
             'optim_d'        : self.optim_d.state_dict(),
             'optim_g'        : self.optim_g.state_dict()
         }
@@ -132,10 +132,10 @@ class DCGANTrainer(trainer.Trainer):
 
     def load_checkpoint(self, fname):
         checkpoint = torch.load(fname)
-        self.D = dcgan.DCGDiscriminator()
-        self.G = dcgan.DCGGenerator()
-        self.D.load_state_dict(checkpoint['discriminator'])
-        self.G.load_state_dict(checkpoint['generator'])
+        self.discriminator = dcgan.DCGDiscriminator()
+        self.generator = dcgan.DCGGenerator()
+        self.discriminator.load_state_dict(checkpoint['discriminator'])
+        self.generator.load_state_dict(checkpoint['generator'])
         self.optim_d.load_state_dict(checkpoint['optim_d'])
         self.optim_g.load_state_dict(checkpoint['optim_g'])
 
@@ -159,19 +159,19 @@ class DCGANTrainer(trainer.Trainer):
 
     # ==== TRAINING ==== #
     def train_epoch(self):
-        self.D.train()
-        self.G.train()
+        self.discriminator.train()
+        self.generator.train()
 
         for n, (data, _) in enumerate(self.train_loader):
             data = data.to(self.device)
             # Update D NETWORK
             # Maximum log(D(x)) + log(1 - D(G(z)))
-            self.D.zero_grad()
+            self.discriminator.zero_grad()
 
             # make a tensor of real labels
             label = torch.full((self.batch_size,), self.real_label, device=self.device)
             # compute loss on all-real batch
-            real_output = self.D(data)
+            real_output = self.discriminator(data)
             errd_real = self.criterion(real_output, label)
             errd_real.backward()
 
@@ -180,15 +180,15 @@ class DCGANTrainer(trainer.Trainer):
             # Now train with an all-fake batch
             noise = torch.randn(
                 self.batch_size,
-                self.G.get_zvec_dim(),
+                self.generator.get_zvec_dim(),
                 1, 1,
                 device = self.device
             )
             # Update G network (maximize log(D(G(z))))
-            fake = self.G(noise)
+            fake = self.generator(noise)
             label.fill_(self.fake_label)
             # classify all the fake batches with D. Tensor is flattened here
-            disc_output = self.D(fake.detach()).view(-1)
+            disc_output = self.discriminator(fake.detach()).view(-1)
             # compute D's loss on the all fake batch
             errd_fake = self.criterion(disc_output, label)
             errd_fake.backward()
@@ -199,9 +199,9 @@ class DCGANTrainer(trainer.Trainer):
             self.optim_d.step()
 
             # Update the Generator network
-            self.G.zero_grad()
+            self.generator.zero_grad()
             label.fill_(self.real_label)
-            output = self.D(fake).view(-1)
+            output = self.discriminator(fake).view(-1)
             # compute G's loss based on the output from D
             err_g = self.criterion(output, label)
             # compute gradients for G and update
@@ -215,9 +215,9 @@ class DCGANTrainer(trainer.Trainer):
             self.loss_iter += 1
 
             # display
-            if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
-                print('[TRAIN] :   Epoch       iteration         Loss (G)    Loss (D)  D(x)  D(G(z)) ')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f   %.6f   %.4f   %.4f/%.4f' %\
+            if self.print_every > 0 and (self.loss_iter % self.print_every) == 0:
+                print('[TRAIN] :   Epoch       iteration         Loss (G)    Loss (D)  D(x)  D(G(z)) [1/2]')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f   %.6f   %.4f   %.4f /  %.4f' %\
                       (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), err_d.item(), err_g.item(),
                        d_x, dg_z2, dg_z1)
                 )
@@ -225,7 +225,7 @@ class DCGANTrainer(trainer.Trainer):
 
     def train(self):
         self._send_to_device()
-        self.gen_fixed_noise_vector(self.G.get_zvec_dim())
+        self.gen_fixed_noise_vector(self.generator.get_zvec_dim())
 
         for n in range(self.cur_epoch, self.num_epochs):
             self.train_epoch()

@@ -59,8 +59,15 @@ def main():
         checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
         # display
         print_every = GLOBAL_OPTS['print_every'],
-        verbose = GLOBAL_OPTS['verbose']
+        verbose = GLOBAL_OPTS['verbose'],
+        # device
+        device_id = GLOBAL_OPTS['device_id']
     )
+
+    if GLOBAL_OPTS['load_checkpoint'] is not None:
+        gan_trainer.load_checkpoint(GLOBAL_OPTS['load_checkpoint'])
+
+    print(gan_trainer.device)
     gan_trainer.train()
     # show the training results
     dcgan_fig, dcgan_ax = vis_loss_history.get_figure_subplots(1)
