@@ -20,6 +20,7 @@ from lernomatic.data.coco import coco_proc
 GLOBAL_OPTS = dict()
 
 
+# TODO : make this a subroutine to dump an image
 def main():
 
     train_data = coco_data.COCODataSplit(

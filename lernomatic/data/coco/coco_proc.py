@@ -8,10 +8,11 @@ Stefan Wong 2019
 import h5py
 import random
 import numpy as np
-from imageio import imread
 from tqdm import tqdm
-# TODO : replace with cv2
-from skimage.transform import resize
+import cv2
+
+# debug
+#from pudb import set_trace; set_trace()
 
 
 def process_coco_data_split(split_data, word_map, fname, **kwargs):
@@ -60,12 +61,12 @@ def process_coco_data_split(split_data, word_map, fname, **kwargs):
                 raise ValueError('len(captions) (%d) != capt_per_img (%d)' %\
                                     (len(captions), split_data.capt_per_img))
             # read images
-            img = imread(impath)
+            img = cv2.imread(impath)
             if len(img.shape) == 2:     # grayscale
                 img = img[:, :, np.newaxis]
                 img = np.concatenate([img, img, img], axis=2)
             #img = imresize(img, (256, 256))
-            img = resize(img, (split_data.img_dim, split_data.img_dim))
+            img = cv2.resize(img, (split_data.img_dim, split_data.img_dim), interpolation=cv2.INTER_CUBIC)
             img = img.transpose(2, 0, 1)
             assert img.shape == (3, split_data.img_dim, split_data.img_dim)
             assert np.max(img) <= pixel_max
@@ -76,8 +77,8 @@ def process_coco_data_split(split_data, word_map, fname, **kwargs):
             # ints..
             for j, c in enumerate(captions):
                 #print('c : %s (type %s)' % (c, type(c)))
-                if type(c) is int:          # TODO : find the source of these ints
-                    continue
+                #if type(c) is int:          # TODO : find the source of these ints
+                #    continue
                 # encode captions
                 enc_c = [word_map['<start>']] +\
                     [word_map.get(word, word_map['<unk>']) for word in c] +\
@@ -91,5 +92,6 @@ def process_coco_data_split(split_data, word_map, fname, **kwargs):
                 # find caption lengths
                 c_len = len(c) + 2
 
-                caption_data[n][:] = enc_c[:]
-                caplens[n]  = c_len
+            #caption_data[n][:] = enc_c[:]
+            caption_data[n] = enc_c
+            caplens[n]  = c_len

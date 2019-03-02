@@ -4,3 +4,4 @@ unittest
 h5py
 pudb
 argparse
+cv2

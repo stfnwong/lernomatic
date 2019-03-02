@@ -126,7 +126,8 @@ class Trainer(object):
             self.train_loader = torch.utils.data.DataLoader(
                 self.train_dataset,
                 batch_size = self.batch_size,
-                shuffle = self.shuffle
+                shuffle = self.shuffle,
+                drop_last = True
             )
 
         if self.test_dataset is None:
@@ -135,7 +136,8 @@ class Trainer(object):
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset,
                 batch_size = self.test_batch_size,
-                shuffle    = self.shuffle
+                shuffle    = self.shuffle,
+                drop_last = True
             )
 
     def _init_device(self):

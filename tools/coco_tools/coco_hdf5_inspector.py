@@ -25,27 +25,38 @@ def main():
         verbose=GLOBAL_OPTS['verbose']
     )
 
-    img = hdf5_data.get_elem(
+    data_params = dict()
+
+    data_params['img'] = hdf5_data.get_elem(
         GLOBAL_OPTS['feature_name'],
         GLOBAL_OPTS['vis_index']
     )
-    caption = hdf5_data.get_elem(
+    data_params['caption'] = hdf5_data.get_elem(
         GLOBAL_OPTS['caption_name'],
         GLOBAL_OPTS['vis_index']
     )
-    caplen = hdf5_data.get_elem(
+    data_params['caplen'] = hdf5_data.get_elem(
         GLOBAL_OPTS['caplen_name'],
         GLOBAL_OPTS['vis_index']
     )
 
     # Transpose image dimensions
-    img = img.transpose(2,1,0)
+    data_params['img'] = data_params['img'].transpose(2,1,0)
+
+    # Actually on reflection this seems a bit complicated...
+    if GLOBAL_OPTS['verbose']:
+        for k, v in data_params.items():
+            if k == 'img':
+                print('\t[%s] : %s' % (str(k), str(v.shape)))
+            else:
+                print('\t[%s] : %s' % (str(k), str(v)))
 
     # generate plot
     #title = 'Image <%d> caplen <%s> caption: [%s] ' % (GLOBAL_OPTS['vis_index'], str(caplen), caption)
-    title = 'Image <%d> caption: [%s] ' % (GLOBAL_OPTS['vis_index'], caption)
+    title = 'Image <%d> caption: [%s] ' %\
+        (GLOBAL_OPTS['vis_index'], data_params['caption'][-1 : data_params['caplen']])
     fig, ax = plt.subplots()
-    ax.imshow(img)
+    ax.imshow(data_params['img'])
     ax.set_title(title)
     fig.tight_layout()
 
