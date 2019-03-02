@@ -8,6 +8,7 @@ Stefan Wong 2019
 import argparse
 from torchvision import datasets
 from torchvision import transforms
+from lernomatic.data import hdf5_dataset
 from lernomatic.models import dcgan
 from lernomatic.train import dcgan_trainer
 from lernomatic.vis import vis_loss_history
@@ -20,17 +21,28 @@ GLOBAL_OPTS = dict()
 
 def main():
 
-    # Just read from folder for now, we can do HDF5 transforms later
-    celeba_transform = transforms.Compose([
-           transforms.Resize(GLOBAL_OPTS['image_size']),
-           transforms.CenterCrop(GLOBAL_OPTS['image_size']),
-           transforms.ToTensor(),
-           transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-    train_dataset = datasets.ImageFolder(
-        root=GLOBAL_OPTS['dataset_root'],
-        transform = celeba_transform
-    )
+    if GLOBAL_OPTS['dataset'] is not None:
+        celeba_transform = transforms.Compose([
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ])
+
+        train_dataset = hdf5_dataset.HDF5Dataset(
+            GLOBAL_OPTS['dataset'],
+            feature_name = 'images',
+            label_name = 'labels',
+            transform = celeba_transform
+        )
+    else:
+        celeba_transform = transforms.Compose([
+            transforms.Resize(GLOBAL_OPTS['image_size']),
+            transforms.CenterCrop(GLOBAL_OPTS['image_size']),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ])
+        train_dataset = datasets.ImageFolder(
+            root=GLOBAL_OPTS['dataset_root'],
+            transform = celeba_transform
+        )
 
     # get a model
     generator = dcgan.DCGGenerator(
@@ -50,18 +62,18 @@ def main():
         # general trainer arguments
         train_dataset = train_dataset,
         # training opts
-        learning_rate = GLOBAL_OPTS['learning_rate'],
-        num_epochs = GLOBAL_OPTS['num_epochs'],
-        batch_size = GLOBAL_OPTS['batch_size'],
+        learning_rate   = GLOBAL_OPTS['learning_rate'],
+        num_epochs      = GLOBAL_OPTS['num_epochs'],
+        batch_size      = GLOBAL_OPTS['batch_size'],
         # Checkpoints
-        save_every = GLOBAL_OPTS['save_every'],
+        save_every      = GLOBAL_OPTS['save_every'],
         checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
-        checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
+        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
         # display
-        print_every = GLOBAL_OPTS['print_every'],
-        verbose = GLOBAL_OPTS['verbose'],
+        print_every     = GLOBAL_OPTS['print_every'],
+        verbose         = GLOBAL_OPTS['verbose'],
         # device
-        device_id = GLOBAL_OPTS['device_id']
+        device_id       = GLOBAL_OPTS['device_id']
     )
 
     if GLOBAL_OPTS['load_checkpoint'] is not None:
@@ -181,6 +193,11 @@ def get_parser():
                         type=str,
                         default='/mnt/ml-data/datasets/celeba/',
                         help='Path to root of dataset'
+                        )
+    parser.add_argument('--dataset',
+                        type=str,
+                        default=None,
+                        help='Path to dataset in HDF5 format (default: None)'
                         )
     # checkpoint options
     parser.add_argument('--checkpoint-dir',

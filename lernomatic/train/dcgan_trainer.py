@@ -12,7 +12,7 @@ from lernomatic.train import trainer
 from lernomatic.models import dcgan
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class DCGANTrainer(trainer.Trainer):
@@ -51,7 +51,8 @@ class DCGANTrainer(trainer.Trainer):
             self.train_loader = torch.utils.data.DataLoader(
                 self.train_dataset,
                 batch_size = self.batch_size,
-                shuffle = self.shuffle
+                shuffle = self.shuffle,
+                drop_last = True
             )
         self.test_loader = None     # TODO : clean up references to this later
 
@@ -216,8 +217,8 @@ class DCGANTrainer(trainer.Trainer):
 
             # display
             if self.print_every > 0 and (self.loss_iter % self.print_every) == 0:
-                print('[TRAIN] :   Epoch       iteration         Loss (G)    Loss (D)  D(x)  D(G(z)) [1/2]')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f   %.6f   %.4f   %.4f /  %.4f' %\
+                print('[TRAIN] :   Epoch      iteration       Loss (G)  Loss (D)  D(x)  D(G(z)) [1/2]')
+                print('            [%3d/%3d]  [%6d/%6d]  %.6f   %.6f   %.4f   %.4f /  %.4f' %\
                       (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), err_d.item(), err_g.item(),
                        d_x, dg_z2, dg_z1)
                 )
