@@ -7,19 +7,54 @@ Stefan Wong 2019
 
 import sys
 import argparse
-
+from matplotlib import pyplot as plt
 from lernomatic.util import hdf5_util
+
+# debug
+from pudb import set_trace; set_trace()
 
 
 GLOBAL_OPTS = dict()
 
+
 def main():
 
+    # TODO: add support for comma seperated list arguments
     hdf5_data = hdf5_util.HDF5Data(
         GLOBAL_OPTS['input'],
         verbose=GLOBAL_OPTS['verbose']
     )
 
+    img = hdf5_data.get_elem(
+        GLOBAL_OPTS['feature_name'],
+        GLOBAL_OPTS['vis_index']
+    )
+    caption = hdf5_data.get_elem(
+        GLOBAL_OPTS['caption_name'],
+        GLOBAL_OPTS['vis_index']
+    )
+    caplen = hdf5_data.get_elem(
+        GLOBAL_OPTS['caplen_name'],
+        GLOBAL_OPTS['vis_index']
+    )
+
+    # Transpose image dimensions
+    img = img.transpose(2,1,0)
+
+    # generate plot
+    #title = 'Image <%d> caplen <%s> caption: [%s] ' % (GLOBAL_OPTS['vis_index'], str(caplen), caption)
+    title = 'Image <%d> caption: [%s] ' % (GLOBAL_OPTS['vis_index'], caption)
+    fig, ax = plt.subplots()
+    ax.imshow(img)
+    ax.set_title(title)
+    fig.tight_layout()
+
+
+    if GLOBAL_OPTS['output'] is not None:
+        fig.savefig(GLOBAL_OPTS['output'])
+    else:
+        plt.imshow(fig)
+        plt.show()
 
 
 
@@ -29,10 +64,10 @@ def arg_parser():
                         type=str,
                         help='Input file'
                         )
-    parser.add_argument('--mode',
-                        choices=['inspect',  'load', 'find'],
-                        default='inspect',
-                        help='Select the tool mode from one of inspect, load, find'
+    parser.add_argument('--output',
+                        type=str,
+                        default=None,
+                        help='File to place output figure in. If unspecified figure is displayed (default: None)'
                         )
     parser.add_argument('--vis-index',
                         type=int,
@@ -41,8 +76,18 @@ def arg_parser():
                         )
     parser.add_argument('--feature-name',
                         type=str,
-                        default='feature',
+                        default='images',
                         help='Name of dataset containing data to visualize'
+                        )
+    parser.add_argument('--caption-name',
+                        type=str,
+                        default='captions',
+                        help='Name of dataset containing caption information'
+                        )
+    parser.add_argument('--caplen-name',
+                        type=str,
+                        default='captions',
+                        help='Name of dataset containing caption length information'
                         )
 
     parser.add_argument('-v', '--verbose',
@@ -65,3 +110,4 @@ if __name__ == '__main__':
         sys.exit(1)
 
     main()
+
