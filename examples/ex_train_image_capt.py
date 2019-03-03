@@ -187,7 +187,7 @@ def get_parser():
                         )
     parser.add_argument('--dec-lr',
                         type=float,
-                        default=1e-4,
+                        default=4e-4,
                         help='Learning rate for decoder'
                         )
     parser.add_argument('--capt-per-img',

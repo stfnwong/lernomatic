@@ -73,12 +73,9 @@ def process_coco_data_split(split_data, word_map, fname, **kwargs):
 
             # save image to HDF5
             images[n] = img
-            # TODO : last few elements of captions are for some reason
-            # ints..
+            enc_captions = []
+            enc_caplens = []
             for j, c in enumerate(captions):
-                #print('c : %s (type %s)' % (c, type(c)))
-                #if type(c) is int:          # TODO : find the source of these ints
-                #    continue
                 # encode captions
                 enc_c = [word_map['<start>']] +\
                     [word_map.get(word, word_map['<unk>']) for word in c] +\
@@ -91,6 +88,8 @@ def process_coco_data_split(split_data, word_map, fname, **kwargs):
                     enc_c += [word_map['<pad>']] * (split_data.max_capt_len - len(c) - 2)
                 # find caption lengths
                 c_len = len(c) + 2
+                enc_captions.append(enc_c)
+                enc_caplens.append(c_len)
 
             #caption_data[n][:] = enc_c[:]
             caption_data[n] = enc_c

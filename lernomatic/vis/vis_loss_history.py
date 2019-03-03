@@ -89,22 +89,27 @@ def plot_train_history_2subplots(ax, loss_history, **kwargs):
         raise ValueError('ax list must contain at least 2 axes handles')
 
     test_loss_history = kwargs.pop('test_loss_history', None)
-    test_loss_title   = kwargs.pop('test_loss_title', 'Test Loss curve')
     acc_history       = kwargs.pop('acc_history', None)
     iter_per_epoch    = kwargs.pop('iter_per_epoch', 0)
     cur_epoch         = kwargs.pop('cur_epoch', 0)
     max_ticks         = kwargs.pop('max_ticks', 6)
     loss_title        = kwargs.pop('loss_title', None)
     acc_title         = kwargs.pop('acc_title', None)
+    acc_unit          = kwargs.pop('acc_unit', 'Accuracy')
 
     # plot the loss
+    legend_list = ['train loss']
     ax[0].plot(np.arange(len(loss_history)), loss_history)
+    if test_loss_history is not None:
+        ax[0].plot(np.arange(len(test_loss_history)), test_loss_history)
+        legend_list.append('test loss')
     ax[0].set_xlabel('Iteration')
     ax[0].set_ylabel('Loss')
     if loss_title is None:
         ax[0].set_title('Loss history')
     else:
         ax[0].set_title(loss_title)
+    ax[0].legend(legend_list)
 
     gen_epoch_ticks = (cur_epoch > 0) and (iter_per_epoch != 0)
     if gen_epoch_ticks:
@@ -119,14 +124,17 @@ def plot_train_history_2subplots(ax, loss_history, **kwargs):
     if acc_history is not None:
         ax[1].plot(np.arange(len(acc_history)), acc_history, 'r')
         ax[1].set_xlabel('Iteration')
-        ax[1].set_ylabel('Accuracy')
+        if acc_unit is not None:
+            ax[1].set_ylabel('Accuracy (%s)' % str(acc_unit))
+        else:
+            ax[1].set_ylabel('Accuracy')
         if acc_title is None:
             ax[1].set_title('Accuracy history')
         else:
             ax[1].set_title(acc_title)
 
-    if test_loss_history is not None and len(ax) > 2:
-        ax[2].plot(np.arange(len(test_loss_history)), test_loss_history)
-        ax[2].set_xlabel('Iteration')
-        ax[2].set_ylabel('Accuracy')
-        ax[2].set_title(test_loss_title)
+    #if test_loss_history is not None and len(ax) > 2:
+    #    ax[2].plot(np.arange(len(test_loss_history)), test_loss_history)
+    #    ax[2].set_xlabel('Iteration')
+    #    ax[2].set_ylabel('Accuracy')
+    #    ax[2].set_title(test_loss_title)

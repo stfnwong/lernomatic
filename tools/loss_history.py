@@ -17,12 +17,15 @@ GLOBAL_OPTS = dict()
 
 def main():
 
-    fig, ax = plt.subplots()
+    #fig, ax = plt.subplots()
+    fig, ax = vis_loss_history.get_figure_subplots(2)
     history = torch.load(GLOBAL_OPTS['input'])
 
     loss_history = history['loss_history'][0 : history['loss_iter']]
     if GLOBAL_OPTS['verbose']:
         print('%d training iterations ' % history['loss_iter'])
+        print('Current epoch : %d' % history['cur_epoch'])
+        print('%d iters per epoch' % history['iter_per_epoch'])
 
     if 'acc_history' in history:
         acc_history = history['acc_history'][0 : history['acc_iter']]
@@ -31,24 +34,16 @@ def main():
             print('Max accuracy : %.3f ' % max(history['acc_history'][0: history['acc_iter']]))
     else:
         acc_history = None
+        if GLOBAL_OPTS['verbose']:
+            print('No acc_history in file [%s]' % GLOBAL_OPTS['input'])
     if 'test_loss_history' in history:
         test_loss_history = history['test_loss_history'][0 : history['test_loss_iter']]
         if GLOBAL_OPTS['verbose']:
             print('%d test loss iterations' % history['test_loss_iter'])
     else:
         test_loss_history = None
-
-
-    # plot the visualization
-    vis_loss_history.plot_loss_history(
-        ax,
-        loss_history,
-        test_loss_curve = test_loss_history,
-        acc_curve = acc_history,
-        title = GLOBAL_OPTS['title'],
-        iter_per_epoch = history['iter_per_epoch'],
-        cur_epoch = history['cur_epoch']
-    )
+        if GLOBAL_OPTS['verbose']:
+            print('No test_loss_history in file [%s]' % GLOBAL_OPTS['input'])
 
     if GLOBAL_OPTS['print_loss']:
         print(str(loss_history))
@@ -56,7 +51,25 @@ def main():
     if GLOBAL_OPTS['print_acc']:
         print(str(acc_history))
 
-    plt.show()
+    # plot the visualization
+    vis_loss_history.plot_train_history_2subplots(
+        ax,
+        loss_history,
+        test_loss_history = test_loss_history,
+        acc_history = acc_history,
+        loss_title = GLOBAL_OPTS['title'],
+        iter_per_epoch = history['iter_per_epoch'],
+        cur_epoch = history['cur_epoch'],
+        acc_unit = 'BLEU-4'
+    )
+
+    fig.tight_layout()
+    if GLOBAL_OPTS['outfile'] is not None:
+        fig.savefig(GLOBAL_OPTS['outfile'], bbox_inches='tight')
+    else:
+        plt.show()
+
+
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -65,6 +78,11 @@ def get_parser():
                         type=str,
                         default=None,
                         help='Checkpoint file to read'
+                        )
+    parser.add_argument('--outfile',
+                        type=str,
+                        default=None,
+                        help='File to write plot output to (default: None)'
                         )
     parser.add_argument('-v', '--verbose',
                         action='store_true',
@@ -106,6 +124,8 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
+
+        print(' ')
 
     main()

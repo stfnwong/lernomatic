@@ -113,25 +113,6 @@ class ImageCaptTrainer(trainer.Trainer):
                 lr = self.enc_lr,
             )
 
-    #def _init_optimizer(self):
-    #    # optimizer
-    #    if self.decoder is None or self.encoder is None or self.train_loader is None:
-    #        self.decoder = image_caption.DecoderAtten()
-    #        self.encoder = image_caption.Encoder()
-    #        self.decoder_optim = None
-    #        self.encoder_optim = None
-    #    else:
-    #        self.decoder_optim = torch.optim.Adam(
-    #            params = filter(lambda p : p.requires_grad, self.decoder.parameters()),
-    #            lr = self.dec_lr,
-    #            #momentum = self.dec_mom
-    #        )
-    #        self.encoder_optim = torch.optim.Adam(
-    #            params = filter(lambda p : p.requires_grad, self.encoder.parameters()),
-    #            lr = self.enc_lr,
-    #            #momentum = self.enc_mom
-    #        )
-
     def _send_to_device(self):
         if self.decoder is not None:
             self.decoder = self.decoder.to(self.device)
@@ -251,6 +232,7 @@ class ImageCaptTrainer(trainer.Trainer):
         history['iter_per_epoch'] = self.iter_per_epoch
         if self.test_loss_history is not None:
             history['test_loss_history'] = self.test_loss_history
+            history['test_loss_iter']    = self.test_loss_iter
         if self.acc_history is not None:
             history['acc_history'] = self.acc_history
             history['acc_iter']    = self.acc_iter
@@ -314,7 +296,7 @@ class ImageCaptTrainer(trainer.Trainer):
         return self.enc_lr_scheduler
 
 
-    # New training routine
+    # ======== TRAINING ======== #
     def train_epoch(self):
         """
         Train for one epoch

@@ -60,7 +60,6 @@ def main():
     ax.set_title(title)
     fig.tight_layout()
 
-
     if GLOBAL_OPTS['output'] is not None:
         fig.savefig(GLOBAL_OPTS['output'])
     else:
