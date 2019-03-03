@@ -105,8 +105,7 @@ class TestLogFinder(unittest.TestCase):
             print('Created LRFinder object')
             print(lr_finder)
 
-        lr_finder.find()
-        lr_find_min, lr_find_max = lr_finder.get_lr_range()
+        lr_find_min, lr_find_max = lr_finder.find()
         print('Found learning rate range as %.3f -> %.3f' % (lr_find_min, lr_find_max))
 
         # show plot
@@ -137,7 +136,6 @@ class TestLogFinder(unittest.TestCase):
 
         print('======== TestLogFinder.test_find_lr <END>')
 
-    # TODO : not yet implemented
     def test_lr_range_find(self):
         print('======== TestLogFinder.test_lr_range_find ')
 
@@ -156,10 +154,7 @@ class TestLogFinder(unittest.TestCase):
         if self.verbose:
             print(lr_finder)
 
-        lr_finder.find()
-
-        # perform range test
-        lr_find_min, lr_find_max = lr_finder.get_lr_range()
+        lr_find_min, lr_find_max = lr_finder.find()
         # show plot
         fig1, ax1 = plt.subplots()
         lr_finder.plot_lr_vs_acc(ax1)

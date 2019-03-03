@@ -42,7 +42,6 @@ def get_model():
 
 # Helper function for finder
 def get_lr_finder(trainer, find_type='LogFinder'):
-
     if not hasattr(learning_rate, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
@@ -102,26 +101,29 @@ def get_trainer(model, checkpoint_name):
 
 
 # perform the required schedule
-def run_schedule(checkpoint_name, sched_type):
+def run_schedule(trainer, sched_type, checkpoint_name, lr_min=None, lr_max=None):
     # get model and trainer
-    model = get_model()
-    trainer = get_trainer(
-        model,
-        checkpoint_name
-    )
+
     # get finder
-    lr_finder = get_lr_finder(trainer)
-    lr_finder.find()
-    lr_find_min, lr_find_max = lr_finder.get_lr_range()
-    print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
+    # NOTE : the finder doesn't need to be re-run each time. While we do need a
+    # new trainer object (to have seperate history files for each run) the way
+    # the example is set up we could just run the lr_finder.find() routine once
+    # and then re-use the same ranges for each schedule. TODO : make this an
+    # option
+
+    if (lr_min is None) or (lr_max is None):
+        lr_finder = get_lr_finder(trainer)
+        lr_finder.find()
+        lr_find_min, lr_find_max = lr_finder.get_lr_range()
+        print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     if GLOBAL_OPTS['find_only'] is True:
         return lr_finder
 
     # get scheduler
     lr_scheduler = get_scheduler(
-        lr_find_min,
-        lr_find_max,
+        lr_min,
+        lr_max,
         sched_type
     )
     print('Got scheduler [%s]' % repr(lr_scheduler))
@@ -129,7 +131,20 @@ def run_schedule(checkpoint_name, sched_type):
     trainer.set_lr_scheduler(lr_scheduler)
     trainer.train()
 
-    return trainer, lr_find_min, lr_find_max
+    return trainer      # TODO : do we need to return anything (since we pass in trainer)?
+
+
+# Find lr for a given trainer
+def find_lr(trainer, return_finder=False):
+    lr_finder = get_lr_finder(trainer)
+    lr_finder.find()
+    lr_find_min, lr_find_max = lr_finder.get_lr_range()
+    print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
+
+    if return_finder is True:
+        return (lr_find_min, lr_find_max, lr_finder)
+    else:
+        return (lr_find_min, lr_find_max)
 
 
 #  create plot to save to disk
@@ -341,12 +356,17 @@ if __name__ == '__main__':
 
     trainers = []
     acc_list = []
+    # run each schedule
     for idx in range(len(schedulers)):
-        if GLOBAL_OPTS['find_only'] is True:
-            lr_finder = run_schedule(
-                checkpoint_names[idx],
-                schedulers[idx]
-            )
+
+        model = get_model()
+        trainer = get_trainer(
+            model,
+            checkpoint_names[idx]
+        )
+
+        if idx == 0:
+            lr_find_min, lr_find_max, lr_finder = find_lr(trainer, return_finder=True)
             # create plots
             lr_acc_title = '[' + str(GLOBAL_OPTS['model']) + '] ' +\
                 str(schedulers[idx]) + ' learning rate vs acc (log)'
@@ -359,17 +379,23 @@ if __name__ == '__main__':
             lr_fig.tight_layout()
             lr_fig.savefig('figures/[%s]_%s_lr_finder_output.png' % (str(GLOBAL_OPTS['model']), str(schedulers[idx])))
 
-        else:
-            trainer, lr_min, lr_max = run_schedule(
-                checkpoint_names[idx],
-                schedulers[idx]
-            )
-            # create plots
-            trainers.append(trainer)
-            acc_list.append(trainer.get_acc_history())
-            loss_title = str(schedulers[idx]) + ' Loss : LR range (%.3f -> %.3f)' % (lr_min, lr_max)
-            acc_title = str(schedulers[idx]) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_min, lr_max)
-            generate_plot(trainer, loss_title, acc_title, figure_names[idx])
+        print('Found learning rates as %.4f -> %.4f' % (lr_find_min, lr_find_max))
+        if GLOBAL_OPTS['find_only'] is True:
+            break
+
+        run_schedule(
+            trainer,
+            schedulers[idx],
+            checkpoint_names[idx],
+            lr_min = lr_find_min,
+            lr_max = lr_find_max
+        )
+        # create plots
+        trainers.append(trainer)
+        acc_list.append(trainer.get_acc_history())
+        loss_title = str(schedulers[idx]) + ' Loss : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
+        acc_title = str(schedulers[idx]) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
+        generate_plot(trainer, loss_title, acc_title, figure_names[idx])
 
 
     # Make one more plot of comparing accuracies
@@ -380,6 +406,10 @@ if __name__ == '__main__':
         acc_ax.set_xlabel('Epoch')
         acc_ax.set_ylabel('Accuracy')
         acc_ax.legend(checkpoint_names)
-        acc_ax.set_title('Accuracy comparison for learning rate schedules')
+        acc_ax.set_title('[%s] Accuracy comparison for learning rate schedules (LR: %.4f -> %.4f)' %\
+                        (str(GLOBAL_OPTS['model']), lr_find_min, lr_find_max)
+        )
         acc_fig.tight_layout()
-        acc_fig.savefig('figures/[%s]_ex_lr_scheduling_acc_compare.png' % str(GLOBAL_OPTS['model']))
+        acc_fig.savefig('figures/[%s]_ex_lr_scheduling_acc_compare_%.4f_%.4f.png' %\
+                        (str(GLOBAL_OPTS['model']), lr_find_min, lr_find_max)
+        )
