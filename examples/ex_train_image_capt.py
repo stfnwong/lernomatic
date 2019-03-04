@@ -9,7 +9,7 @@ import argparse
 from torchvision import transforms
 from lernomatic.train import image_capt_trainer
 from lernomatic.models import image_caption
-from lernomatic.data.coco import word_map
+from lernomatic.data.text import word_map
 from lernomatic.data.coco import coco_dataset
 
 # debug

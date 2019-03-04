@@ -14,7 +14,7 @@ from random import seed, choice, sample
 from imageio import imread
 
 from lernomatic.data import data_split
-from lernomatic.data.coco import word_map
+from lernomatic.data.text import word_map
 
 # debug
 #from pudb import set_trace; set_trace()
