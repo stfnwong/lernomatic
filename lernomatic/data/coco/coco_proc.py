@@ -94,3 +94,7 @@ def process_coco_data_split(split_data, word_map, fname, **kwargs):
             #caption_data[n][:] = enc_c[:]
             caption_data[n] = enc_c
             caplens[n]  = c_len
+
+
+#TODO : a version that stores captions in JSON format.
+#

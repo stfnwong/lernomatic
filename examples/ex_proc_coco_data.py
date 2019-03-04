@@ -11,8 +11,8 @@ import argparse
 # data split object
 #from lernomatic.data.coco import data
 from lernomatic.data.coco import coco_data
-from lernomatic.data.coco import word_map
 from lernomatic.data.coco import coco_proc
+from lernomatic.data.text import word_map
 
 # debug
 #from pudb import set_trace; set_trace()
