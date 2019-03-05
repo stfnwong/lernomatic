@@ -118,7 +118,7 @@ def plot_train_history_2subplots(ax, loss_history, **kwargs):
 
     if acc_history is not None:
         ax[1].plot(np.arange(len(acc_history)), acc_history, 'r')
-        ax[1].set_xlabel('Iteration')
+        ax[1].set_xlabel('Epoch')
         ax[1].set_ylabel('Accuracy')
         if acc_title is None:
             ax[1].set_title('Accuracy history')
