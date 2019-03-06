@@ -7,6 +7,7 @@ Stefan Wong 2019
 
 import time
 import torch
+import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence
 from nltk.translate.bleu_score import corpus_bleu
 # other lernomatic modules
@@ -322,6 +323,12 @@ class ImageCaptTrainer(trainer.Trainer):
             scores, _  = pack_padded_sequence(scores, decode_lengths, batch_first=True)
             targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
+            # TODO : debug only - remove
+            if scores.shape[0] != targets.shape[0]:
+                raise RuntimeError('[%s] batch <%d> scores.shape : %s != targets.shape : %s' %\
+                                   (self, n, str(scores.shape), str(targets.shape))
+                )
+
             # compute loss
             loss = self.criterion(scores, targets)
             # add attention regularization
@@ -458,3 +465,120 @@ class ImageCaptTrainer(trainer.Trainer):
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+
+    def eval(self, beam_size=3):
+        self.decoder.eval()
+        if self.encoder is not None:
+            self.encoder.eval()
+
+        references = list()
+        hypotheses = list()
+
+        for n (image, caps, caplens, allcaps) in enumerate(self.test_loader):
+            k = beam_size
+            image = image.to(self.device)       # (1, 3, 256, 256)
+            # do encoding pass
+            enc_out = self.encoder(image)
+            enc_img_size = enc_out.size(1)
+            enc_dim      = enc_out.size(3)
+
+            # flatten encoding
+            enc_out = enc_out.view(1, -1, enc_dim)      # (1, num_pixels, enc_dim)
+            num_pixels = enc_out.size(1)
+            # assume the problem has a batch size of k=beam_size
+            enc_out = enc_out.expand(k, num_pixels, enc_dim)
+            # tensor to store top k previous word at each step (now they're
+            # just <start>)
+            k_prev_words = torch.LongTensor([[self.word_map.word_map['<start>']]] *k).to(self.device)       # (k, 1)
+            seqs = k_prev_words         # tensor to store top-k sequences
+            top_k_scores = torch.zeros(k, 1).to(self.device)            # (k, 1)
+
+            complete_seqs  = list()
+            complete_seqs_scores = list()
+
+            h, c = self.decoder.init_hidden_state(enc_out)
+
+            # decode
+            step = 1
+            max_step = 50
+            while step < max_step:
+
+                embeddings = self.decoder.embedding(k_prev_words).squeeze(1)        # (s, embed_dim)
+                awe, _ = self.decoder.attention(enc_out, h)                         # attention-weighted embeddings
+                gate = self.decoder.sigmoid(self.decoder.f_beta(h))                 # gating scalar (s, enc_dim)
+                awe = awe * gate
+                h, c = self.decoder.decode_step(torch.cat([embeddings, awe], dim=1), (h, c))    # (s, dec_dim)
+
+                scores = self.decoder.fc(h)         # (s, vocab_size)
+                scores = F.log_softmax(scores, dim=1)
+
+                # add
+                scores = top_k_scores.expand_as(scores) + scores        # (s, vocab_size)
+                # for the first step, all k points will have the same scores
+                if step == 1:
+                    top_k_scores, top_k_words = scores[0].topk(k, 0, True, True)        # (s)
+                else:
+                    # unroll and find top scores and their unrolled indicies
+                    top_k_scores, top_k_words = scores.view(-1).topk(k, 0, True, True)
+
+                # convert unrolled indicies to actual indicies
+                prev_word_inds = top_k_words / len(self.word_map)
+                next_word_indx = top_k_words & len(self.word_map)
+                # add new words to sequences
+                seqs = torch.cat([seqs[prev_word_inds], next_word_inds.unsqueeze(1)], dim=1)        # (s, step+1)
+                # find any sequences that didn't complete (ie: have no <end>
+                # token
+                incomplete_inds = [ind for (ind, next_word) in enumerate(next_word_inds) if next_word != self.word_map.word_map['<end>']]
+                complete_inds   = list(set(range(len(next_word_inds))) - set(incomplete_inds))
+
+                # set aside complete sequences
+                if len(complete_inds) > 0:
+                    complete_seqs.extend(seqs[complete_inds].tolist())
+                    complete_seqs_scores.extend(top_k_scores[complete_inds])
+
+                k -= len(complete_inds)
+
+                # proceed with incomplete sequences
+                if k == 0:
+                    break
+                seqs = seqs[incomplete_inds]
+                h = h[prev_word_inds[incomplete_inds]]
+                c = c[prev_word_inds[incomplete_inds]]
+                enc_out = enc_out [prev_word_inds[incomplete_inds]]
+                top_k_scores = top_k_scores[incomplete_inds].unsqueeze(1)
+                k_prev_words = next_word_inds[incomplete_inds].unsqueeze(1)
+
+                # break if we fail to converge soon enough
+                step += 1
+                if step > max_step:
+                    break
+
+            n = complete_seqs_scores.index(max(complete_seqs_scores))
+            seq = complete_seqs[n]
+
+            # references
+            img_caps = allcaps[0].tolist()
+            img_captions = list(
+                map(lambda c:
+                    [w for w in c if w not in {
+                        self.word_map.word_map['<start>'],
+                        self.word_map.word_map['<end>'],
+                        self.word_map.word_map['<pad>']
+                    }], img_caps
+                )
+            )
+            references.append(img_captions)
+
+            # hypotheses
+            hypotheses.append([w for w in seq if w not in {
+                self.word_map.word_map['<start>'],
+                self.word_map.word_map['<end>'],
+                self.word_map.word_map['<pad>']
+            }])
+
+            assert len(references) == len(hypotheses)
+
+        # compute the BLEU-4 score
+        bleu4 = corpus_bleu(references, hypothese)
+
+        return bleu4

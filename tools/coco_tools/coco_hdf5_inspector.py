@@ -21,7 +21,7 @@ GLOBAL_TOOL_MODES = ('dump-elem','dump-capt')
 GLOBAL_WORD_MAP = None
 
 
-def dump_caption():
+def dump_caption(elem_idx):
     hdf5_data = hdf5_util.HDF5Data(
         GLOBAL_OPTS['input'],
         verbose=GLOBAL_OPTS['verbose']
@@ -29,11 +29,11 @@ def dump_caption():
 
     caption = hdf5_data.get_elem(
         GLOBAL_OPTS['caption_name'],
-        GLOBAL_OPTS['vis_index']
+        elem_idx,
     )
     caplen = hdf5_data.get_elem(
         GLOBAL_OPTS['caplen_name'],
-        GLOBAL_OPTS['vis_index']
+        elem_idx
     )
     if isinstance(caplen, np.ndarray) or isinstance(caplen, list):
         caplen = caplen[0]
@@ -44,9 +44,9 @@ def dump_caption():
             caption_string.append(GLOBAL_WORD_MAP.lookup_word(w))
 
     if GLOBAL_WORD_MAP is not None:
-        print('Caption <%d> : [%s]' % (GLOBAL_OPTS['vis_index'], caption_string[0 : caplen]))
+        print('Caption <%d> : [%s]' % (elem_idx, caption_string[0 : caplen]))
     else:
-        print('Caption <%d> : [%s]' % (GLOBAL_OPTS['vis_index'], caption[0 : caplen]))
+        print('Caption <%d> : [%s]' % (elem_idx, caption[0 : caplen]))
     print('Caplen : %d' % caplen)
 
 
@@ -178,13 +178,13 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['vis_range'] is not None:
         vis_range = GLOBAL_OPTS['vis_range'].split(',')
         if len(vis_range) == 2:
-            vis_start = vis_range[0]
-            vis_end   = vis_range[1]
+            vis_start = int(vis_range[0])
+            vis_end   = int(vis_range[1])
             vis_step  = 0
         elif len(vis_range) == 3:
-            vis_start = vis_range[0]
-            vis_end   = vis_range[1]
-            vis_step  = vis_range[2]
+            vis_start = int(vis_range[0])
+            vis_end   = int(vis_range[1])
+            vis_step  = int(vis_range[2])
         else:
             raise ValueError('Invalid range option [%s], should be start,end or start,end,step' %\
                              (str(GLOBAL_OPTS['vis_range']))
@@ -202,6 +202,10 @@ if __name__ == '__main__':
         else:
             dump_element(GLOBAL_OPTS['vis_index'])
     elif GLOBAL_OPTS['mode'] == 'dump-capt':
-        dump_caption()
+        if GLOBAL_OPTS['vis_range'] is not None:
+            for idx in range(vis_start, vis_end, vis_step):
+                dump_caption(idx)
+        else:
+            dump_caption(GLOBAL_OPTS['vis_index'])
     else:
         raise RuntimeError('Invalid tool mode [%s]' % str(GLOBAL_OPTS['mode']))

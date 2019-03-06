@@ -75,7 +75,7 @@ class WordMap(object):
         try:
             return self.map_word[word]
         except:
-            return self.map_word['<unk>']
+            return self.map_word[self.word_map['<unk>']]
 
     def get_word_map(self):
         return self.word_map

@@ -250,19 +250,13 @@ class LogFinder(LRFinder):
             data = data.to(self.trainer.device)
             labels = labels.to(self.trainer.device)
 
-            with torch.no_grad():
-                output = self.trainer.model(data)
+            output = self.trainer.model(data)
             loss = self.trainer.criterion(output, labels)
             test_loss += loss.item()
 
             # accuracy
             pred = output.data.max(1, keepdim=True)[1]
             correct += pred.eq(labels.data.view_as(pred)).sum().item()
-
-            #if (n % self.print_every) == 0:
-            #    print('[FIND_LR ACC]  :   iteration         Test Loss')
-            #    print('                  [%6d/%6d]  %.6f' %\
-            #          (n, len(data_loader), loss.item()))
 
         avg_test_loss = test_loss / len(data_loader)
         acc = correct / len(data_loader.dataset)
