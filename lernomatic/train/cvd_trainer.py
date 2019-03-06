@@ -10,7 +10,7 @@ from lernomatic.train import trainer
 from lernomatic.models import cvdnet
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class CVDTrainer(trainer.Trainer):
