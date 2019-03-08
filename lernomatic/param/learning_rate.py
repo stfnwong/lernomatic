@@ -19,6 +19,7 @@ class LRFinder(object):
     Finds optimal learning rates
     """
     def __init__(self, trainer, **kwargs):
+        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range')
         self.trainer = trainer
         # learning params
         self.num_epochs     = kwargs.pop('num_epochs', 8)
@@ -31,6 +32,7 @@ class LRFinder(object):
         self.gamma          = kwargs.pop('gamma', 0.999995)
         self.lr_min_factor  = kwargs.pop('lr_min_factor', 2.0)
         self.lr_max_scale   = kwargs.pop('lr_max_scale', 1.0)
+        self.lr_select_method = kwargs.pop('lr_select_method', 'max_acc')
         # gradient params
         self.grad_thresh    = kwargs.pop('grad_thresh', 0.002)
         # other
@@ -44,6 +46,10 @@ class LRFinder(object):
         # loss params
         self.avg_loss = 0.0
         self.best_loss = 1e6
+        self.best_loss_idx = 0
+        # acc params
+        self.best_acc = 0.0
+        self.best_acc_idx = 0
         # learning rate params
         self.learning_rate = 0.0
 
@@ -103,17 +109,20 @@ class LRFinder(object):
         raise NotImplementedError('This method should be implemented in subclass')
 
     def get_lr_range(self):
-        # TODO : this heuristic is not very good.
-        # compute suitable range values and return
-        lr_max = self.log_lr_history[-3] * self.lr_max_scale
-        lr_min = lr_max * self.lr_min_factor
 
-        # should we just invert the history curve and compute the derivative
-        # (ie: compute the derivative in the left-facing direction), and use
-        # that to choose the minimum?
-        #
-        # This might work well enough on a resnet, but not sure how well it
-        # will do on other networks.
+        if self.lr_select_method == 'max_acc':
+            lr_max = self.log_lr_history[self.best_acc_idx] * self.lr_max_scale
+            lr_min = lr_max * self.lr_min_factor
+        elif self.lr_select_method == 'min_loss':
+            lr_max = self.log_lr_history[self.best_loss_idx] * self.lr_max_scale
+            lr_min = lr_max * self.lr_min_factor
+        elif self.lr_select_method == 'max_range':
+            lr_max = self.log_lr_history[-1] * self.lr_max_scale
+            lr_min = lr_max * self.lr_min_factor
+        elif self.lr_select_method == 'min_range':
+            raise NotImplementedError('TODO : min_range method')
+        else:
+            raise ValueError('Invalid range selection method [%s]' % str(self.lr_select_method))
 
         return (10 ** lr_min, 10**lr_max)
 
@@ -144,7 +153,7 @@ class LRFinder(object):
         if title is not None:
             ax.set_title(title)
         else:
-            ax.set_title('Accuracy vs. Learning rate')
+            ax.set_title('Accuracy vs. Learning rate [%s]' % str(self.lr_select_method))
 
     def plot_lr_vs_loss(self, ax, title=None, log=False):
         if len(self.log_lr_history) < 1:
@@ -172,7 +181,7 @@ class LRFinder(object):
         if title is not None:
             ax.set_title(title)
         else:
-            ax.set_title('Learning rate vs. Loss')
+            ax.set_title('Learning rate vs. Loss [%s]' % str(self.lr_select_method))
 
 
 # ======== Finder schedules ========  #
@@ -235,6 +244,7 @@ class LogFinder(LRFinder):
                 # save loss
                 if smooth_loss < self.best_loss:
                     self.best_loss = smooth_loss
+                    self.best_loss_idx = len(self.log_lr_history)
 
                 # display
                 if batch_idx % self.print_every == 0:
@@ -246,6 +256,10 @@ class LogFinder(LRFinder):
                         self.acc(self.trainer.test_loader, batch_idx)
                     else:
                         self.acc(self.trainer.train_loader, batch_idx)
+                    # keep a record of the best acc
+                    if self.acc_history[-1] > self.best_acc:
+                        self.best_acc = self.acc_history[-1]
+                        self.best_acc_idx = len(self.acc_history)
 
                 # update history
                 self.smooth_loss_history.append(smooth_loss)
@@ -296,11 +310,6 @@ class LogFinder(LRFinder):
             # accuracy
             pred = output.data.max(1, keepdim=True)[1]
             correct += pred.eq(labels.data.view_as(pred)).sum().item()
-
-            #if (n % self.print_every) == 0:
-            #    print('[FIND_LR ACC]  :   iteration         Test Loss')
-            #    print('                  [%6d/%6d]  %.6f' %\
-            #          (n, len(data_loader), loss.item()))
 
         avg_test_loss = test_loss / len(data_loader)
         acc = correct / len(data_loader.dataset)

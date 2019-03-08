@@ -50,6 +50,7 @@ def get_lr_finder(trainer, find_type='LogFinder'):
         trainer,
         lr_min         = GLOBAL_OPTS['lr_min'],
         lr_max         = GLOBAL_OPTS['lr_max'],
+        lr_select_method = GLOBAL_OPTS['lr_select_method'],
         num_epochs     = GLOBAL_OPTS['find_num_epochs'],
         explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
         print_every    = GLOBAL_OPTS['find_print_every']
@@ -233,6 +234,11 @@ def get_parser():
                         type=float,
                         default=1e-1,
                         help='Maximum range to search for learning rate'
+                        )
+    parser.add_argument('--lr-select-method',
+                        type=str,
+                        default='min_loss',
+                        help='Method to use for selecting LR range'
                         )
     # Schedule options
     parser.add_argument('--exp-decay',
