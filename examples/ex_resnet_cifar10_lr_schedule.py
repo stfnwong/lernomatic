@@ -34,6 +34,7 @@ def main():
         num_epochs      = GLOBAL_OPTS['num_epochs'],
         learning_rate   = GLOBAL_OPTS['learning_rate'],   # this will be overwritten by lr_finder later
         batch_size      = GLOBAL_OPTS['batch_size'],
+        test_batch_size = GLOBAL_OPTS['test_batch_size'],
         # other
         device_id       = GLOBAL_OPTS['device_id'],
         verbose         = GLOBAL_OPTS['verbose'],
@@ -44,7 +45,7 @@ def main():
     )
 
     # prepare lr_finder
-    r_finder = learning_rate.LogFinder(
+    lr_finder = learning_rate.LogFinder(
         trainer,
         lr_min         = GLOBAL_OPTS['lr_min'],
         lr_max         = GLOBAL_OPTS['lr_max'],
@@ -66,8 +67,8 @@ def main():
     train_fig, train_ax = vis_loss_history.get_figure_subplots()
     vis_loss_history.plot_train_history_2subplots(
         train_ax,
-        trainer.loss_history,
-        acc_history = trainer.acc_history,
+        trainer.get_loss_history(),
+        acc_history = trainer.get_acc_history(),
         cur_epoch = trainer.cur_epoch,
         iter_per_epoch = trainer.iter_per_epoch,
         loss_title = 'CIFAR-10 Resnet LR Finder Loss (example with scheduling)',
@@ -77,6 +78,8 @@ def main():
 
     if GLOBAL_OPTS['draw_plot']:
         plt.show()
+
+    # TODO :reference with no scheduling
 
 
 def get_parser():
@@ -137,7 +140,7 @@ def get_parser():
     # Network options
     parser.add_argument('--resnet-depth',
                          type=int,
-                         default=28,
+                         default=9,
                          help='Number of layers to use for Resnet'
                          )
     # Training options
@@ -155,6 +158,11 @@ def get_parser():
                         type=int,
                         default=64,
                         help='Batch size to use during training'
+                        )
+    parser.add_argument('--test-batch-size',
+                        type=int,
+                        default=64,
+                        help='Batch size to use during testing'
                         )
     parser.add_argument('--weight-decay',
                         type=float,

@@ -12,6 +12,7 @@ import torch
 # debug
 #from pudb import set_trace; set_trace()
 
+
 class LRFinder(object):
     """
     LRFinder
@@ -28,10 +29,12 @@ class LRFinder(object):
         self.explode_thresh = kwargs.pop('explode_thresh', 4.0)      # fast.ai uses 4 * min_smoothed_loss
         self.beta           = kwargs.pop('beta', 0.999)
         self.gamma          = kwargs.pop('gamma', 0.999995)
+        self.lr_min_factor  = kwargs.pop('lr_min_factor', 2.0)
+        self.lr_max_scale   = kwargs.pop('lr_max_scale', 1.0)
         # gradient params
         self.grad_thresh    = kwargs.pop('grad_thresh', 0.002)
         # other
-        self.acc_test       = kwargs.pop('acc_test', False)
+        self.acc_test       = kwargs.pop('acc_test', True)
         self.print_every    = kwargs.pop('print_every', 20)
         self.verbose        = kwargs.pop('verbose', False)
 
@@ -91,10 +94,88 @@ class LRFinder(object):
         if self.trainer.test_loader is None:
             raise ValueError('No test_loader in trainer')
 
-    def find_lr(self):
+    def get_lr_history(self):
+        if len(self.log_lr_history) < 1:
+            return None
+        return self.log_lr_history
+
+    def find(self):
         raise NotImplementedError('This method should be implemented in subclass')
 
+    def get_lr_range(self):
+        # TODO : this heuristic is not very good.
+        # compute suitable range values and return
+        lr_max = self.log_lr_history[-3] * self.lr_max_scale
+        lr_min = lr_max * self.lr_min_factor
 
+        # should we just invert the history curve and compute the derivative
+        # (ie: compute the derivative in the left-facing direction), and use
+        # that to choose the minimum?
+        #
+        # This might work well enough on a resnet, but not sure how well it
+        # will do on other networks.
+
+        return (10 ** lr_min, 10**lr_max)
+
+    # plotting
+    def plot_lr_vs_acc(self, ax, title=None, log=False):
+        if len(self.log_lr_history) < 1:
+            raise RuntimeError('[%s] no learning rate history' % repr(self))
+        if len(self.acc_history) < 1:
+            raise RuntimeError('[%s] no accuracy history' % repr(self))
+
+        if log is True:
+            ax.plot(np.asarray(self.log_lr_history), np.asarray(self.acc_history))
+        else:
+            ax.plot(10 ** np.asarray(self.log_lr_history), np.asarray(self.acc_history))
+
+        # Add vertical bars showing learning rate ranges
+        lr_min, lr_max = self.get_lr_range()
+        if lr_min is not None and lr_max is not None:
+            if log is True:
+                ax.axvline(x=np.log10(lr_min), color='r', label='lr_min')
+                ax.axvline(x=np.log10(lr_max), color='r', label='lr_max')
+            else:
+                ax.axvline(x=10 ** lr_min, color='r', label='lr_min')
+                ax.axvline(x=10 ** lr_max, color='r', label='lr_max')
+
+        ax.set_xlabel('Learning rate')
+        ax.set_ylabel('Accuracy')
+        if title is not None:
+            ax.set_title(title)
+        else:
+            ax.set_title('Accuracy vs. Learning rate')
+
+    def plot_lr_vs_loss(self, ax, title=None, log=False):
+        if len(self.log_lr_history) < 1:
+            raise ValueError('[%s] no learning rate history' % repr(self))
+        if len(self.acc_history) < 1:
+            raise ValueError('[%s] no accuracy history' % repr(self))
+
+        if log is True:
+            ax.plot(np.asarray(self.log_lr_history), np.asarray(self.smooth_loss_history))
+        else:
+            ax.plot(10 ** np.asarray(self.log_lr_history), np.asarray(self.smooth_loss_history))
+
+        # Add vertical bars showing learning rate ranges
+        lr_min, lr_max = self.get_lr_range()
+        if lr_min is not None and lr_max is not None:
+            if log is True:
+                ax.axvline(x=np.log10(lr_min), color='r', label='lr_min')
+                ax.axvline(x=np.log10(lr_max), color='r', label='lr_max')
+            else:
+                ax.axvline(x=10 ** lr_min, color='r', label='lr_min')
+                ax.axvline(x=10 ** lr_max, color='r', label='lr_max')
+
+        ax.set_xlabel('Learning Rate')
+        ax.set_ylabel('Smooth loss')
+        if title is not None:
+            ax.set_title(title)
+        else:
+            ax.set_title('Learning rate vs. Loss')
+
+
+# ======== Finder schedules ========  #
 class LogFinder(LRFinder):
     """
     Implements logarithmic learning rate search
@@ -162,16 +243,9 @@ class LogFinder(LRFinder):
                 # accuracy test
                 if self.acc_test is True:
                     if self.trainer.test_loader is not None:
-                        self.acc_test(self.trainer.test_loader, batch_idx)
+                        self.acc(self.trainer.test_loader, batch_idx)
                     else:
-                        self.acc_test(self.trainer.train_loader, batch_idx)
-
-                if smooth_loss > self.explode_thresh * self.best_loss:
-                    explode = True
-                    print('[FIND_LR] loss hit explode threshold [%.3f x best (%f)]' %\
-                          (self.explode_thresh, self.best_loss)
-                    )
-                    break
+                        self.acc(self.trainer.train_loader, batch_idx)
 
                 # update history
                 self.smooth_loss_history.append(smooth_loss)
@@ -183,6 +257,13 @@ class LogFinder(LRFinder):
                 self.learning_rate *= self.lr_mult
                 self.trainer.set_learning_rate(self.learning_rate)
 
+                if smooth_loss > self.explode_thresh * self.best_loss:
+                    explode = True
+                    print('[FIND_LR] loss hit explode threshold [%.3f x best (%f)]' %\
+                          (self.explode_thresh, self.best_loss)
+                    )
+                    break
+
             if explode is True:
                 break
 
@@ -192,12 +273,12 @@ class LogFinder(LRFinder):
         print('[FIND_LR] : restoring model state')
         self.trainer.model.state_dict(self.load_model_params())
 
-    def find_range(self):
-        return NotImplementedError
+        return self.get_lr_range()
 
-    def acc_test(self, data_loader, batch_idx):
+
+    def acc(self, data_loader, batch_idx):
         """
-        acc_test()
+        acc()
         Collect accuracy stats while finding learning rate
         """
         test_loss = 0.0

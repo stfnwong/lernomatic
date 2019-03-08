@@ -32,7 +32,6 @@ def smooth_loss(loss_history, beta=0.98):
 
 
 def plot_train_history(ax, loss_history, **kwargs):
-
     test_loss_history = kwargs.pop('test_loss_history', None)
     acc_history       = kwargs.pop('acc_history', None)
     plot_title      = kwargs.pop('title', 'Loss curve')
@@ -119,7 +118,7 @@ def plot_train_history_2subplots(ax, loss_history, **kwargs):
 
     if acc_history is not None:
         ax[1].plot(np.arange(len(acc_history)), acc_history, 'r')
-        ax[1].set_xlabel('Iteration')
+        ax[1].set_xlabel('Epoch')
         ax[1].set_ylabel('Accuracy')
         if acc_title is None:
             ax[1].set_title('Accuracy history')
