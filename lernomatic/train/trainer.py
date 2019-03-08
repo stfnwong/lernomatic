@@ -12,6 +12,7 @@ import numpy as np
 # debug
 #from pudb import set_trace; set_trace()
 
+
 class Trainer(object):
     """
     Trainer
@@ -26,7 +27,7 @@ class Trainer(object):
         self.learning_rate   = kwargs.pop('learning_rate', 1e-4)
         self.momentum        = kwargs.pop('momentum', 0.5)
         self.weight_decay    = kwargs.pop('weight_decay', 1e-5)
-        self.loss_function   = kwargs.pop('loss_function', 'BCELoss')
+        self.loss_function   = kwargs.pop('loss_function', 'CrossEntropyLoss')
         self.optim_function  = kwargs.pop('optim_function', 'Adam')
         self.cur_epoch       = 0
         # validation options
@@ -36,7 +37,8 @@ class Trainer(object):
         # Internal options
         self.verbose         = kwargs.pop('verbose', True)
         self.print_every     = kwargs.pop('print_every', 10)
-        self.save_every      = kwargs.pop('save_every', 1000)  # unit is iterations
+        self.save_every      = kwargs.pop('save_every', -1)  # unit is iterations, -1 = save every epoch
+        self.save_best       = kwargs.pop('save_best', False)
         # Device options
         self.device_id       = kwargs.pop('device_id', -1)
         # dataset/loader options
@@ -49,10 +51,13 @@ class Trainer(object):
         self.num_workers     = kwargs.pop('num_workers' , 1)
         # parameter scheduling
         self.lr_scheduler    = kwargs.pop('lr_scheduler', None)
+        self.mtm_scheduler   = kwargs.pop('mtm_scheduler', None)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
         self.best_acc = 0.0
+        if self.save_every > 0:
+            self.save_best = True
 
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()
@@ -84,7 +89,6 @@ class Trainer(object):
     def _init_optimizer(self):
         if self.model is not None:
             if hasattr(torch.optim, self.optim_function):
-                #self.optimizer = torch.optim.Adam(
                 self.optimizer = getattr(torch.optim, self.optim_function)(
                     self.model.parameters(),
                     lr = self.learning_rate,
@@ -130,7 +134,7 @@ class Trainer(object):
         else:
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset,
-                batch_size = self.batch_size,
+                batch_size = self.test_batch_size,
                 shuffle    = self.shuffle
             )
 
@@ -142,6 +146,12 @@ class Trainer(object):
 
     def _send_to_device(self):
         self.model = self.model.to(self.device)
+
+    def save_checkpoint(self, fname):
+        raise NotImplementedError
+
+    def load_checkpoint(self, fname):
+        raise NotImplementedError
 
     # ======== getters, setters
     def get_trainer_params(self):
@@ -191,14 +201,6 @@ class Trainer(object):
     # common getters/setters
     def get_learning_rate(self):
         return self.optimizer.param_groups[0]['lr']
-        #optim_state = self.optimizer.state_dict()
-        #return optim_state['lr']
-
-    def get_momentum(self):
-        optim_state = self.optimizer.state_dict()
-        if 'momentum' in optim_state:
-            return optim_state['momentum']
-        return None
 
     def set_learning_rate(self, lr, param_zero=True):
         if param_zero:
@@ -206,6 +208,12 @@ class Trainer(object):
         else:
             for g in self.optimizer.param_groups:
                 g['lr'] = lr
+
+    def get_momentum(self):
+        optim_state = self.optimizer.state_dict()
+        if 'momentum' in optim_state:
+            return optim_state['momentum']
+        return None
 
     def set_momentum(self, momentum):
         optim_state = self.optimizer.state_dict()
@@ -219,21 +227,30 @@ class Trainer(object):
     def get_lr_scheduler(self):
         return self.lr_scheduler
 
-    # history getters - these provide the history up to the current iteration
-    def get_loss_history(self):
-        if self.loss_iter == 0:
-            return None
-        return self.loss_history[0 : self.loss_iter]
+    def set_mtm_scheduler(self, mtm_scheduler):
+        self.mtm_scheduler = mtm_scheduler
 
-    def get_test_loss_history(self):
-        if self.test_loss_iter == 0:
-            return None
-        return self.test_loss_history[0 : self.test_loss_iter]
+    def get_mtm_scheduler(self):
+        return self.mtm_scheduler
 
-    def get_acc_history(self):
-        if self.acc_iter == 0:
-            return None
-        return self.acc_history[0 : self.acc_iter]
+    # Layer freeze / unfreeze
+    def freeze_to(self, layer_num):
+        """
+        Freeze layers in model from the start of the network forwards
+        """
+        for n, param in enumerate(self.model.parameters()):
+            param.requires_grad = False
+            if n >= layer_num:
+                break
+
+    def unfreeze_to(self, layer_num):
+        """
+        Unfreeze layers in model from the start of the network forwards
+        """
+        for n, param in enumerate(self.model.parameters()):
+            param.requires_grad = True
+            if n >= layer_num:
+                break
 
     # Basic training/test routines. Specialize these when needed
     def train_epoch(self):
@@ -249,9 +266,9 @@ class Trainer(object):
             target = target.to(self.device)
 
             # optimization
-            self.optimizer.zero_grad()
             output = self.model(data)
             loss   = self.criterion(output, target)
+            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
 
@@ -278,6 +295,10 @@ class Trainer(object):
             if self.lr_scheduler is not None:
                 new_lr = self.lr_scheduler.get_lr(self.loss_iter)
                 self.set_learning_rate(new_lr)
+
+            if self.mtm_scheduler is not None:
+                new_mtm = self.mtm_scheduler.get_mtm(self.loss_iter)
+                self.set_momentum(new_mtm)
 
     def test_epoch(self):
         """
@@ -321,27 +342,47 @@ class Trainer(object):
         # save the best weights
         if acc > self.best_acc:
             self.best_acc = acc
-            if self.save_every > 0:
-                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name
+            if self.save_best is True:
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name + '.pkl'
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
-                hist_name = self.checkpoint_dir + '/' + 'best_' + self.checkpoint_name + '_history.pkl'
-                if self.verbose:
-                    print('\t Saving history to file [%s] ' % str(hist_name))
-                self.save_history(hist_name)
 
     def train(self):
         """
         TRAIN
         Standard training routine
         """
-        for n in range(self.num_epochs):
+        if self.save_every == -1:
+            self.save_every = len(self.train_loader)
+
+        for n in range(self.cur_epoch, self.num_epochs):
             self.train_epoch()
 
             if self.test_loader is not None:
                 self.test_epoch()
-            # TODO: another validation fold?
-            #if self.val_loader is not None:
-            #    self.val_epoch()
+
+            # save history at the end of each epoch
+            hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
+            if self.verbose:
+                print('\t Saving history to file [%s] ' % str(hist_name))
+            self.save_history(hist_name)
+
             self.cur_epoch += 1
+
+    # history getters - these provide the history up to the current iteration
+    def get_loss_history(self):
+        if self.loss_iter == 0:
+            return None
+        return self.loss_history[0 : self.loss_iter]
+
+    def get_test_loss_history(self):
+        if self.test_loss_iter == 0:
+            return None
+        return self.test_loss_history[0 : self.test_loss_iter]
+
+    def get_acc_history(self):
+        if self.acc_iter == 0:
+            return None
+        return self.acc_history[0 : self.acc_iter]
+

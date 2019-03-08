@@ -46,9 +46,20 @@ class LRScheduler(object):
     def _update_lr_history(self, lr):
         if self.lr_history is None:
             return
-
         self.lr_history[self.lr_history_ptr] = lr
         self.lr_history_ptr += 1
+
+    def plot_history(self, ax, title=None):
+        if self.lr_history_ptr == 0 or self.lr_history is None:
+            raise ValueError('No history recorded in %s' % repr(self))
+
+        ax.plot(np.arange(self.lr_history_ptr), self.lr_history[0 : self.lr_history_ptr])
+        ax.set_xlabel('Iteration')
+        ax.set_ylabel('Learning rate')
+        if title is not None:
+            ax.set_title(title)
+        else:
+            ax.set_title('[%s] learning rate history' % repr(self))
 
     def get_lr(self, cur_iter):
         raise NotImplementedError('This should be implemented in the derived class')
@@ -59,6 +70,11 @@ class StepScheduler(LRScheduler):
     StepScheduler
     Implements stepped learning rate annealing scheme . Steps down from
     lr_max to lr_min in steps of lr_decay every lr_decay_every
+
+    Arguments:
+        lr_decay       - Amount to decay learning rate by at each step
+        lr_decay_every - Number of iterations to wait between decay steps
+
     """
     def __init__(self, **kwargs):
         self.lr_decay       = kwargs.pop('lr_decay',  0.001)
@@ -87,37 +103,93 @@ class StepScheduler(LRScheduler):
         return self.cur_lr
 
 
-class LinearDecreaseScheduler(LRScheduler):
+class LinearDecayScheduler(LRScheduler):
+    """
+    LinearDecayScheduler
+    Decays the learning rate linearly over a fixed number of iterations
+
+    Arguments:
+        num_iters - Number of iteratons across which to apply the decay
+                    schedule. After this number of iterations have elapsed
+                    the learning rate will remain fixed at lr_min
+
+    """
     def __init__(self, **kwargs):
-        self.num_batches = kwargs.pop('num_iters', 100000)
-        super(LinearDecreaseScheduler, self).__init__(**kwargs, lr_history_size = self.num_batches)
+        self.num_iters = kwargs.pop('num_iters', 100000)
+        super(LinearDecayScheduler, self).__init__(**kwargs, lr_history_size = self.num_batches)
 
         self.lr_mult = (self.lr_max - self.lr_min) / self.num_batches
         self.cur_lr = self.lr_max
 
     def __repr__(self):
-        return 'LinearDecreaseScheduler'
+        return 'LinearDecayScheduler'
 
     def __str__(self):
         s = []
-        s.append('Linear Decrease Learning Rate Scheduler\n')
+        s.append('Linear Decay Learning Rate Scheduler\n')
         s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
 
         return ''.join(s)
 
     def get_lr(self, cur_iter):
-        if cur_iter < self.num_batches:
+        if cur_iter < self.num_iters:
             new_lr = self.cur_lr * self.lr_mult
         else:
             new_lr = self.cur_lr
-        self.update_lr_history(new_lr)
+        self._update_lr_history(new_lr)
 
         return new_lr
 
 
-# TODO : log decrease scheduler (where lr_mult = (lr_max - lr_min_) ** (1.0 /
-# num_iter)
+class LogDecayScheduler(LRScheduler):
+    def __init__(self, **kwargs):
+        self.num_iter = kwargs.pop('num_iter', 50000)
+        super(LogDecayScheduler, self).__init__(**kwargs)
+        self.cur_lr = self.lr_max
 
+        self.lr_mult = (self.lr_max - self.lr_min) ** (1.0 / self.num_iter)
+
+    def __repr__(self):
+        return 'LogDecayScheduler'
+
+    def __str__(self):
+        s = []
+        s.append('Logarithmic Decay Learning Rate Scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+
+        return ''.join(s)
+
+    def get_lr(self, cur_iter):
+        if cur_iter < self.num_iter:
+            new_lr = self.cur_lr * self.lr_mult
+        else:
+            new_lr = self.cur_lr
+        self._update_lr_history(new_lr)
+
+        return new_lr
+
+
+class ExponentialDecayScheduler(LRScheduler):
+    def __init__(self, **kwargs):
+        self.k = kwargs.pop('k', 0.001)
+        super(ExponentialDecayScheduler, self).__init__(**kwargs)
+        self.cur_lr = self.lr_max
+
+    def __repr__(self):
+        return 'ExponentialDecayScheduler'
+
+    def __str__(self):
+        s = []
+        s.append('Exponential Decay Learning Rate Scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+
+        return ''.join(s)
+
+    def get_lr(self, cur_iter):
+        new_lr = self.lr_max * np.exp(-self.k * cur_iter)
+        self._update_lr_history(new_lr)
+
+        return new_lr
 
 
 class WarmRestartScheduler(LRScheduler):
@@ -143,7 +215,7 @@ class WarmRestartScheduler(LRScheduler):
         else:
             restart_frac = self.batch_since_restart / (2 * self.stepsize * self.step_per_epoch)
         new_lr = self.lr_min + 0.5 * (self.lr_max - self.lr_min) * (1 + np.cos(restart_frac * np.pi))
-        self.update_lr_history(new_lr)
+        self._update_lr_history(new_lr)
 
         return new_lr
 
@@ -272,6 +344,7 @@ class Triangular2ExpScheduler(LRScheduler):
         self._update_lr_history(self.lr_min)
         return self.lr_min
 
+
 class EpochSetScheduler(LRScheduler):
     def __init__(self, schedule, **kwargs):
         """
@@ -292,8 +365,8 @@ class EpochSetScheduler(LRScheduler):
         """
         if type(schedule) is not dict:
             raise ValueError('schedule must be a dict of epochs and values')
-        self.schedule = schedule
-        self.lr_value = kwargs.pop('lr_value', False)       # if true, set the lr to the value in the dict at epoch E
+        self.schedule      = schedule
+        self.lr_value      = kwargs.pop('lr_value', False)       # if true, set the lr to the value in the dict at epoch E
         self.learning_rate = 0.0
         super(EpochSetScheduler, self).__init__(**kwargs)
 
@@ -333,13 +406,25 @@ class EpochSetScheduler(LRScheduler):
         return self.learning_rate
 
 
+
+class DecayWhenEpoch(LRScheduler):
+    def __init__(self, **kwargs):
+        super(DecayWhenEpoch, self).__init__(**kwargs)
+
+
 # ---- Momentum ----- #
-class MScheduler(object):
+class MtmScheduler(object):
     def __init__(self, **kwargs):
-        self.mom_min = kwargs.pop('mom_min', 1e-3)
-        self.mom_max = kwargs.pop('mom_max', 0.9)
+        self.mtm_min = kwargs.pop('mtm_min', 1e-3)
+        self.mtm_max = kwargs.pop('mtm_max', 0.9)
+
+    def __repr__(self):
+        return 'MtmScheduler'
 
 
-class TriangularMScheduler(MScheduler):
+class TriangularMtmScheduler(MtmScheduler):
     def __init__(self, **kwargs):
-        super(TriangularMScheduler, self).__init__(**kwargs)
+        super(TriangularMtmScheduler, self).__init__(**kwargs)
+
+    def get_mtm(self):
+        pass
