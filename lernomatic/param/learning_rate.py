@@ -259,7 +259,8 @@ class LogFinder(LRFinder):
                     # keep a record of the best acc
                     if self.acc_history[-1] > self.best_acc:
                         self.best_acc = self.acc_history[-1]
-                        self.best_acc_idx = len(self.acc_history)
+                        self.best_acc_idx = len(self.log_lr_history)
+                        #self.best_acc_idx = len(self.acc_history)
 
                 # update history
                 self.smooth_loss_history.append(smooth_loss)
