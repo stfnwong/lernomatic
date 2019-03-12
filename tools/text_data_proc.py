@@ -15,7 +15,6 @@ GLOBAL_OPTS = dict()
 def main():
 
     wmap = word_map.WordMap()
-
     # read in some files
 
 

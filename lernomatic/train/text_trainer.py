@@ -21,41 +21,6 @@ class TextTrainer(trainer.Trainer):
     def __repr__(self):
         return 'TextTrainer'
 
-    def save_checkpoint(self, fname):
-        checkpoint = dict()
-        checkpoint['model'] = self.model.state_dict()
-        checkpoint['optimizer'] = self.optimizer.state_dict()
-        checkpoint['trainer'] = self.get_trainer_params()
-        torch.save(checkpoint, fname)
-
-    def load_checkpoint(self, fname):
-        checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer'])
-        self.model = cvdnet.CVDNet()
-        self.model.load_state_dict(checkpoint['model'])
-        self._init_optimizer()
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-    def load_history(self, fname):
-        history = torch.load(fname)
-        self.loss_history   = history['loss_history']
-        self.loss_iter      = history['loss_iter']
-        self.cur_epoch      = history['cur_epoch']
-        self.iter_per_epoch = history['iter_per_epoch']
-        if 'test_loss_history' in history:
-            self.test_loss_history = history['test_loss_history']
-
-    def save_history(self, fname):
-        history = dict()
-        history['loss_history']   = self.loss_history
-        history['loss_iter']      = self.loss_iter
-        history['cur_epoch']      = self.cur_epoch
-        history['iter_per_epoch'] = self.iter_per_epoch
-        if self.test_loss_history is not None:
-            history['test_loss_history'] = self.test_loss_history
-
-        torch.save(history, fname)
-
     def remove_hidden_hist(self, h):
         if isinstance(h, Variable):
             return Variable(h, data)
@@ -114,3 +79,41 @@ class TextTrainer(trainer.Trainer):
             hidden = self.remove_hidden_hist(hidden)
 
         ## TODO : print, etc
+
+
+    # History/checkpoint stuff
+    def save_checkpoint(self, fname):
+        checkpoint = dict()
+        checkpoint['model'] = self.model.state_dict()
+        checkpoint['optimizer'] = self.optimizer.state_dict()
+        checkpoint['trainer'] = self.get_trainer_params()
+        torch.save(checkpoint, fname)
+
+    def load_checkpoint(self, fname):
+        checkpoint = torch.load(fname)
+        self.set_trainer_params(checkpoint['trainer'])
+        self.model = cvdnet.CVDNet()
+        self.model.load_state_dict(checkpoint['model'])
+        self._init_optimizer()
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
+
+    def load_history(self, fname):
+        history = torch.load(fname)
+        self.loss_history   = history['loss_history']
+        self.loss_iter      = history['loss_iter']
+        self.cur_epoch      = history['cur_epoch']
+        self.iter_per_epoch = history['iter_per_epoch']
+        if 'test_loss_history' in history:
+            self.test_loss_history = history['test_loss_history']
+
+    def save_history(self, fname):
+        history = dict()
+        history['loss_history']   = self.loss_history
+        history['loss_iter']      = self.loss_iter
+        history['cur_epoch']      = self.cur_epoch
+        history['iter_per_epoch'] = self.iter_per_epoch
+        if self.test_loss_history is not None:
+            history['test_loss_history'] = self.test_loss_history
+
+        torch.save(history, fname)
+

@@ -12,7 +12,7 @@ from collections import Counter
 #from pudb import set_trace; set_trace()
 
 class WordMap(object):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         self.img_key       = kwargs.pop('img_key', 'images')
         # options
         self.verbose       = kwargs.pop('verbose', False)
@@ -24,23 +24,23 @@ class WordMap(object):
         self.map_word      = None            # inverts a word map
         self.word_freq     = Counter()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'WordMap'
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = []
         s.append('WordMap (%d words)' % len(self.word_map))
         return ''.join(s)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.word_map)
 
-    def _init_data(self):
+    def _init_data(self) -> None:
         self.train_data.reset()
         self.test_data.reset()
         self.val_data.reset()
 
-    def save(self, fname):
+    def save(self, fname : str) -> None:
         """
         SAVE
         Commit the word map to disk in JSON format
@@ -53,7 +53,7 @@ class WordMap(object):
         with open(fname, 'w') as fp:
             json.dump(self.word_map, fp)
 
-    def load(self, fname):
+    def load(self, fname : str) -> None:
         """
         LOAD
         Load a word map from a JSON on disk
@@ -61,7 +61,7 @@ class WordMap(object):
         with open(fname, 'r') as fp:
             self.word_map = json.load(fp)
 
-    def gen_map_word(self):
+    def gen_map_word(self) -> None:
         if self.word_map is None:
             return
 
@@ -69,7 +69,7 @@ class WordMap(object):
         for k, v in self.word_map.items():
             self.map_word[v] = k
 
-    def lookup_word(self, word):
+    def lookup_token(self, token : int) -> str:
         if self.map_word is None:
             self.gen_map_word()
         try:
@@ -77,22 +77,23 @@ class WordMap(object):
         except:
             return self.map_word[self.word_map['<unk>']]
 
-    def get_word_map(self):
+    def lookup_word(self, word : str) -> int:
+        try:
+            return self.word_map[word]
+        except:
+            return self.word_map['<unk>']
+
+    def get_word_map(self) -> dict:
         return self.word_map
 
-    # TODO : type hints?
-    def update(self, word_list):
+    def update(self, word_list : list) -> None:
         """
         UPDATE
         Update the word map with new words
         """
-        if type(word_list[0]) is str:
-            self.word_freq.update(word_list)
-        if type(word_list[0]) is list:
-            for w in word_list:
-                self.word_freq.update(w)
+        self.word_freq.update(word_list)
 
-    def generate(self):
+    def generate(self) -> None:
         """
         GENERATE
         Generate a word mapping based on the internal word
