@@ -9,6 +9,9 @@ import argparse
 from lernomatic.data.text import word_map
 
 
+# debug
+from pudb import set_trace; set_trace()
+
 GLOBAL_OPTS = dict()
 
 

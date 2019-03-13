@@ -33,32 +33,6 @@ def load():
     hdf5_data.read(GLOBAL_OPTS['input'])
 
 
-def show_pn():
-    hdf5_data = hdf5_util.HDF5Data(
-        GLOBAL_OPTS['input'],
-        verbose=GLOBAL_OPTS['verbose']
-    )
-
-    labels = hdf5_data.get_dataset('labels')
-    num_pos = 0
-    num_neg = 0
-    num_unk = 0
-    for n, label in enumerate(labels):
-        print('Scanning label [%d/%d] ' % (n+1, len(labels)), end='\r')
-        if label == 1:
-            num_pos += 1
-        elif label == 0:
-            num_neg += 1
-        else:
-            num_unk += 1
-
-    print('\n\t [DONE]')
-    print('Total labels            : %d' % len(labels))
-    print('Positive examples       : %d (%.4f %%)' % (num_pos, 100.0 * (num_pos / len(labels))))
-    print('Negative examples       : %d (%.4f %%)' % (num_neg, 100.0 * (num_neg / len(labels))))
-    print('Uncategorised examples  : %d ' % num_unk)
-
-
 def find():
     pass
 
@@ -106,8 +80,5 @@ if __name__ == '__main__':
     # Figure out what to do (ie: what mode are we in?)
     if GLOBAL_OPTS['mode'] == 'inspect':
         inspect()
-    elif GLOBAL_OPTS['mode'] == 'pn':
-        show_pn()
     elif GLOBAL_OPTS['mode'] == 'find':
         find()
-

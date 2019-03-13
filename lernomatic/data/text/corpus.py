@@ -6,6 +6,7 @@ Stefan Wong 2019
 """
 
 import torch
+import numpy as np
 from lernomatic.data.text import word_map
 
 
@@ -30,18 +31,25 @@ class Corpus(object):
 
         return tokens
 
-    def tokenize_list(self, text : list, update_map : bool = False) -> torch.LongTensor:
+    def tokenize_list(self, text : list,
+                      update_map : bool = False,
+                      return_tensor : bool = False) -> torch.LongTensor:
         if update_map is True:
             self.wmap.update(text)
             self.wmap.generate()
 
-        tokens = torch.LongTensor(len(text))
+        if return_tensor is True:
+            tokens = torch.LongTensor(len(text))
+        else:
+            tokens = np.zeros(len(text))
         for n, w in enumerate(text):
             tokens[n] = self.wmap.lookup_word(w)
 
         return tokens
 
-    def tokenize_file(self, filename : str, update_map : bool = False) -> torch.LongTensor:
+    def tokenize_file(self, filename : str,
+                      update_map : bool = False,
+                      return_tensor : bool = False) -> torch.LongTensor:
         self.filename = filename
         # find number of tokens in file
         with open(filename, 'r') as fp:
@@ -57,7 +65,10 @@ class Corpus(object):
 
         # Now go back and tokenize the data
         with open(filename, 'r') as fp:
-            tokens = torch.LongTensor(num_tokens)
+            if return_tensor is True:
+                tokens = torch.LongTensor(num_tokens)
+            else:
+                tokens = np.zeros(num_tokens)
             tok_ptr = 0
             for line in fp:
                 words = line.split() + [self.end_token]
