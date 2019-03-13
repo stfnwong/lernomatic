@@ -23,8 +23,11 @@ class LRScheduler(object):
         self.stepsize   = kwargs.pop('stepsize', 1000)
         self.start_iter = kwargs.pop('start_iter', 0)
 
+        self.no_lr_history   = kwargs.pop('no_lr_history', False)
         self.lr_history_size = kwargs.pop('lr_history_size', 0)
         self.lr_history_ptr  = 0
+        if self.no_lr_history is True:
+            self.lr_history_size = 0
         self._init_history()
 
     def __repr__(self):
@@ -377,12 +380,12 @@ class EpochSetScheduler(LRScheduler):
 
     def __str__(self):
         s = []
-        s.append('EpochSetScheduler Learning Rate Scheduler\n')
+        s.append('EpochSetScheduler learning rate scheduler\n')
         s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
-        if self.lr_value is True:
-            s.append(' Epoch      : learning rate (set) \n')
+        if self.lr_value is true:
+            s.append(' epoch      : learning rate (set) \n')
         else:
-            s.append(' Epoch      : learning rate (multiplied by) \n')
+            s.append(' epoch      : learning rate (multiplied by) \n')
         for k, v in self.schedule.items():
             s.append('\t %6d :  %f\n' % (int(k), v))
         s.append('\n')
@@ -402,14 +405,104 @@ class EpochSetScheduler(LRScheduler):
     def get_lr(self, cur_epoch):
         if cur_epoch in self.schedule.keys():
             self.learning_rate = self.schedule[cur_epoch]
+        self._update_lr_history(self.learning_rate)
 
         return self.learning_rate
 
 
+class TriangularDecayWhenAcc(LRScheduler):
+    def __init__(self, **kwargs):
+        self.lr_decay = kwargs.pop('lr_decay', 0.9)
+        self.acc_thresh = kwargs.pop('acc_thresh', 0.05)
+        self.best_acc = 0.0
+        super(TriangularDecayWhenAcc, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return 'TriangularDecayWhenAcc'
+
+    def __str__(self):
+        s = []
+        s.append('Triangular Learning Rate Scheduler with Accuracy Decay\n')
+        s.append('lr range %.4f -> %.4f, lr decay : %.4f \n' % (self.lr_min, self.lr_max, self.lr_decay))
+
+        return ''.join(s)
+
+    def get_lr(self, cur_iter, cur_acc):
+        if cur_acc > self.best_acc:
+            self.best_acc = cur_acc
+        itr = cur_iter - self.start_iter
+        if itr > 0:
+            cycle = itr / (2 * self.stepsize)
+            x = itr - (2 * cycle + 1) * self.stepsize
+            x /= self.stepsize
+            rate = self.lr_min + (self.lr_max - self.lr_min) *\
+                np.maximum(0.0, 1.0 - np.abs(x))
+            if cur_acc < (self.best_acc * (1.0 - self.acc_thresh)):
+                rate = rate * self.lr_decay
+            self._update_lr_history(rate)
+
+            return rate
+
+        self._update_lr_history(self.lr_min)
+        return self.lr_min
+
+
+class DecayWhenAcc(LRScheduler):
+    def __init__(self, **kwargs):
+        self.initial_lr    = kwargs.pop('initial_lr', 0.01)
+        self.acc_thresh    = kwargs.pop('acc_thresh', 0.05)
+        self.lr_decay      = kwargs.pop('lr_decay', 0.9)
+        super(DecayWhenAcc, self).__init__(**kwargs)
+        self.best_acc      = 0.0
+        self.learning_rate = self.initial_lr
+
+    def __repr__(self):
+        return 'DecayWhenAcc'
+
+    def __str__(self):
+        s = []
+        s.append('DecayWhenAcc learning rate scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+        s.append('acc thresh : %.4f\n' % self.acc_thresh)
+        s.append('\n')
+
+        return ''.join(s)
+
+    def get_lr(self, cur_acc):
+        if cur_acc > self.best_acc:
+            self.best_acc = cur_acc
+        if cur_acc < (self.best_acc * (1.0 - self.acc_thresh)):
+            self.learning_rate = self.learning_rate * self.lr_decay
+        self._update_lr_history(self.learning_rate)
+
+        return self.learning_rate
+
 
 class DecayWhenEpoch(LRScheduler):
+    """
+    DecayWhenEpoch
+    Decay the learning rate every num_epochs by lr_decay
+    """
     def __init__(self, **kwargs):
+        self.num_epochs = kwargs.pop('num_epochs', 8)
+        self.lr_decay   = kwargs.pop('lr_decay', 0.9)
         super(DecayWhenEpoch, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return 'DecayWhenEpoch'
+
+    def __str__(self):
+        s = []
+        s.append('DecayWhenEpoch learning rate scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+        s.append('epoch : %.4f, lr decay : %.4f\n' % (self.num_epochs, self.lr_decay))
+        s.append('\n')
+
+    def get_lr(self, cur_epoch):
+        if (cur_epoch % self.num_epochs) == 0:
+            self.learning_rate = self.learning_rate * self.lr_decay
+
+        return self.learning_rate
 
 
 # ---- Momentum ----- #

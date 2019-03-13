@@ -8,6 +8,7 @@ Stefan Wong 2018
 import torch
 from torch import nn
 import numpy as np
+from lernomatic.train import schedule
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -233,6 +234,17 @@ class Trainer(object):
     def get_mtm_scheduler(self):
         return self.mtm_scheduler
 
+    def apply_lr_schedule(self):
+        if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
+            new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
+        elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or isinstance(self.lr_scheduler, schedule.DecayWhenEpoch):
+            new_lr = self.lr_scheduler.get_lr(self.cur_epoch)
+        elif isinstance(self.lr_scheduler, schedule.DecayWhenAcc):
+            new_lr = self.lr_scheduler.get_lr(self.acc_history[self.acc_iter])
+        else:
+            new_lr = self.lr_scheduler.get_lr(self.loss_iter)
+        self.set_learning_rate(new_lr)
+
     # Layer freeze / unfreeze
     def freeze_to(self, layer_num):
         """
@@ -293,8 +305,7 @@ class Trainer(object):
 
             # perform any scheduling
             if self.lr_scheduler is not None:
-                new_lr = self.lr_scheduler.get_lr(self.loss_iter)
-                self.set_learning_rate(new_lr)
+                self.apply_lr_schedule()
 
             if self.mtm_scheduler is not None:
                 new_mtm = self.mtm_scheduler.get_mtm(self.loss_iter)
