@@ -36,6 +36,7 @@ class TextHDF5Dataset(data.Dataset):
     Reads in a text dataset that has been pre-processed into an HDF5 file.
     """
     def __init__(self, fname : str, **kwargs) -> None:
+        valid_units = ('chars', 'words')
         self.data_key        : str = kwargs.pop('data_key', 'text')
         self.chars_per_block : int = kwargs.pop('chars_per_block', 24)
         self.pred_window     : int = kwargs.pop('pred_window', 2)

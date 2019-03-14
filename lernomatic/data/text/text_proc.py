@@ -134,19 +134,3 @@ class TextCharLevelProc(TextHDF5Proc):
                         for c in w:
                             text_dataset[char_idx] = c
                             char_idx += 1
-
-
-
-# sanity check
-if __name__ == '__main__':
-    test_file = '/mnt/ml-data/datasets/shakespear_corpus.txt'
-
-    wmap = word_map.WordMap()
-    with open(test_file, 'r') as fp:
-        for line in fp:
-            words = line.split()
-            wmap.update(words)
-
-    wmap.generate()
-    word_level_proc = TextWordLevelProc(wmap, verbose=True)
-    word_level_proc.proc(test_file, 'wlp_test.h5')

@@ -10,7 +10,6 @@ import numpy as np
 from lernomatic.data.text import word_map
 
 
-
 class Corpus(object):
     def __init__(self, wmap : word_map.WordMap, **kwargs) -> None:
         self.wmap      : word_map.WordMap = wmap
