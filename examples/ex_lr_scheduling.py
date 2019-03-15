@@ -333,6 +333,8 @@ if __name__ == '__main__':
         'WarmRestartScheduler',
         'TriangularExpScheduler',
         'Triangular2ExpScheduler',
+        'DecayWhenAcc',
+        'TriangularDecayWhenAcc',
         None
     ]
 
@@ -343,6 +345,8 @@ if __name__ == '__main__':
         str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_warm_restart_sched_cifar10',
         str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_exp_sched_cifar10',
         str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular2_exp_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_decay_when_acc_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_decay_when_acc_cifar10',
         str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_no_sched_cifar10'
     ]
 
@@ -354,6 +358,8 @@ if __name__ == '__main__':
         figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_warm_restart_sched_cifar10.png',
         figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_exp_sched_cifar10.png',
         figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular2_exp_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_decay_when_acc_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_decay_when_acc_cifar10.png',
         figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_no_sched_cifar10.png',
     ]
 
