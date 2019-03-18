@@ -12,7 +12,7 @@ from torch.utils.data import Dataset
 
 
 class HDF5Dataset(Dataset):
-    def __init__(self, filename, **kwargs):
+    def __init__(self, filename: str, **kwargs) -> None:
         self.fp = h5py.File(filename, 'r')
         # set dataset names
         self.feature_name  = kwargs.pop('feature_name', 'features')
@@ -20,16 +20,16 @@ class HDF5Dataset(Dataset):
         self.transform     = kwargs.pop('transform', None)
         self.label_max_dim = kwargs.pop('label_max_dim', 0)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'HDF5Dataset'
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.fp.close()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.fp[self.feature_name])
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple:
         if idx > len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
@@ -49,4 +49,4 @@ class HDF5Dataset(Dataset):
         if self.transform is not None:
             feature = self.transform(feature)
 
-        return feature, label
+        return (feature, label)
