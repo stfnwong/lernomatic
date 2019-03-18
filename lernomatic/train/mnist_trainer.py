@@ -15,27 +15,27 @@ from lernomatic.models import mnist
 
 
 class MNISTTrainer(trainer.Trainer):
-    def __init__(self, model=None, **kwargs):
+    def __init__(self, model=None, **kwargs) -> None:
         self.data_dir       = kwargs.pop('data_dir', 'data/')
         super(MNISTTrainer, self).__init__(model, **kwargs)
 
         # init the criterion for MNIST
         self.criterion = torch.nn.NLLLoss()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'MNISTTrainer'
 
-    def _init_optimizer(self):
+    def _init_optimizer(self) -> None:
         if self.model is not None:
             self.optimizer = torch.optim.SGD(
-                self.model.parameters(),
+                self.model.get_model_parameters(),
                 lr = self.learning_rate,
                 momentum = self.momentum
             )
         else:
             self.optimizer = None       # for when we load checkpoints from disk
 
-    def _init_dataloaders(self):
+    def _init_dataloaders(self) -> None:
         dataset_transform = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize( (0.1307,), (0.3081,))
@@ -64,7 +64,7 @@ class MNISTTrainer(trainer.Trainer):
             shuffle = self.shuffle
         )
 
-    def save_history(self, fname):
+    def save_history(self, fname: str) -> None:
         history = dict()
         history['loss_history']   = self.loss_history
         history['loss_iter']      = self.loss_iter
@@ -75,7 +75,7 @@ class MNISTTrainer(trainer.Trainer):
 
         torch.save(history, fname)
 
-    def load_history(self, fname):
+    def load_history(self, fname: str) -> None:
         history = torch.load(fname)
         self.loss_history   = history['loss_history']
         self.loss_iter      = history['loss_iter']
@@ -84,19 +84,27 @@ class MNISTTrainer(trainer.Trainer):
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
 
-    def save_checkpoint(self, fname):
-        checkpoint = dict()
-        checkpoint['model'] = self.model.state_dict()
-        checkpoint['optimizer'] = self.optimizer.state_dict()
-        checkpoint['trainer'] = self.get_trainer_params()
-        torch.save(checkpoint, fname)
 
-    def load_checkpoint(self, fname):
-        checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer'])
-        self.model = mnist.MNISTNet()
-        self.model.load_state_dict(checkpoint['model'])
-        self._init_optimizer()
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
-        self._init_device()
-        self._send_to_device()
+
+
+
+
+
+
+
+    #def save_checkpoint(self, fname):
+    #    checkpoint = dict()
+    #    checkpoint['model'] = self.model.state_dict()
+    #    checkpoint['optimizer'] = self.optimizer.state_dict()
+    #    checkpoint['trainer'] = self.get_trainer_params()
+    #    torch.save(checkpoint, fname)
+
+    #def load_checkpoint(self, fname):
+    #    checkpoint = torch.load(fname)
+    #    self.set_trainer_params(checkpoint['trainer'])
+    #    self.model = mnist.MNISTNet()
+    #    self.model.load_state_dict(checkpoint['model'])
+    #    self._init_optimizer()
+    #    self.optimizer.load_state_dict(checkpoint['optimizer'])
+    #    self._init_device()
+    #    self._send_to_device()

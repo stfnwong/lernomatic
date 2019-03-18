@@ -19,6 +19,10 @@ class CIFAR10Trainer(trainer.Trainer):
         super(CIFAR10Trainer, self).__init__(model, **kwargs)
         self.criterion = torch.nn.CrossEntropyLoss()
 
+        # FIXME : debug, remove
+        if self.model is None:
+            print('[%s] created trainer with no model' % self)
+
     def __repr__(self):
         return 'CIFAR10Trainer'
 
@@ -33,7 +37,7 @@ class CIFAR10Trainer(trainer.Trainer):
     def _init_optimizer(self):
         if self.model is not None:
             self.optimizer = torch.optim.SGD(
-                self.model.parameters(),
+                self.model.get_model_parameters(),
                 lr = self.learning_rate,
                 momentum = self.momentum
             )
@@ -90,21 +94,6 @@ class CIFAR10Trainer(trainer.Trainer):
         self.iter_per_epoch = history['iter_per_epoch']
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
-
-    def save_checkpoint(self, fname):
-        checkpoint = dict()
-        checkpoint['model'] = self.model.state_dict()
-        checkpoint['optimizer'] = self.optimizer.state_dict()
-        checkpoint['trainer'] = self.get_trainer_params()
-        torch.save(checkpoint, fname)
-
-    def load_checkpoint(self, fname):
-        checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer'])
-        self.model = cifar.CIFAR10Net()
-        self.model.load_state_dict(checkpoint['model'])
-        self._init_optimizer()
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
 
 
 
