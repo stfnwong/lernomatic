@@ -25,8 +25,8 @@ def main():
 
     # get a model
     ref_model = resnets.WideResnet(
-        58,
-        10
+        depth=58,
+        num_classes = 10
     )
 
     # get a trainer

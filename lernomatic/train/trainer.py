@@ -27,37 +27,37 @@ class Trainer(object):
     def __init__(self, model=None, **kwargs) -> None:
         self.model           = model
         # Training loop options
-        self.num_epochs      = kwargs.pop('num_epochs', 10)
-        self.learning_rate   = kwargs.pop('learning_rate', 1e-4)
-        self.momentum        = kwargs.pop('momentum', 0.5)
-        self.weight_decay    = kwargs.pop('weight_decay', 1e-5)
-        self.loss_function   = kwargs.pop('loss_function', 'CrossEntropyLoss')
-        self.optim_function  = kwargs.pop('optim_function', 'Adam')
-        self.cur_epoch       = 0
+        self.num_epochs      :int   = kwargs.pop('num_epochs', 10)
+        self.learning_rate   :float = kwargs.pop('learning_rate', 1e-4)
+        self.momentum        :float = kwargs.pop('momentum', 0.5)
+        self.weight_decay    :float = kwargs.pop('weight_decay', 1e-5)
+        self.loss_function   :str   = kwargs.pop('loss_function', 'CrossEntropyLoss')
+        self.optim_function  :str   = kwargs.pop('optim_function', 'Adam')
+        self.cur_epoch       :int   = 0
         # validation options
         # checkpoint options
-        self.checkpoint_dir  = kwargs.pop('checkpoint_dir', 'checkpoint')
-        self.checkpoint_name = kwargs.pop('checkpoint_name', 'ck')
+        self.checkpoint_dir  :str   = kwargs.pop('checkpoint_dir', 'checkpoint')
+        self.checkpoint_name :str   = kwargs.pop('checkpoint_name', 'ck')
         # Internal options
-        self.verbose         = kwargs.pop('verbose', True)
-        self.print_every     = kwargs.pop('print_every', 10)
-        self.save_every      = kwargs.pop('save_every', -1)  # unit is iterations, -1 = save every epoch
-        self.save_best       = kwargs.pop('save_best', False)
+        self.verbose         :float = kwargs.pop('verbose', True)
+        self.print_every     :int   = kwargs.pop('print_every', 10)
+        self.save_every      :float = kwargs.pop('save_every', -1)  # unit is iterations, -1 = save every epoch
+        self.save_best       :float = kwargs.pop('save_best', False)
         # Device options
-        self.device_id       = kwargs.pop('device_id', -1)
-        self.device_map      = kwargs.pop('device_map', None)
-        # dataset/loader options
-        self.batch_size      = kwargs.pop('batch_size', 64)
-        self.test_batch_size = kwargs.pop('test_batch_size', 0)
-        self.train_dataset   = kwargs.pop('train_dataset', None)
-        self.test_dataset    = kwargs.pop('test_dataset', None)
-        self.val_dataset     = kwargs.pop('val_dataset', None)
-        self.shuffle         = kwargs.pop('shuffle', True)
-        self.num_workers     = kwargs.pop('num_workers' , 1)
-        # parameter scheduling
-        self.lr_scheduler    = kwargs.pop('lr_scheduler', None)
-        self.mtm_scheduler   = kwargs.pop('mtm_scheduler', None)
-        self.stop_when_acc   = kwargs.pop('stop_when_acc', 0.0)
+        self.device_id       :int   = kwargs.pop('device_id', -1)
+        self.device_map      :float = kwargs.pop('device_map', None)
+        # dataset/loader opti:float ons
+        self.batch_size      :int   = kwargs.pop('batch_size', 64)
+        self.test_batch_size :int   = kwargs.pop('test_batch_size', 0)
+        self.train_dataset          = kwargs.pop('train_dataset', None)
+        self.test_dataset           = kwargs.pop('test_dataset', None)
+        self.val_dataset            = kwargs.pop('val_dataset', None)
+        self.shuffle         :float = kwargs.pop('shuffle', True)
+        self.num_workers     :int   = kwargs.pop('num_workers' , 1)
+        # parameter schedulin:float g
+        self.lr_scheduler           = kwargs.pop('lr_scheduler', None)
+        self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
+        self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size

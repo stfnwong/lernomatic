@@ -16,7 +16,7 @@ from lernomatic.models import mnist
 
 class MNISTTrainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs) -> None:
-        self.data_dir       = kwargs.pop('data_dir', 'data/')
+        self.data_dir :str = kwargs.pop('data_dir', 'data/')
         super(MNISTTrainer, self).__init__(model, **kwargs)
 
         # init the criterion for MNIST
