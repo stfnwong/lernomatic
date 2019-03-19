@@ -258,7 +258,6 @@ class DecoderAttenModule(nn.Module):
         params['vocab_size'] = self.vocab_size
         params['dropout'] = self.dropout
         params['verbose'] = self.verbose
-        params['device_id'] = self.device_id
 
         return params
 
@@ -270,7 +269,6 @@ class DecoderAttenModule(nn.Module):
         self.vocab_size = params['vocab_size']
         self.dropout = params['dropout']
         self.verbose = params['verbose']
-        self.device_id = params['device_id']
         self._init_network()
 
     def load_pretrained_embeddings(self, embeddings) -> None:

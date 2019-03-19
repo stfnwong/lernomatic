@@ -386,7 +386,6 @@ class Trainer(object):
         self.model.set_params(checkpoint_data['model'])
 
         # Load optimizer
-        #self.optimizer = torch.optim.Adam(self.model.get_model_parameters())
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint_data['optim'])
         # set device

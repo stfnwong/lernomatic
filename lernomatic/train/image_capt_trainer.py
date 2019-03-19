@@ -596,10 +596,10 @@ class ImageCaptTrainer(trainer.Trainer):
         trainer_params = self.get_trainer_params()
         checkpoint_data = {
             # networks
-            'encoder' : self.encoder.state_dict(),
-            'decoder' : self.decoder.state_dict(),
-            'encoder_params' : self.encoder.get_params() if self.encoder is not None else None,
-            'decoder_params' : self.decoder.get_params() if self.decoder is not None else None,
+            'encoder' : self.encoder.get_params() if self.encoder is not None else None,
+            'decoder' : self.decoder.get_params() if self.decoder is not None else None,
+            #'encoder_params' : self.encoder.get_params() if self.encoder is not None else None,
+            #'decoder_params' : self.decoder.get_params() if self.decoder is not None else None,
             # solvers
             'encoder_optim' : self.encoder_optim.state_dict() if self.encoder_optim is not None else None,
             'decoder_optim' : self.decoder_optim.state_dict() if self.decoder_optim is not None else None,
@@ -613,13 +613,14 @@ class ImageCaptTrainer(trainer.Trainer):
         checkpoint = torch.load(fname)
         self.set_trainer_params(checkpoint['trainer_state'])
         # set meta data
-        self.encoder.set_params(checkpoint['encoder_params'])
-        self.decoder.set_params(checkpoint['decoder_params'])
+        self.encoder.set_params(checkpoint['encoder'])
+        self.decoder.set_params(checkpoint['decoder'])
         # load weights from checkpoint
-        self.encoder.load_state_dict(checkpoint['encoder'])
-        self.decoder.load_state_dict(checkpoint['decoder'])
-        self.decoder_optim = torch.optim.Adam(self.decoder.parameters())
-        self.encoder_optim = torch.optim.Adam(self.encoder.parameters())
+        #self.encoder.load_state_dict(checkpoint['encoder'])
+        #self.decoder.load_state_dict(checkpoint['decoder'])
+        #self.decoder_optim = torch.optim.Adam(self.decoder.parameters())
+        #self.encoder_optim = torch.optim.Adam(self.encoder.parameters())
+        self._init_optimizer()
         self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
         self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
 
