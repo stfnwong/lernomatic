@@ -75,3 +75,36 @@ class Upsampler(nn.Sequential):
             raise NotImplementedError
 
         super(Upsampler, self).__init__()
+
+
+class SRResBlock(nn.Module):
+    def __init__(self,  conv_module, num_features, **kwargs):
+        self.bias         = kwargs.pop('bias', True)
+        self.kernel_size  = kwargs.pop('kernel_size', 3)
+        self.do_batchnorm = kwargs.pop('do_batchnorm', False)
+        self.activation   = kwargs.pop('activation', 'relu')
+        self.res_scale    = kwargs.pop('res_scale', 1)
+        super(SResBlock, self).__init__()
+
+        # generate modules
+        modules = []
+        for n in range(2):
+            modules.append(conv_module(
+                num_features,
+                num_features,
+                self.kernel_size,
+                bias=self.bias)
+            )
+            if self.do_batchnorm:
+                modules.append(nn.Batchnorm2d(num_features))
+            if n == 0:
+                if self.activation == 'relu':
+                    modules.append(nn.ReLU(True))
+
+        self.net = nn.Sequential(*modules)
+
+    def forward(self, X):
+        res = self.net(X).mul(self.res_scale)
+        res += X
+
+        return res
