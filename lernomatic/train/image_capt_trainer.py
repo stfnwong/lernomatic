@@ -78,7 +78,7 @@ class COCOCaptTrainer(trainer.Trainer):
     # TODO : save and load stuff...
 
     def train_epoch(self):
-        self.model.train()
+        self.model.set_train()
 
         for n, (imgs, caps, caplens) in enumerate(self.train_loader):
             imgs = imgs.to(self.device)
@@ -86,7 +86,7 @@ class COCOCaptTrainer(trainer.Trainer):
             caplens = caplens.to(self.device)
 
             self.optimizer.zero_grad()
-            output = self.model(imgs, caps, caplens)
+            output = self.model.forward(imgs, caps, caplens)
             target_caps = pack_padded_sequence(caps, caplens)[0]
             loss = self.criterion(output, target_caps)
             loss.backward()
@@ -119,8 +119,7 @@ class COCOCaptTrainer(trainer.Trainer):
                 self.save_checkpoint(ck_name)
 
     def test_epoch(self):
-        self.model.eval()
-
+        self.model.set_eval()
         # for now, ignore allcaps output
         for n, (imgs, caps, caplens, _) in enumerate(self.test_loader):
             imgs = imgs.to(self.device)
@@ -128,7 +127,7 @@ class COCOCaptTrainer(trainer.Trainer):
             caplens = caplens.to(self.device)
 
             # test output
-            output = self.model(imgs, caps, caplens)
+            output = self.model.forward(imgs, caps, caplens)
             target_caps = pack_padded_sequence(caps, caplens)[0]
             test_loss = self.criterion(output, target_caps)
 
@@ -141,7 +140,7 @@ class COCOCaptTrainer(trainer.Trainer):
             self.test_loss_history[self.test_loss_iter] = test_loss.item()
             self.test_loss_iter += 1
 
-
+    # TODO : checkpointing?
 
 
 
@@ -151,30 +150,30 @@ class ImageCaptTrainer(trainer.Trainer):
     Trainer object for image captioning experiments
     """
     def __init__(self, encoder, decoder, **kwargs):
-        self.encoder          = encoder
-        self.decoder          = decoder
+        self.encoder          :common.LernomaticModel = encoder
+        self.decoder          :common.LernomaticModel = decoder
         # Deal with keyword args
-        self.dec_lr           = kwargs.pop('dec_lr', 1e-4)
-        self.dec_mom          = kwargs.pop('dec_mom', 0.0)
-        self.dec_wd           = kwargs.pop('dec_wd', 0.0)
-        self.enc_lr           = kwargs.pop('enc_lr', 1e-4)
-        self.enc_mom          = kwargs.pop('enc_mon', 0.0)
-        self.enc_wd           = kwargs.pop('enc_wd', 0.0)
-        self.alpha_c          = kwargs.pop('alpha_c', 1.0)
-        self.grad_clip        = kwargs.pop('grad_clip', None)
-        self.word_map         = kwargs.pop('word_map', None)
-        self.dec_lr_scheduler = kwargs.pop('dec_lr_scheduler', None)
-        self.enc_lr_scheduler = kwargs.pop('endec_lr_scheduler', None)
+        self.dec_lr           : float = kwargs.pop('dec_lr', 1e-4)
+        self.dec_mom          : float = kwargs.pop('dec_mom', 0.0)
+        self.dec_wd           : float = kwargs.pop('dec_wd', 0.0)
+        self.enc_lr           : float = kwargs.pop('enc_lr', 1e-4)
+        self.enc_mom          : float = kwargs.pop('enc_mon', 0.0)
+        self.enc_wd           : float = kwargs.pop('enc_wd', 0.0)
+        self.alpha_c          : float = kwargs.pop('alpha_c', 1.0)
+        self.grad_clip        : float = kwargs.pop('grad_clip', None)
+        self.word_map         : dict  = kwargs.pop('word_map', None)
+        self.dec_lr_scheduler         = kwargs.pop('dec_lr_scheduler', None)
+        self.enc_lr_scheduler         = kwargs.pop('endec_lr_scheduler', None)
         super(ImageCaptTrainer, self).__init__(None, **kwargs)
 
         self.criterion = torch.nn.CrossEntropyLoss()
         self._init_optimizer()
         self._send_to_device()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'ImageCaptTrainer'
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = []
         s.append('ImageCaptTrainer (%d epochs)\n' % self.num_epochs)
         params = self.get_trainer_params()
@@ -184,13 +183,13 @@ class ImageCaptTrainer(trainer.Trainer):
 
         return ''.join(s)
 
-    def _init_optimizer(self):
+    def _init_optimizer(self) -> None:
         # TODO : ADAM kwargs are betas, eps, weight_decay
         if self.decoder is None:
             self.decoder_optim = None
         else:
             self.decoder_optim = torch.optim.Adam(
-                params = filter(lambda p : p.requires_grad, self.decoder.parameters()),
+                params = filter(lambda p : p.requires_grad, self.decoder.get_model_parameters()),
                 lr = self.dec_lr,
             )
 
@@ -198,17 +197,17 @@ class ImageCaptTrainer(trainer.Trainer):
             self.encoder_optim = None
         else:
             self.encoder_optim = torch.optim.Adam(
-                params = filter(lambda p : p.requires_grad, self.encoder.parameters()),
+                params = filter(lambda p : p.requires_grad, self.encoder.get_model_parameters()),
                 lr = self.enc_lr,
             )
 
-    def _send_to_device(self):
+    def _send_to_device(self) -> None:
         if self.decoder is not None:
-            self.decoder = self.decoder.to(self.device)
+            self.decoder.send_to(self.device)
         if self.encoder is not None:
-            self.encoder = self.encoder.to(self.device)
+            self.encoder.send_to(self.device)
 
-    def get_trainer_params(self):
+    def get_trainer_params(self) -> dict:
         return {
             # image caption specific parameters
             'dec_lr'          : self.dec_lr,
@@ -238,7 +237,7 @@ class ImageCaptTrainer(trainer.Trainer):
             'device_id'       : self.device_id,
         }
 
-    def set_trainer_params(self, params):
+    def set_trainer_params(self, params:dict) -> None:
         self.dec_lr          = params['dec_lr']
         self.dec_mom         = params['dec_mom']
         self.dec_wd          = params['dec_wd']
@@ -260,90 +259,9 @@ class ImageCaptTrainer(trainer.Trainer):
         self.verbose         = params['verbose']
         self.device_id       = params['device_id']
 
-    def save_checkpoint(self, fname):
-        trainer_params = self.get_trainer_params()
-        checkpoint_data = {
-            # networks
-            'encoder' : self.encoder.state_dict(),
-            'decoder' : self.decoder.state_dict(),
-            'encoder_params' : self.encoder.get_params() if self.encoder is not None else None,
-            'decoder_params' : self.decoder.get_params() if self.decoder is not None else None,
-            # solvers
-            'encoder_optim' : self.encoder_optim.state_dict() if self.encoder_optim is not None else None,
-            'decoder_optim' : self.decoder_optim.state_dict() if self.decoder_optim is not None else None,
-            # loaders?
-            # object params
-            'trainer_state' : trainer_params,
-        }
-        torch.save(checkpoint_data, fname)
-
-    def load_checkpoint(self, fname):
-        checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer_state'])
-        # set meta data
-        self.encoder.set_params(checkpoint['encoder_params'])
-        self.decoder.set_params(checkpoint['decoder_params'])
-        # load weights from checkpoint
-        self.encoder.load_state_dict(checkpoint['encoder'])
-        self.decoder.load_state_dict(checkpoint['decoder'])
-        self.decoder_optim = torch.optim.Adam(self.decoder.parameters())
-        self.encoder_optim = torch.optim.Adam(self.encoder.parameters())
-        self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
-        self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
-
-        if self.device_map is not None:
-            if self.device_map < 0:
-                device = torch.device('cpu')
-            else:
-                device = torch.device('cuda:%d' % self.device_map)
-            # transfer decoder optimizer
-            if self.decoder_optim is not None:
-                for state in self.decoder_optim.state.values():
-                    for k, v in state.items():
-                        if isinstance(v, torch.Tensor):
-                            state[k] = v.to(device)
-            # trasfer encoder optimizer
-            if self.encoder_optim is not None:
-                for state in self.encoder_optim.state.values():
-                    for k, v in state.items():
-                        if isinstance(v, torch.Tensor):
-                            state[k] = v.to(device)
-            self.device = self.device_map
-        self._init_device()
-        self._init_dataloaders()
-        self.send_to_device()
-
-    def save_history(self, fname):
-        history = dict()
-        history['loss_history']   = self.loss_history
-        history['loss_iter']      = self.loss_iter
-        history['cur_epoch']      = self.cur_epoch
-        history['iter_per_epoch'] = self.iter_per_epoch
-        if self.test_loss_history is not None:
-            history['test_loss_history'] = self.test_loss_history
-            history['test_loss_iter']    = self.test_loss_iter
-        if self.acc_history is not None:
-            history['acc_history'] = self.acc_history
-            history['acc_iter']    = self.acc_iter
-
-        torch.save(history, fname)
-
-    def load_history(self, fname):
-        history = torch.load(fname)
-        self.loss_history   = history['loss_history']
-        self.loss_iter      = history['loss_iter']
-        self.cur_epoch      = history['cur_epoch']
-        self.iter_per_epoch = history['iter_per_epoch']
-        if 'test_loss_history' in history:
-            self.test_loss_history = history['test_loss_history']
-        if 'acc_history' in history:
-            self.acc_history       = history['acc_history']
-            self.acc_iter          = history['acc_iter']
-        else:
-            self.acc_iter = 0
 
     # set learning rates for the two optimizers
-    def set_learning_rate(self, lr, param_zero=True):
+    def set_learning_rate(self, lr:float, param_zero=True) -> None:
         if param_zero:
             self.dec_optimizer.param_groups[0]['lr'] = lr
             self.enc_optimizer.param_groups[0]['lr'] = lr
@@ -353,14 +271,14 @@ class ImageCaptTrainer(trainer.Trainer):
             for g in self.enc_optimizer.param_groups:
                 g['lr'] = lr
 
-    def set_dec_learning_rate(self, lr, param_zero=True):
+    def set_dec_learning_rate(self, lr:float, param_zero=True) -> None:
         if param_zero:
             self.dec_optimizer.param_groups[0]['lr'] = lr
         else:
             for g in self.dec_optimizer.param_groups:
                 g['lr'] = lr
 
-    def set_enc_learning_rate(self, lr, param_zero=True):
+    def set_enc_learning_rate(self, lr:float, param_zero=True) -> None:
         if param_zero:
             self.enc_optimizer.param_groups[0]['lr'] = lr
         else:
@@ -368,31 +286,30 @@ class ImageCaptTrainer(trainer.Trainer):
                 g['lr'] = lr
 
     # Overload set_lr_scheduler
-    def set_lr_scheduler(self, lr_scheduler):
+    def set_lr_scheduler(self, lr_scheduler) -> None:
         self.dec_lr_scheduler = lr_scheduler
         self.enc_lr_scheduler = lr_scheduler
 
-    def set_dec_lr_scheduler(self, lr_scheduler):
+    def set_dec_lr_scheduler(self, lr_scheduler) -> None:
         self.dec_lr_scheduler = lr_scheduler
 
-    def set_enc_lr_scheduler(self, lr_scheduler):
+    def set_enc_lr_scheduler(self, lr_scheduler) -> None:
         self.enc_lr_scheduler = lr_scheduler
 
-    def get_dec_lr_scheduler(self):
+    def get_dec_lr_scheduler(self) -> None:
         return self.dec_lr_scheduler
 
-    def get_enc_lr_scheduler(self):
+    def get_enc_lr_scheduler(self) -> None:
         return self.enc_lr_scheduler
 
-
     # ======== TRAINING ======== #
-    def train_epoch(self):
+    def train_epoch(self) -> None:
         """
         Train for one epoch
         """
-        self.decoder.train()
+        self.decoder.set_train()
         if self.encoder is not None:
-            self.encoder.train()
+            self.encoder.set_train()
 
         # TODO : can add batch time meters here later
 
@@ -402,8 +319,8 @@ class ImageCaptTrainer(trainer.Trainer):
             caplens = caplens.to(self.device)
 
             # forward pass
-            imgs = self.encoder(imgs)
-            scores, caps_sorted, decode_lengths, alphas,  sort_ind = self.decoder(imgs, caps, caplens)
+            imgs = self.encoder.forward(imgs)
+            scores, caps_sorted, decode_lengths, alphas,  sort_ind = self.decoder.forward(imgs, caps, caplens)
             # remove the <start> token from the output captions
             targets = caps_sorted[:, 1:]
             # remove timesteps that are pads or that we didn't do any decoding
@@ -447,10 +364,10 @@ class ImageCaptTrainer(trainer.Trainer):
 
             # do scheduling
             if self.dec_lr_scheduler is not None:
-                new_lr = self.dec_lr_scheduler.get_lr(self.loss_iter)
+                new_lr = self.apply_lr_scheduling()
                 self.set_dec_learning_rate(new_lr)
             if self.enc_lr_scheduler is not None:
-                new_lr = self.enc_lr_scheduler.get_lr(self.loss_iter)
+                new_lr = self.apply_lr_scheduling()
                 self.set_enc_learning_rate(new_lr)
 
             # update history
@@ -465,13 +382,13 @@ class ImageCaptTrainer(trainer.Trainer):
                 self.save_checkpoint(ck_name)
 
 
-    def test_epoch(self):
+    def test_epoch(self) -> None:
         """
         Find accuracy on test data
         """
-        self.decoder.eval()
+        self.decoder.set_eval()
         if self.encoder is not None:
-            self.encoder.eval()
+            self.encoder.set_eval()
 
         references = list()     # true captions for computing BLEU-4 score
         hypotheses = list()     # predicted captions
@@ -484,9 +401,9 @@ class ImageCaptTrainer(trainer.Trainer):
             caplens = caplens.to(self.device)
 
             if self.encoder is not None:
-                imgs = self.encoder(imgs)
+                imgs = self.encoder.forward(imgs)
 
-            scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder(imgs, caps, caplens)
+            scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder.forward(imgs, caps, caplens)
             # get rid of the <start> token
             targets = caps_sorted[:, 1:]
             # prune out extra timesteps
@@ -554,10 +471,10 @@ class ImageCaptTrainer(trainer.Trainer):
                 self.save_checkpoint(ck_name)
 
 
-    def eval(self, beam_size=3):
-        self.decoder.eval()
+    def eval(self, beam_size=3) -> None:
+        self.decoder.set_eval()
         if self.encoder is not None:
-            self.encoder.eval()
+            self.encoder.set_eval()
 
         references = list()
         hypotheses = list()
@@ -566,7 +483,7 @@ class ImageCaptTrainer(trainer.Trainer):
             k = beam_size
             image = image.to(self.device)       # (1, 3, 256, 256)
             # do encoding pass
-            enc_out = self.encoder(image)
+            enc_out = self.encoder.forward(image)
             enc_img_size = enc_out.size(1)
             enc_dim      = enc_out.size(3)
 
@@ -591,6 +508,8 @@ class ImageCaptTrainer(trainer.Trainer):
             max_step = 50
             while step < max_step:
 
+                # TODO : some of these need to  be updated to account for new
+                # model arch
                 embeddings = self.decoder.embedding(k_prev_words).squeeze(1)        # (s, embed_dim)
                 awe, _ = self.decoder.attention(enc_out, h)                         # attention-weighted embeddings
                 gate = self.decoder.sigmoid(self.decoder.f_beta(h))                 # gating scalar (s, enc_dim)
@@ -670,3 +589,87 @@ class ImageCaptTrainer(trainer.Trainer):
         bleu4 = corpus_bleu(references, hypothese)
 
         return bleu4
+
+    # CHECKPOINTING AND HISTORY
+    # TODO : update this for new model arch
+    def save_checkpoint(self, fname: str) -> None:
+        trainer_params = self.get_trainer_params()
+        checkpoint_data = {
+            # networks
+            'encoder' : self.encoder.state_dict(),
+            'decoder' : self.decoder.state_dict(),
+            'encoder_params' : self.encoder.get_params() if self.encoder is not None else None,
+            'decoder_params' : self.decoder.get_params() if self.decoder is not None else None,
+            # solvers
+            'encoder_optim' : self.encoder_optim.state_dict() if self.encoder_optim is not None else None,
+            'decoder_optim' : self.decoder_optim.state_dict() if self.decoder_optim is not None else None,
+            # loaders?
+            # object params
+            'trainer_state' : trainer_params,
+        }
+        torch.save(checkpoint_data, fname)
+
+    def load_checkpoint(self, fname: str) -> None:
+        checkpoint = torch.load(fname)
+        self.set_trainer_params(checkpoint['trainer_state'])
+        # set meta data
+        self.encoder.set_params(checkpoint['encoder_params'])
+        self.decoder.set_params(checkpoint['decoder_params'])
+        # load weights from checkpoint
+        self.encoder.load_state_dict(checkpoint['encoder'])
+        self.decoder.load_state_dict(checkpoint['decoder'])
+        self.decoder_optim = torch.optim.Adam(self.decoder.parameters())
+        self.encoder_optim = torch.optim.Adam(self.encoder.parameters())
+        self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
+        self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
+
+        if self.device_map is not None:
+            if self.device_map < 0:
+                device = torch.device('cpu')
+            else:
+                device = torch.device('cuda:%d' % self.device_map)
+            # transfer decoder optimizer
+            if self.decoder_optim is not None:
+                for state in self.decoder_optim.state.values():
+                    for k, v in state.items():
+                        if isinstance(v, torch.Tensor):
+                            state[k] = v.to(device)
+            # trasfer encoder optimizer
+            if self.encoder_optim is not None:
+                for state in self.encoder_optim.state.values():
+                    for k, v in state.items():
+                        if isinstance(v, torch.Tensor):
+                            state[k] = v.to(device)
+            self.device = self.device_map
+        self._init_device()
+        self._init_dataloaders()
+        self.send_to_device()
+
+    def save_history(self, fname):
+        history = dict()
+        history['loss_history']   = self.loss_history
+        history['loss_iter']      = self.loss_iter
+        history['cur_epoch']      = self.cur_epoch
+        history['iter_per_epoch'] = self.iter_per_epoch
+        if self.test_loss_history is not None:
+            history['test_loss_history'] = self.test_loss_history
+            history['test_loss_iter']    = self.test_loss_iter
+        if self.acc_history is not None:
+            history['acc_history'] = self.acc_history
+            history['acc_iter']    = self.acc_iter
+
+        torch.save(history, fname)
+
+    def load_history(self, fname):
+        history = torch.load(fname)
+        self.loss_history   = history['loss_history']
+        self.loss_iter      = history['loss_iter']
+        self.cur_epoch      = history['cur_epoch']
+        self.iter_per_epoch = history['iter_per_epoch']
+        if 'test_loss_history' in history:
+            self.test_loss_history = history['test_loss_history']
+        if 'acc_history' in history:
+            self.acc_history       = history['acc_history']
+            self.acc_iter          = history['acc_iter']
+        else:
+            self.acc_iter = 0

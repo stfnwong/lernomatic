@@ -9,17 +9,30 @@ import torch
 import torchvision
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
+from lernomatic.models import common
 # caption utils
 from lernomatic.util import caption as caption_utils
 
 
-class COCOEncoder(nn.Module):
-    def __init__(self, encoder, vocab_size, **kwargs):
+class COCOEncoder(common.LernomaticModel):
+    def __init__(self, encoder: common.LernomaticModel, vocab_size: int, **kwargs) -> None:
+        self.net = COCOEncoderModule(encoder, vocab_size, **kwargs)
+        self.model_name = 'COCOEncoder'
+        self.module_name = 'COCOEncoderModule'
+        self.import_path = 'lernomatic.models.image_caption'
+        self.module_import_path = 'lernomatic.models.image_caption'
+
+    def __repr__(self) -> str:
+        return 'COCOEncoder'
+
+
+class COCOEncoderModule(nn.Module):
+    def __init__(self, encoder, vocab_size, **kwargs) -> None:
         self.embed_size     = kwargs.pop('embed_size', 255)
         self.rnn_size       = kwargs.pop('rnn_size', 256)
         self.num_rnn_layers = kwargs.pop('num_rnn_layers', 2)
         self.share_weights  = kwargs.pop('share_weights', False)
-        super(COCOEncoder, self).__init__()
+        super(COCOEncoderModule, self).__init__()
 
         # components
         self.encoder = encoder
@@ -31,7 +44,7 @@ class COCOEncoder(nn.Module):
         if self.share_weights:
             self.embedder.weights = self.classifier.weights
 
-    def forward(self, imgs, captions, caplens):
+    def forward(self, imgs, captions, caplens) -> tuple:
         embeddings        = self.embedder(captions)
         enc_img           = self.encoder(imgs).unsqueeze(0)
         embeddings        = torch.cat([enc_img, embeddings], 0)
@@ -46,9 +59,24 @@ class COCOEncoder(nn.Module):
         pass
 
 
+class AttentionNet(common.LernomaticModel):
+    def __init__(self, enc_dim: int=1, dec_dim:int = 1, atten_dim:int=1) -> None:
+        self.net = AttentionNetModule(enc_dim, dec_dim, atten_dim)
+        self.model_name = 'AttentionNet'
+        self.module_name = 'AttentionNetModule'
+        self.import_path = 'lernomatic.models.image_caption'
+        self.module_import_path = 'lernomatic.models.image_caption'
 
-class AttentionNet(nn.Module):
-    def __init__(self, enc_dim=1, dec_dim=1, atten_dim=1):
+    def __repr__(self) -> str:
+        return 'AttentionNet'
+
+    def forward(self, enc_feature, dec_hidden) -> tuple:
+        return self.net(enc_feature, dec_hidden)
+
+
+
+class AttentionNetModule(nn.Module):
+    def __init__(self, enc_dim=1, dec_dim=1, atten_dim=1) -> None:
         """
         ATTENTION NETWORK
 
@@ -57,7 +85,7 @@ class AttentionNet(nn.Module):
             dec_dim   - size of decoder's RNN
             atten_dim - size of the attention network
         """
-        super(AttentionNet, self).__init__()
+        super(AttentionNetModule, self).__init__()
         # save dims for __str__
         self.enc_dim = enc_dim
         self.dec_dim = dec_dim
@@ -69,20 +97,17 @@ class AttentionNet(nn.Module):
         self.relu     = nn.ReLU()
         self.softmax  = nn.Softmax(dim=1)       # softmax to calculate weights
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'AttentionNet-%d' % self.atten_dim
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = []
         s.append('Attention Network\n')
         s.append('Encoder dim: %d, Decoder dim: %d, Attention dim :%d\n' %\
                  (self.enc_dim, self.dec_dim, self.atten_dim))
         return ''.join(s)
 
-    def get_ln_id(self):
-        return 'AttentionNet-%d' % self.atten_dim
-
-    def forward(self, enc_feature, dec_hidden):
+    def forward(self, enc_feature, dec_hidden) -> tuple:
         att1 = self.enc_att(enc_feature)        # shape : (N, num_pixels, atten_dim)
         att2 = self.dec_att(dec_hidden)         # shape : (N, atten_dim)
         att  = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)
@@ -90,14 +115,71 @@ class AttentionNet(nn.Module):
         # compute the attention weighted encoding
         atten_w_enc = (enc_feature * alpha.unsqueeze(2)).sum(dim=1)     # shape : (N, enc_dim)
 
-        return atten_w_enc, alpha
+        return (atten_w_enc, alpha)
 
 
-class DecoderAtten(nn.Module):
+
+class DecoderAtten(common.LernomaticModel):
+    def __init__(self,
+                 atten_dim: int = 1,
+                 embed_dim: int = 1,
+                 dec_dim: int = 1,
+                 vocab_size: int = 1,
+                 enc_dim: int = 2048,
+                 dropout: float = 0.5,
+                 **kwargs) -> None:
+        self.net = DecoderAttenModule(
+            atten_dim, embed_dim, dec_dim, vocab_size,
+            enc_dim, dropout, **kwargs)
+        self.model_name = 'DecoderAtten'
+        self.module_name = 'DecoderAttenModule'
+        self.import_path = 'lernomatic.models.image_caption'
+        self.module_import_path = 'lernomatic.models.image_caption'
+
+    def __repr__(self) -> str:
+        return 'DecoderAtten'
+
+    #def send_to_device(self, device):
+    #    pass
+    def send_to(self, device:torch.device) -> None:
+        self.net.send_to_device(device)
+
+    def embedding(self, X) -> torch.Tensor:
+        return self.net.embedding(X)
+
+    def forward(self, enc_feature, enc_capt, capt_lengths):
+        return self.net(enc_feature, enc_capt, capt_lengths)
+
+    def get_params(self) -> dict:
+        params = {
+            'model_state_dict'   : self.net.state_dict(),
+            'model_name'         : self.get_model_name(),
+            'model_import_path'  : self.get_model_path(),
+            'module_name'        : self.get_module_name(),
+            'module_import_path' : self.get_module_import_path(),
+            'atten_params'       : self.net.get_params()
+        }
+        return params
+
+    def set_params(self, params : dict) -> None:
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod()
+        self.net.load_state_dict(params['model_state_dict'])
+        self.net.set_params(params['atten_params'])
+
+
+
+class DecoderAttenModule(nn.Module):
     def __init__(self, atten_dim=1, embed_dim=1,
                  dec_dim=1, vocab_size=1,
                  enc_dim=2048, dropout=0.5,
-                 **kwargs):
+                 **kwargs) -> None:
         """
         LSTM Decoder for image captioning
 
@@ -109,7 +191,7 @@ class DecoderAtten(nn.Module):
             enc_dim    - size of encoded features
             dropout    - the dropout ratio
         """
-        super(DecoderAtten, self).__init__()
+        super(DecoderAttenModule, self).__init__()
         # copy params
         self.enc_dim    = enc_dim
         self.dec_dim    = dec_dim
@@ -118,25 +200,17 @@ class DecoderAtten(nn.Module):
         self.vocab_size = vocab_size
         self.dropout    = dropout
         self.verbose    = kwargs.pop('verbose', False)
-        self.device_id  = kwargs.pop('device_id', -1)
+        #self.device_id  = kwargs.pop('device_id', -1)
+        self.device     = None      # archive the device for some internal forward pass stuff
         # create the actual network
         self._init_network()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'DecoderAtten-%d' % self.dec_dim
 
-    def get_ln_id(self):
-        return 'DecoderAtten-%d' % self.dec_dim
-
-    def _init_device(self):
-        if self.device_id < 0:
-            self.device = torch.device('cpu')
-        else:
-            self.device = torch.device('cuda:%d' % self.device_id)
-
-    def _init_network(self):
+    def _init_network(self) -> None:
         # Create an Attention network
-        self.atten_net   = AttentionNet(self.enc_dim, self.dec_dim, self.atten_dim)
+        self.atten_net   = AttentionNetModule(self.enc_dim, self.dec_dim, self.atten_dim)
         # Create internal layers
         self.embedding   = nn.Embedding(self.vocab_size, self.embed_dim)
         self.drop        = nn.Dropout(p=self.dropout)
@@ -151,10 +225,10 @@ class DecoderAtten(nn.Module):
         # linear layer to find scores over vocab
         self.fc          = nn.Linear(self.dec_dim, self.vocab_size)
         self.init_weights()
-        self._init_device()
-        self.send_to_device()
+        #self._init_device()
+        #self.send_to_device()
 
-    def init_weights(self):
+    def init_weights(self) -> None:
         """
         Initialize some parameters with values from the uniform distribution
         """
@@ -162,18 +236,20 @@ class DecoderAtten(nn.Module):
         self.fc.bias.data.fill_(0)
         self.fc.weight.data.uniform_(-0.1, 0.1)
 
-    def send_to_device(self):
-        self.atten_net   = self.atten_net.to(self.device)
-        self.embedded    = self.embedding.to(self.device)
-        self.drop        = self.drop.to(self.device)
-        self.decode_step = self.decode_step.to(self.device)
-        self.init_h      = self.init_h.to(self.device)
-        self.init_c      = self.init_c.to(self.device)
-        self.f_beta      = self.f_beta.to(self.device)
-        self.sigmoid     = self.sigmoid.to(self.device)
-        self.fc          = self.fc.to(self.device)
+    def send_to_device(self, device:torch.device) -> None:
+        self.atten_net   = self.atten_net.to(device)
+        self.embedded    = self.embedding.to(device)
+        self.drop        = self.drop.to(device)
+        self.decode_step = self.decode_step.to(device)
+        self.init_h      = self.init_h.to(device)
+        self.init_c      = self.init_c.to(device)
+        self.f_beta      = self.f_beta.to(device)
+        self.sigmoid     = self.sigmoid.to(device)
+        self.fc          = self.fc.to(device)
+        # save a reference to the device
+        self.device      = device
 
-    def get_params(self):
+    def get_params(self) -> dict:
         params = dict()
         params['enc_dim'] = self.enc_dim
         params['dec_dim'] = self.dec_dim
@@ -186,7 +262,7 @@ class DecoderAtten(nn.Module):
 
         return params
 
-    def set_params(self, params):
+    def set_params(self, params: dict) -> None:
         self.enc_dim = params['enc_dim']
         self.dec_dim = params['dec_dim']
         self.embed_dim = params['embed_dim']
@@ -197,7 +273,7 @@ class DecoderAtten(nn.Module):
         self.device_id = params['device_id']
         self._init_network()
 
-    def load_pretrained_embeddings(self, embeddings):
+    def load_pretrained_embeddings(self, embeddings) -> None:
         """
         INIT_WEIGHTS
         Init some parameters with values from the uniform distribution.
@@ -205,14 +281,14 @@ class DecoderAtten(nn.Module):
         """
         self.embedding.weights = nn.Parameter(embeddings)
 
-    def fine_tune_embeddings(self, tune=True):
+    def fine_tune_embeddings(self, tune=True) -> None:
         """
         FINE_TUNE_EMBEDDINGS
         """
         for p in self.embedding.parameters():
             p.requires_grad = tune
 
-    def init_hidden_state(self, enc_feature):
+    def init_hidden_state(self, enc_feature) -> tuple:
         """
         INIT_HIDDEN_STATE
         Initialize the decoders hidden state
@@ -221,9 +297,9 @@ class DecoderAtten(nn.Module):
         h = self.init_h(mean_enc_out)
         c = self.init_c(mean_enc_out)
 
-        return h, c
+        return (h, c)
 
-    def forward(self, enc_feature, enc_capt, capt_lengths):
+    def forward(self, enc_feature, enc_capt, capt_lengths) -> None:
         """
         FOWARD PASS
 
@@ -286,25 +362,63 @@ class DecoderAtten(nn.Module):
             predictions[:batch_size_t, t, :] = preds
             alphas[:batch_size_t, t, ] = alpha
 
-        return predictions, enc_capt, decode_lengths, alphas, sort_ind
+        return (predictions, enc_capt, decode_lengths, alphas, sort_ind)
 
 
-class Encoder(nn.Module):
+
+class Encoder(common.LernomaticModel):
+    def __init__(self, **kwargs) -> None:
+        self.net = EncoderModule(**kwargs)
+        self.do_fine_tune = self.net.do_fine_tune   # shimming attribute
+
+        self.model_name = 'Encoder'
+        self.module_name = 'EncoderModule'
+        self.import_path = 'lernomatic.models.image_caption'
+        self.module_import_path = 'lernomatic.models.image_caption'
+
+    def __repr__(self) -> str:
+        return 'Encoder'
+
+    def send_to(self, device:torch.device) -> None:
+        self.net.send_to(device)
+
+    def get_params(self) -> dict:
+        params = {
+            'model_state_dict'   : self.net.state_dict(),
+            'model_name'         : self.get_model_name(),
+            'model_import_path'  : self.get_model_path(),
+            'module_name'        : self.get_module_name(),
+            'module_import_path' : self.get_module_import_path(),
+            'enc_params'       : self.net.get_params()
+        }
+        return params
+
+    def set_params(self, params : dict) -> None:
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod()
+        self.net.load_state_dict(params['model_state_dict'])
+        self.net.set_params(params['enc_params'])
+
+
+class EncoderModule(nn.Module):
     """
     CNN Encoder
     """
-    def __init__(self, **kwargs): #feature_size=14, do_fine_tune=True):
-        super(Encoder, self).__init__()
+    def __init__(self, **kwargs) -> None: #feature_size=14, do_fine_tune=True):
+        super(EncoderModule, self).__init__()
         self.enc_img_size = kwargs.pop('feature_size', 14)
         self.do_fine_tune = kwargs.pop('do_fine_tune', True)
         self.device_id    = kwargs.pop('device_id', -1)
         #  get network
         self._init_network()
 
-    def get_ln_id(self):
-        return 'Encoder'
-
-    def _init_network(self):
+    def _init_network(self) -> None:
         resnet = torchvision.models.resnet101(pretrained=True)
         # remove linear and pool layers
         modules = list(resnet.children())[:-2]
@@ -312,31 +426,25 @@ class Encoder(nn.Module):
         # resize image to fixed size to allow input images of variable size
         self.adaptive_pool = nn.AdaptiveAvgPool2d((self.enc_img_size, self.enc_img_size))
 
-        # set the device
-        #if self.device_id < 0:
-        #    self.device = torch.device('cpu')
-        #else:
-        #    self.device = torch.device('cuda:%d' % self.device_id)
-        self.net = self.net.to(self.device)
-        self.adaptive_pool = self.adaptive_pool.to(self.device)
-
         if self.do_fine_tune:
             self.fine_tune()
 
-    def get_params(self):
+    def send_to(self, device:torch.device) -> None:
+        self.net = self.net.to(device)
+        self.adaptive_pool = self.adaptive_pool.to(device)
+
+    def get_params(self) -> dict:
         params = dict()
         params['enc_img_size'] = self.enc_img_size
         params['do_fine_tune'] = self.do_fine_tune
-        params['device_id'] = self.device_id
         return params
 
-    def set_params(self, params):
+    def set_params(self, params:dict) -> None:
         self.enc_img_size = params['enc_img_size']
         self.do_fine_tune = params['do_fine_tune']
-        self.device_id = params['device_id']
         self._init_network()
 
-    def fine_tune(self, tune=True):
+    def fine_tune(self, tune=True) -> None:
         """
         Allow or prevent the computation of gradients for
         convolutional blocks 2 through 4 of the encoder (resnet 101)
@@ -348,7 +456,7 @@ class Encoder(nn.Module):
             for p in c.parameters():
                 p.requires_grad = tune
 
-    def forward(self, X):
+    def forward(self, X) -> torch.Tensor:
         """
         Forward propagation
         """
