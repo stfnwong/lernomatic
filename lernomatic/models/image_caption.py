@@ -225,8 +225,6 @@ class DecoderAttenModule(nn.Module):
         # linear layer to find scores over vocab
         self.fc          = nn.Linear(self.dec_dim, self.vocab_size)
         self.init_weights()
-        #self._init_device()
-        #self.send_to_device()
 
     def init_weights(self) -> None:
         """
