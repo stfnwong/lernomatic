@@ -5,14 +5,21 @@ Modules for building resnets
 Stefan Wong 2019
 """
 import math
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from lernomatic.models import common
 
 # debug
 #from pudb import set_trace; set_trace()
 
+
 class ResnetBlock(nn.Module):
-    def __init__(self, in_planes, out_planes, stride, drop_rate=0.0):
+    def __init__(self,
+                 in_planes: int,
+                 out_planes: int,
+                 stride: int,
+                 drop_rate:float=0.0) -> None:
         super(ResnetBlock, self).__init__()
         self.drop_rate = drop_rate
         self.equal_in_out = (in_planes == out_planes)
@@ -54,7 +61,7 @@ class ResnetBlock(nn.Module):
                 nn.BatchNorm2d(out_planes)
             )
 
-    def forward(self, X):
+    def forward(self, X) -> torch.Tensor:
         out = self.bn1(X)
         out = self.relu1(out)
         out = self.conv1(out)
@@ -71,7 +78,13 @@ class ResnetBlock(nn.Module):
 
 
 class NetworkBlock(nn.Module):
-    def __init__(self, num_layers, in_planes, out_planes, block, stride, drop_rate=0.0):
+    def __init__(self,
+                 num_layers: int,
+                 in_planes: int,
+                 out_planes: int,
+                 block : nn.Module,
+                 stride: int,
+                 drop_rate=0.0) -> None:
         super(NetworkBlock, self).__init__()
         # Create layers
         layers = []
@@ -86,21 +99,28 @@ class NetworkBlock(nn.Module):
             )
         self.layers = nn.Sequential(*layers)
 
-    def forward(self, X):
+    def forward(self, X) -> torch.Tensor:
         return self.layers(X)
 
 
-class WideResnet(nn.Module):
-    def __init__(self, depth, num_classes, w_factor=1, drop_rate=0.0):
-        super(WideResnet, self).__init__()
+class WideResnetModule(nn.Module):
+    def __init__(self,
+                 depth:int,
+                 num_classes:int,
+                 input_channels:int=3,
+                 w_factor:int=1,
+                 drop_rate=0.0) -> None:
+        super(WideResnetModule, self).__init__()
 
+        self.depth = depth      # for __str___()
         num_channels = [16, 16 * w_factor, 32 * w_factor, 64 * w_factor]
-        assert((depth - 4) % 6 == 0)
+        if (depth-4) % 6 != 0:
+            raise ValueError('depth-4 must be divisible by 6 (current depth = %d' % depth)
         n = int((depth - 4) / 6)
 
         # first conv layer before  any network block
         self.conv1 = nn.Conv2d(
-            3,
+            input_channels,
             num_channels[0],
             kernel_size = 3,
             stride = 1,
@@ -150,7 +170,14 @@ class WideResnet(nn.Module):
             elif isinstance(m, nn.Linear):
                 m.bias.data.zero_()
 
-    def forward(self, X):
+    def __str__(self) -> str:
+        s = []
+        s.append('WideResnet-%d\n' % self.depth)
+        s.append(str(self))
+
+        return ''.join(s)
+
+    def forward(self, X) -> torch.Tensor:
         out = self.conv1(X)
         out = self.block1(out)
         out = self.block2(out)
@@ -160,3 +187,28 @@ class WideResnet(nn.Module):
         out = out.view(-1, self.num_channels)
 
         return self.fc(out)
+
+
+
+class WideResnet(common.LernomaticModel):
+    def __init__(self, **kwargs):
+        self.depth          :int   = kwargs.pop('depth', 56)
+        self.num_classes    :int   = kwargs.pop('num_classes', 10)
+        self.input_channels :int   = kwargs.pop('input_channels', 3)
+        self.w_factor       :int   = kwargs.pop('w_factor', 1)
+        self.drop_rate      :float = kwargs.pop('drop_rate', 0.0)
+
+        self.net = WideResnetModule(
+            self.depth,
+            self.num_classes,
+            self.input_channels,
+            self.w_factor,
+            self.drop_rate
+        )
+        self.model_name = 'WideResnet'
+        self.module_name = 'WideResnetModule'
+        self.import_path = 'lernomatic.models.resnets'
+        self.module_import_path = 'lernomatic.models.resnets'
+
+    def __repr__(self) -> str:
+        return 'WideResnet'

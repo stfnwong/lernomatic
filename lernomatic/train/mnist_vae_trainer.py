@@ -5,6 +5,7 @@ import torch
 import torchvision
 from torch.nn import functional as F
 from lernomatic.train import trainer
+from lernomatic.models import common
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -14,17 +15,17 @@ class MNISTVAETrainer(trainer.Trainer):
     VAETRAINER
     Trainer adapted for Variational Autoencoders
     """
-    def __init__(self, model, **kwargs):
+    def __init__(self, model:common.LernomaticModel, **kwargs) -> None:
         self.data_dir = kwargs.pop('data_dir', 'data/')
         super(MNISTVAETrainer, self).__init__(model, **kwargs)
         self.criterion = torch.nn.MSELoss()
 
         self._init_history()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'VAETrainer-%d' % self.train_loader.batch_size
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = []
         s.append('VAETrainer [%s]\n' % str(self.criterion))
         s.append('\tnum epochs    : %d\n' % self.num_epochs)
@@ -34,7 +35,7 @@ class MNISTVAETrainer(trainer.Trainer):
 
         return ''.join(s)
 
-    def _init_dataloaders(self):
+    def _init_dataloaders(self) -> None:
         dataset_transform = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize( (0.1307,), (0.3081,))
@@ -65,7 +66,7 @@ class MNISTVAETrainer(trainer.Trainer):
             shuffle = self.shuffle
         )
 
-    def save_history(self, fname):
+    def save_history(self, fname: str) -> None:
         history = dict()
         history['loss_history']   = self.loss_history
         history['loss_iter']      = self.loss_iter
@@ -76,7 +77,7 @@ class MNISTVAETrainer(trainer.Trainer):
 
         torch.save(history, fname)
 
-    def load_history(self, fname):
+    def load_history(self, fname: str) -> None:
         history = torch.load(fname)
         self.loss_history   = history['loss_history']
         self.loss_iter      = history['loss_iter']
@@ -85,34 +86,19 @@ class MNISTVAETrainer(trainer.Trainer):
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
 
-    def save_checkpoint(self, fname):
-        checkpoint = dict()
-        checkpoint['model'] = self.model.state_dict()
-        checkpoint['optimizer'] = self.optimizer.state_dict()
-        checkpoint['trainer'] = self.get_trainer_params()
-        torch.save(checkpoint, fname)
-
-    def load_checkpoint(self, fname):
-        checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer'])
-        self.model = mnist.MNISTNet()
-        self.model.load_state_dict(checkpoint['model'])
-        self._init_optimizer()
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-    def vae_loss_function(self, recon_x, x, mu, logvar):
+    def vae_loss_function(self, recon_x, x, mu, logvar) -> None:
         # compute loss between real X and reconstructed X
-        BCE = F.binary_cross_entropy(recon_x, x.view(-1, self.model.input_size))
+        BCE = F.binary_cross_entropy(recon_x, x.view(-1, self.model.get_input_size()))
         # Compute KLD and add to loss function
         # more info in https://arxiv.org/abs/1312.6114 (appendix B)
         KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
         # normalize by same number of elements as in reconstruction
-        KLD /= self.train_loader.batch_size * self.model.input_size
+        KLD /= self.train_loader.batch_size * self.model.get_input_size()
 
         return BCE+KLD
 
-    def train_epoch(self):
-        self.model.train()
+    def train_epoch(self) -> None:
+        self.model.set_train()
         train_loss = 0.0
         # for MNIST len(train_loader.dataset) is 60000
         # each element of the data is a tensor of shape
@@ -123,7 +109,7 @@ class MNISTVAETrainer(trainer.Trainer):
             self.optimizer.zero_grad()
 
             # ---- forward pass ---- #
-            recon_batch, mu, logvar = self.model(data)
+            recon_batch, mu, logvar = self.model.forward(data)
             # calculate scalar loss
             loss = self.vae_loss_function(recon_batch, data, mu, logvar)
 
@@ -138,9 +124,13 @@ class MNISTVAETrainer(trainer.Trainer):
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
 
+            # Apply scheduling
+            if self.lr_scheduler is not None:
+                self.apply_lr_schedule()
+
         print('Epoch %d average loss : %.6f' % (self.cur_epoch, train_loss / len(self.train_loader.dataset)))
 
-    def train(self):
+    def train(self) -> None:
         self._send_to_device()
         for n in range(self.num_epochs):
             self.train_epoch()
