@@ -4,12 +4,30 @@ Modules for DCGAN
 
 """
 
+import torch
 import torch.nn as nn
+from lernomatic.models import common
+
+
+class DCGGenerator(common.LernomaticModel):
+    def __init__(self, **kwargs) -> None:
+        self.net = DCGGeneratorModule(**kwargs)
+        self.model_name = 'DCGGenerator'
+        self.module_name = 'DCGGeneratorModule'
+        self.import_path = 'lernomatic.models.dcgan'
+        self.module_import_path = 'lernomatic.models.dcgan'
+
+    def __repr__(self) -> str:
+        return 'DCGGenerator'
+
+    def get_zvec_dim(self) -> int:
+        return self.net.zvec_dim
+
 
 # Generator implementation
-class DCGGenerator(nn.Module):
-    def __init__(self, **kwargs):
-        super(DCGGenerator, self).__init__()
+class DCGGeneratorModule(nn.Module):
+    def __init__(self, **kwargs) -> None:
+        super(DCGGeneratorModule, self).__init__()
         self.zvec_dim = kwargs.pop('zvec_dim', 100)
         self.num_filters = kwargs.pop('num_filters', 64)
         self.num_channels = kwargs.pop('num_channels', 3)     # number of channels in output image
@@ -51,19 +69,26 @@ class DCGGenerator(nn.Module):
             # state size (num_channels) x 64 x 64
         )
 
-    def forward(self, X):
+    def forward(self, X) -> torch.Tensor:
         return self.main(X)
 
-    def get_ln_id(self):
-        return 'DCGGenerator-%d (%d filters)' % (self.zvec_dim, self.num_filters)
 
-    def get_zvec_dim(self):
-        return self.zvec_dim
+class DCGDiscriminator(common.LernomaticModel):
+    def __init__(self, **kwargs) -> None:
+        self.net = DCGDiscriminatorModule(**kwargs)
+        # internal bookkeeping
+        self.model_name = 'DCGDiscriminator'
+        self.module_name = 'DCGDiscriminatorModule'
+        self.import_path = 'lernomatic.models.dcgan'
+        self.module_import_path = 'lernomatic.models.dcgan'
+
+    def __repr__(self) -> str:
+        return 'DCGDiscriminator'
 
 
-class DCGDiscriminator(nn.Module):
+class DCGDiscriminatorModule(nn.Module):
     def __init__(self, **kwargs):
-        super(DCGDiscriminator, self).__init__()
+        super(DCGDiscriminatorModule, self).__init__()
         self.num_filters  = kwargs.pop('num_filters', 64)
         self.num_channels = kwargs.pop('num_channels', 3)
         self.main = nn.Sequential(
@@ -103,8 +128,5 @@ class DCGDiscriminator(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, X):
+    def forward(self, X) -> torch.Tensor:
         return self.main(X)
-
-    def get_ln_id(self):
-        return 'DCGDiscriminator (%d filters)' % self.num_filters

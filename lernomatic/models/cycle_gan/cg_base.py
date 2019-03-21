@@ -5,7 +5,9 @@ Basic CycleGAN model
 Stefan Wong 2019
 """
 
-class CycleGANBase(object):
+from lernomatic.models import common
+
+class CycleGANBase(common.LernomaticModel):
     """
     Base class for CycleGAN models
     """

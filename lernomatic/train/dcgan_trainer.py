@@ -5,6 +5,7 @@ Trainer module for DCGANs
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import torch.nn as nn
 import numpy as np
@@ -16,7 +17,7 @@ from lernomatic.models import dcgan
 
 
 class DCGANTrainer(trainer.Trainer):
-    def __init__(self, D, G, **kwargs):
+    def __init__(self, D, G, **kwargs) -> None:
         self.discriminator = D
         self.generator     = G
         self.beta1         = kwargs.pop('beta1', 0.5)
@@ -41,10 +42,10 @@ class DCGANTrainer(trainer.Trainer):
         self._init_history()
         self._send_to_device();
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'DCGANTrainer'
 
-    def _init_dataloaders(self):
+    def _init_dataloaders(self) -> None:
         if self.train_dataset is None:
             self.train_loader = None
         else:
@@ -56,7 +57,7 @@ class DCGANTrainer(trainer.Trainer):
             )
         self.test_loader = None     # TODO : clean up references to this later
 
-    def _init_history(self):
+    def _init_history(self) -> None:
         self.loss_iter = 0
         self.test_loss_iter = 0
         self.acc_iter = 0
@@ -64,7 +65,7 @@ class DCGANTrainer(trainer.Trainer):
         self.d_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
         self.g_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
 
-    def _init_optimizers(self):
+    def _init_optimizers(self) -> None:
         # generator
         if self.generator is None:
             self.optim_g = None
@@ -84,11 +85,11 @@ class DCGANTrainer(trainer.Trainer):
                 betas = (self.beta1, 0.999)
             )
 
-    def _send_to_device(self):
-        self.generator = self.generator.to(self.device)
-        self.discriminator = self.discriminator.to(self.device)
+    def _send_to_device(self) -> None:
+        self.generator.send_to(self.device)
+        self.discriminator.send_to(self.device)
 
-    def _weight_init(self,  model):
+    def _weight_init(self,  model:nn.Module) -> None:
         # The orignal paper suggests that the weights should be initialized
         # randomly from a normal distribution with mean=0, std=0.02
         classname = model.__class__.__name__
@@ -98,13 +99,13 @@ class DCGANTrainer(trainer.Trainer):
             nn.init.normal_(model.weight.data, 1.0, 0.02)
             nn.init.constant_(model.bias.data, 0)
 
-    def set_discriminator(self, D):
+    def set_discriminator(self, D:common.LernomaticModel) -> None:
         self.discriminator = D
 
-    def set_generator(self, G):
+    def set_generator(self, G:common.LernomaticModel) -> None:
         self.generator = G
 
-    def get_trainer_params(self):
+    def get_trainer_params(self) -> dict:
         params = {
             # labels
             'fake_label' : self.fake_label,
@@ -114,54 +115,20 @@ class DCGANTrainer(trainer.Trainer):
         params.update(super(DCGANTrainer, self).get_trainer_params())
         return params
 
-    def set_trainer_params(self, params):
+    def set_trainer_params(self, params:dict) -> None:
         super(DCGANTrainer, self).set_trainer_params(params)
         # set the subclass params
         self.fake_label = params['fake_label']
         self.real_label = params['real_label']
         self.beta1      = params['beta1']
 
-    def save_checkpoint(self, fname):
-        checkpoint = {
-            'trainer_params' : self.get_trainer_params,
-            'discriminator'  : self.discriminator.state_dict(),
-            'generator'      : self.generator.state_dict(),
-            'optim_d'        : self.optim_d.state_dict(),
-            'optim_g'        : self.optim_g.state_dict()
-        }
-        torch.save(checkpoint, fname)
-
-    def load_checkpoint(self, fname):
-        checkpoint = torch.load(fname)
-        self.discriminator = dcgan.DCGDiscriminator()
-        self.generator = dcgan.DCGGenerator()
-        self.discriminator.load_state_dict(checkpoint['discriminator'])
-        self.generator.load_state_dict(checkpoint['generator'])
-        self.optim_d.load_state_dict(checkpoint['optim_d'])
-        self.optim_g.load_state_dict(checkpoint['optim_g'])
-
-    def save_history(self, fname):
-        history = {
-            'd_loss_history' : self.d_loss_history,
-            'g_loss_history' : self.g_loss_history,
-            'loss_iter'      : self.loss_iter
-        }
-        torch.save(history, fname)
-
-    def load_history(self, fname):
-        history = torch.load(fname)
-        self.d_loss_history = history['d_loss_history']
-        self.g_loss_history = history['g_loss_history']
-        self.loss_iter      = history['loss_iter']
-        self.cur_epoch = self.start_epoch
-
-    def gen_fixed_noise_vector(self, vec_dim):
+    def gen_fixed_noise_vector(self, vec_dim:int) -> None:
         self.fixed_noise = torch.randn(64, vec_dim, 1, 1, device=self.device)
 
     # ==== TRAINING ==== #
-    def train_epoch(self):
-        self.discriminator.train()
-        self.generator.train()
+    def train_epoch(self) -> None:
+        self.discriminator.set_train()
+        self.generator.set_train()
 
         for n, (data, _) in enumerate(self.train_loader):
             data = data.to(self.device)
@@ -172,7 +139,7 @@ class DCGANTrainer(trainer.Trainer):
             # make a tensor of real labels
             label = torch.full((self.batch_size,), self.real_label, device=self.device)
             # compute loss on all-real batch
-            real_output = self.discriminator(data)
+            real_output = self.discriminator.forward(data)
             errd_real = self.criterion(real_output, label)
             errd_real.backward()
 
@@ -186,10 +153,10 @@ class DCGANTrainer(trainer.Trainer):
                 device = self.device
             )
             # Update G network (maximize log(D(G(z))))
-            fake = self.generator(noise)
+            fake = self.generator.forward(noise)
             label.fill_(self.fake_label)
             # classify all the fake batches with D. Tensor is flattened here
-            disc_output = self.discriminator(fake.detach()).view(-1)
+            disc_output = self.discriminator.forward(fake.detach()).view(-1)
             # compute D's loss on the all fake batch
             errd_fake = self.criterion(disc_output, label)
             errd_fake.backward()
@@ -223,8 +190,7 @@ class DCGANTrainer(trainer.Trainer):
                        d_x, dg_z2, dg_z1)
                 )
 
-
-    def train(self):
+    def train(self) -> None:
         self._send_to_device()
         self.gen_fixed_noise_vector(self.generator.get_zvec_dim())
 
@@ -236,14 +202,82 @@ class DCGANTrainer(trainer.Trainer):
 
 
     # also need to overload some of the history functions
-    def get_loss_history(self):
+    def get_loss_history(self) -> tuple:        # TODO ; more extensive type hint?
         return (self.g_loss_history[0 : self.loss_iter], self.d_loss_history[0 : self.loss_iter])
 
-    def get_g_loss_history(self):
+    def get_g_loss_history(self) -> np.ndarray:
         return self.g_loss_history[0 : self.loss_iter]
 
-    def get_d_loss_history(self):
+    def get_d_loss_history(self) -> np.ndarray:
         return self.d_loss_history[0 : self.loss_iter]
 
-    def get_test_loss_history(self):
+    def get_test_loss_history(self) -> None:
         return None
+
+
+    # Checkpointing
+    def save_checkpoint(self, fname:str) -> None:
+        checkpoint = {
+            'trainer_params' : self.get_trainer_params,
+            'discriminator'  : self.discriminator.state_dict(),
+            'generator'      : self.generator.state_dict(),
+            'optim_d'        : self.optim_d.state_dict(),
+            'optim_g'        : self.optim_g.state_dict()
+        }
+        torch.save(checkpoint, fname)
+
+    def load_checkpoint(self, fname: str) -> None:
+        checkpoint_data = torch.load(fname)
+        # here we just load the object that derives from LernomaticModel. That
+        # object will in turn load the actual nn.Module data from the
+        # checkpoint data with the 'model' key
+
+        # load generator
+        gen_import_path = checkpoint_data['generator']['model_import_path']
+        gen_imp = importlib.import_module(gen_import_path)
+        gen = getattr(genimp, checkpoint_data['generator']['model_name'])
+        self.generator = gen()
+        self.generator.set_params(checkpoint_data['generator'])
+
+        # load discriminator
+        dis_import_path = checkpoint_data['discriminator']['model_import_path']
+        dis_imp = importlib.import_module(gen_import_path)
+        dis = getattr(genimp, checkpoint_data['discriminator']['model_name'])
+        self.discriminator = dis()
+        self.discriminator.set_params(checkpoint_data['discriminator'])
+
+        # Load optimizer
+        self._init_optimizers()  # TODO : should this name always be plural for consistency?
+        self.optim_d.load_state_dict(checkpoint_data['optim_d'])
+        self.optim_g.load_state_dict(checkpoint_data['optim_g'])
+        # set device
+        if self.device_map is not None:
+            if self.device_map < 0:
+                device = torch.device('cpu')
+            else:
+                device = torch.device('cuda:%d' % self.device_map)
+            # transfer optimizer
+            for state in self.optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.to(device)
+
+        # restore trainer object info
+        self.set_trainer_params(checkpoint_data['trainer_params'])
+        self._send_to_device()
+
+    # History
+    def save_history(self, fname:str) -> None:
+        history = {
+            'd_loss_history' : self.d_loss_history,
+            'g_loss_history' : self.g_loss_history,
+            'loss_iter'      : self.loss_iter
+        }
+        torch.save(history, fname)
+
+    def load_history(self, fname:str) -> None:
+        history = torch.load(fname)
+        self.d_loss_history = history['d_loss_history']
+        self.g_loss_history = history['g_loss_history']
+        self.loss_iter      = history['loss_iter']
+        self.cur_epoch = self.start_epoch
