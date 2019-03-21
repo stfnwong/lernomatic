@@ -23,6 +23,9 @@ class DCGGenerator(common.LernomaticModel):
     def get_zvec_dim(self) -> int:
         return self.net.zvec_dim
 
+    def zero_grad(self) -> None:
+        self.net.zero_grad()
+
 
 # Generator implementation
 class DCGGeneratorModule(nn.Module):
@@ -84,6 +87,9 @@ class DCGDiscriminator(common.LernomaticModel):
 
     def __repr__(self) -> str:
         return 'DCGDiscriminator'
+
+    def zero_grad(self) -> None:
+        self.net.zero_grad()
 
 
 class DCGDiscriminatorModule(nn.Module):

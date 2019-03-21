@@ -11,6 +11,7 @@ import torch.nn as nn
 import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import dcgan
+from lernomatic.models import common
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -71,7 +72,7 @@ class DCGANTrainer(trainer.Trainer):
             self.optim_g = None
         else:
             self.optim_g = torch.optim.Adam(
-                self.generator.parameters(),
+                self.generator.get_model_parameters(),
                 lr = self.learning_rate,
                 betas = (self.beta1, 0.999)
             )
@@ -80,7 +81,7 @@ class DCGANTrainer(trainer.Trainer):
             self.optim_d = None
         else:
             self.optim_d = torch.optim.Adam(
-                self.discriminator.parameters(),
+                self.discriminator.get_model_parameters(),
                 lr = self.learning_rate,
                 betas = (self.beta1, 0.999)
             )
@@ -169,7 +170,7 @@ class DCGANTrainer(trainer.Trainer):
             # Update the Generator network
             self.generator.zero_grad()
             label.fill_(self.real_label)
-            output = self.discriminator(fake).view(-1)
+            output = self.discriminator.forward(fake).view(-1)
             # compute G's loss based on the output from D
             err_g = self.criterion(output, label)
             # compute gradients for G and update
@@ -190,15 +191,30 @@ class DCGANTrainer(trainer.Trainer):
                        d_x, dg_z2, dg_z1)
                 )
 
+            # save
+            if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
+                ck_name = self.checkpoint_dir + self.checkpoint_name + '_iter_' + str(self.loss_iter) +\
+                    '_epoch_' + str(self.cur_epoch) + '.pkl'
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s]' % str(ck_name))
+                self.save_checkpoint(ck_name)
+
+
     def train(self) -> None:
         self._send_to_device()
         self.gen_fixed_noise_vector(self.generator.get_zvec_dim())
 
         for n in range(self.cur_epoch, self.num_epochs):
             self.train_epoch()
-            self.cur_epoch += 1
             # since this is an unsupervised task we don't have a good notion of
             # 'accuracy', therefore no test phase
+            # save history at the end of each epoch
+            hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
+            if self.verbose:
+                print('\t Saving history to file [%s] ' % str(hist_name))
+            self.save_history(hist_name)
+
+            self.cur_epoch += 1
 
 
     # also need to overload some of the history functions
@@ -218,9 +234,9 @@ class DCGANTrainer(trainer.Trainer):
     # Checkpointing
     def save_checkpoint(self, fname:str) -> None:
         checkpoint = {
-            'trainer_params' : self.get_trainer_params,
-            'discriminator'  : self.discriminator.state_dict(),
-            'generator'      : self.generator.state_dict(),
+            'trainer_params' : self.get_trainer_params(),
+            'discriminator'  : self.discriminator.get_params(),
+            'generator'      : self.generator.get_params(),
             'optim_d'        : self.optim_d.state_dict(),
             'optim_g'        : self.optim_g.state_dict()
         }
