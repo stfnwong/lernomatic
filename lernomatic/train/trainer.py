@@ -58,6 +58,7 @@ class Trainer(object):
         self.lr_scheduler           = kwargs.pop('lr_scheduler', None)
         self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
         self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
+        self.early_stop      :dict  = kwargs.pop('early_stop', None)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
@@ -344,6 +345,22 @@ class Trainer(object):
             if self.verbose:
                 print('\t Saving history to file [%s] ' % str(hist_name))
             self.save_history(hist_name)
+
+            # check we have reached the required accuracy and can stop early
+            if self.stop_when_acc > 0.0 and self.test_loader is not None:
+                if self.roc_auc_history[self.acc_iter] >= self.stop_when_acc:
+                    return
+
+            # check if we need to perform early stopping
+            if self.early_stop is not None:
+                if self.cur_epoch > self.early_stop['num_epochs']:
+                    acc_then = self.roc_auc_history[self.acc_iter - self.early_stop['num_epochs']]
+                    acc_now  = self.roc_auc_history[self.acc_iter]
+                    acc_delta = acc_now - acc_then
+                    if acc_delta < self.early_stop['improv']:
+                        if self.verbose:
+                            print('[%s] Stopping early at epoch %d' % (repr(self), self.cur_epoch))
+                        return
 
             self.cur_epoch += 1
 

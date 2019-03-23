@@ -18,6 +18,10 @@ from lernomatic.models import resnets
 
 
 class ResnetTrainer(trainer.Trainer):
+    """
+    RESNETTRAINER
+    Trainer object for resnet experiments
+    """
     def __init__(self, model, **kwargs):
         self.data_dir      = kwargs.pop('data_dir', 'data/')
         self.augment_data  = kwargs.pop('augment_data', False)
@@ -106,10 +110,14 @@ class ResnetTrainer(trainer.Trainer):
 
     def save_history(self, fname):
         history = dict()
-        history['loss_history']   = self.loss_history
-        history['loss_iter']      = self.loss_iter
-        history['cur_epoch']      = self.cur_epoch
-        history['iter_per_epoch'] = self.iter_per_epoch
+        history['loss_history']      = self.loss_history
+        history['loss_iter']         = self.loss_iter
+        history['test_loss_history'] = self.test_loss_history
+        history['test_loss_iter']    = self.test_loss_iter
+        history['acc_history']       = self.acc_history
+        history['acc_iter']          = self.acc_iter
+        history['cur_epoch']         = self.cur_epoch
+        history['iter_per_epoch']    = self.iter_per_epoch
         if self.test_loss_history is not None:
             history['test_loss_history'] = self.test_loss_history
 
@@ -117,10 +125,14 @@ class ResnetTrainer(trainer.Trainer):
 
     def load_history(self, fname):
         history = torch.load(fname)
-        self.loss_history   = history['loss_history']
-        self.loss_iter      = history['loss_iter']
-        self.cur_epoch      = history['cur_epoch']
-        self.iter_per_epoch = history['iter_per_epoch']
+        self.loss_history      = history['loss_history']
+        self.loss_iter         = history['loss_iter']
+        self.test_loss_history = history['test_loss_history']
+        self.test_loss_iter    = history['test_loss_iter']
+        self.acc_history       = history['acc_history']
+        self.acc_iter          = history['acc_iter']
+        self.cur_epoch         = history['cur_epoch']
+        self.iter_per_epoch    = history['iter_per_epoch']
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
 
@@ -138,63 +150,3 @@ class ResnetTrainer(trainer.Trainer):
         self.model.load_state_dict(checkpoint['model'])
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-    def train_epoch(self):
-        self.model.train()
-        for n, (data, labels) in enumerate(self.train_loader):
-            data = data.to(self.device)
-            labels = labels.to(self.device)
-            output = self.model(data)
-            loss = self.criterion(output, labels)
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-
-            if (n % self.print_every) == 0:
-                print('[TRAIN] :   Epoch       iteration         Loss')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
-
-            if self.save_every > 0 and (n % self.save_every) == 0:
-                ck_name = self.checkpoint_dir + self.checkpoint_name + '_iter_' + str(self.loss_iter) +\
-                    '_epoch_' + str(self.cur_epoch) + '.pkl'
-                if self.verbose:
-                    print('\t Saving checkpoint to file [%s]' % str(ck_name))
-                self.save_checkpoint(ck_name)
-
-            self.loss_history[self.loss_iter] = loss.item()
-            self.loss_iter += 1
-
-    def test_epoch(self):
-        self.model.eval()
-        test_loss = 0.0
-        correct = 0
-
-        for n, (data, labels) in enumerate(self.test_loader):
-            data = data.to(self.device)
-            labels = labels.to(self.device)
-
-            with torch.no_grad():
-                output = self.model(data)
-            loss = self.criterion(output, labels)
-            test_loss += loss.item()
-
-            # accuracy
-            # TODO : top-k accuracy?
-            pred = output.data.max(1, keepdim=True)[1]
-            correct += pred.eq(labels.data.view_as(pred)).sum().item()
-
-            if (n % self.print_every) == 0:
-                print('[TEST]  :   Epoch       iteration         Test Loss')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), loss.item()))
-
-            self.test_loss_history[self.test_loss_iter] = loss.item()
-            self.test_loss_iter += 1
-
-        avg_test_loss = test_loss / len(self.test_loader)
-        acc = correct / len(self.test_loader.dataset)
-        print('[VAL]   : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-              (avg_test_loss, correct, len(self.test_loader.dataset),
-               100.0 * acc)
-        )

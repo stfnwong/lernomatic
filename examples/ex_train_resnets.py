@@ -18,9 +18,9 @@ def main():
 
     # Get a model
     model = resnets.WideResnet(
-        GLOBAL_OPTS['num_layers'],
-        GLOBAL_OPTS['num_classes'],
-        GLOBAL_OPTS['widen_factor']
+        depth=GLOBAL_OPTS['num_layers'],
+        num_classes=GLOBAL_OPTS['num_classes'],
+        w_factor=GLOBAL_OPTS['widen_factor']
     )
 
     # Get a trainer
@@ -45,6 +45,7 @@ def main():
     )
 
     trainer.train()
+
 
 def get_parser():
     parser = argparse.ArgumentParser()

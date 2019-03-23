@@ -118,7 +118,6 @@ class AttentionNetModule(nn.Module):
         return (atten_w_enc, alpha)
 
 
-
 class DecoderAtten(common.LernomaticModel):
     def __init__(self,
                  atten_dim: int = 1,
@@ -172,7 +171,6 @@ class DecoderAtten(common.LernomaticModel):
         self.net = mod()
         self.net.load_state_dict(params['model_state_dict'])
         self.net.set_params(params['atten_params'])
-
 
 
 class DecoderAttenModule(nn.Module):
@@ -361,7 +359,6 @@ class DecoderAttenModule(nn.Module):
         return (predictions, enc_capt, decode_lengths, alphas, sort_ind)
 
 
-
 class Encoder(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:
         self.net = EncoderModule(**kwargs)
@@ -408,7 +405,7 @@ class EncoderModule(nn.Module):
     """
     def __init__(self, **kwargs) -> None: #feature_size=14, do_fine_tune=True):
         super(EncoderModule, self).__init__()
-        self.enc_img_size = kwargs.pop('feature_size', 14)
+        self.enc_img_size = kwargs.pop('enc_img_size', 14)
         self.do_fine_tune = kwargs.pop('do_fine_tune', True)
         self.device_id    = kwargs.pop('device_id', -1)
         #  get network

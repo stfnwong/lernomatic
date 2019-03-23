@@ -103,6 +103,7 @@ def main():
         learning_rate   = GLOBAL_OPTS['learning_rate'],
         momentum        = GLOBAL_OPTS['momentum'],
         weight_decay    = GLOBAL_OPTS['weight_decay'],
+        early_stop      = {'num_epochs' : 20, 'improv': 0.05},
         # word map
         word_map        = wmap,
         # data

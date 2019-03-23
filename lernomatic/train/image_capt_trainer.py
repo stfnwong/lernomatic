@@ -75,8 +75,6 @@ class COCOCaptTrainer(trainer.Trainer):
                 if param.grad is not None:
                     param.grad.data.clamp_(-self.grad_clip, self.grad_clip)
 
-    # TODO : save and load stuff...
-
     def train_epoch(self):
         self.model.set_train()
 
