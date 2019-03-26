@@ -455,7 +455,8 @@ class DecayWhenAcc(LRScheduler):
         self.lr_decay      : float = kwargs.pop('lr_decay', 0.9)
         super(DecayWhenAcc, self).__init__(**kwargs)
         self.best_acc      : float = 0.0
-        self.learning_rate : float = self.initial_lr
+        self.learning_rate : float = self.lr_max
+        #self.learning_rate : float = self.initial_lr
 
     def __repr__(self) -> str:
         return 'DecayWhenAcc'
@@ -488,6 +489,7 @@ class DecayWhenEpoch(LRScheduler):
         self.num_epochs : int   = kwargs.pop('num_epochs', 8)
         self.lr_decay   : float = kwargs.pop('lr_decay', 0.9)
         super(DecayWhenEpoch, self).__init__(**kwargs)
+        self.learning_rate : float = self.lr_max
 
     def __repr__(self) -> str:
         return 'DecayWhenEpoch'

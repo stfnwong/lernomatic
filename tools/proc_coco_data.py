@@ -20,7 +20,6 @@ from lernomatic.data.text import word_map
 GLOBAL_OPTS = dict()
 
 
-# TODO : make this a subroutine to dump an image
 def main():
 
     train_data = coco_data.COCODataSplit(

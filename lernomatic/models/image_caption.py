@@ -315,7 +315,8 @@ class DecoderAttenModule(nn.Module):
         enc_feature = enc_feature.view(N, -1, enc_dim)  # aka : (N, num_pixels, enc_dim)
         num_pixels  = enc_feature.size(1)
 
-        # Sort input data by decreasing lengths (why? see below)
+        # Sort input data by decreasing lengths. We will pack this sequence and
+        # such that we flatten the tensor minus the padding timesteps
         capt_lengths, sort_ind = capt_lengths.squeeze(1).sort(dim=0, descending=True)
         enc_feature = enc_feature[sort_ind]
         enc_capt = enc_capt[sort_ind]

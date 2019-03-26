@@ -8,20 +8,21 @@ Stefan Wong 2019
 import sys
 import argparse
 import numpy as np
+from tqdm import tqdm
 from matplotlib import pyplot as plt
 from lernomatic.util import hdf5_util
 from lernomatic.data.text import word_map
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 GLOBAL_OPTS = dict()
-GLOBAL_TOOL_MODES = ('dump-elem','dump-capt')
+GLOBAL_TOOL_MODES = ('dump-elem','dump-capt', 'check-shape')
 GLOBAL_WORD_MAP = None
 
 
-def dump_caption(elem_idx):
+def dump_caption(elem_idx) -> None:
     hdf5_data = hdf5_util.HDF5Data(
         GLOBAL_OPTS['input'],
         verbose=GLOBAL_OPTS['verbose']
@@ -50,7 +51,7 @@ def dump_caption(elem_idx):
     print('Caplen : %d' % caplen)
 
 
-def dump_element(elem_idx):
+def dump_element(elem_idx) -> None:
     hdf5_data = hdf5_util.HDF5Data(
         GLOBAL_OPTS['input'],
         verbose=GLOBAL_OPTS['verbose']
@@ -107,8 +108,41 @@ def dump_element(elem_idx):
         plt.show()
 
 
+def check_shape() -> None:
 
-def arg_parser():
+    hdf5_data = hdf5_util.HDF5Data(
+        GLOBAL_OPTS['input'],
+        verbose=GLOBAL_OPTS['verbose']
+    )
+
+    if not hdf5_data.has_dataset(GLOBAL_OPTS['key']):
+        raise ValueError('No dataset [%s] in file [%s]' %\
+                         (str(GLOBAL_OPTS['key']), str(GLOBAL_OPTS['input']))
+        )
+
+    pos_match = 0
+    neg_match = 0
+    neg_match_idxs = []
+    for idx in tqdm(range(hdf5_data.get_size(GLOBAL_OPTS['key'])), unit='index'):
+        #print('Checking element [%d / %d]' % (idx, hdf5_data.get_size(GLOBAL_OPTS['key'])), end='\r')
+        elem_data = hdf5_data.get_elem(GLOBAL_OPTS['key'], idx)
+        if elem_data.shape == GLOBAL_OPTS['shape']:
+            pos_match += 1
+        else:
+            neg_match += 1
+            neg_match_idxs.append(idx)
+
+
+    print('\n DONE')
+    print('Required shape %s' % str(GLOBAL_OPTS['shape']))
+    print('%d / %d element(s) match' % (pos_match, hdf5_data.get_size(GLOBAL_OPTS['key'])))
+    print('%d / %d element(s) do not match' % (neg_match, hdf5_data.get_size(GLOBAL_OPTS['key'])))
+    if len(neg_match_idxs) > 0:
+        print('Index(es) of elements with incorrect shape:')
+        print(neg_match_idxs)
+
+
+def arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('input',
                         type=str,
@@ -154,7 +188,20 @@ def arg_parser():
                         default='caplens',
                         help='Name of dataset containing caption length information'
                         )
-
+    # Key argument
+    parser.add_argument('--key',
+                        type=str,
+                        default=None,
+                        help='Dataset key. (default: None)'
+                        )
+    # shape argument
+    parser.add_argument('--shape',
+                        type=int,
+                        nargs='+',
+                        default=None,
+                        help='Required shape to check. Format should be space-seperated list of sizes (eg: --shape 3 256 256) (default: None)'
+                        )
+    # general args
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
@@ -207,5 +254,12 @@ if __name__ == '__main__':
                 dump_caption(idx)
         else:
             dump_caption(GLOBAL_OPTS['vis_index'])
+    elif GLOBAL_OPTS['mode'] == 'check-shape':
+        if GLOBAL_OPTS['key'] is None:
+            raise RuntimeError('mode [check-shape] requires dataset key (use --key argument)')
+        if GLOBAL_OPTS['shape'] is None:
+            raise RuntimeError('mode [check-shape] requires shape (use --shape argument)')
+        GLOBAL_OPTS['shape'] = tuple(GLOBAL_OPTS['shape'])
+        check_shape()
     else:
         raise RuntimeError('Invalid tool mode [%s]' % str(GLOBAL_OPTS['mode']))

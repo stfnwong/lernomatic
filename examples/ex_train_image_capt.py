@@ -7,6 +7,7 @@ Stefan Wong 2019
 
 import argparse
 from torchvision import transforms
+from lernomatic.train import schedule
 from lernomatic.train import image_capt_trainer
 from lernomatic.models import image_caption
 from lernomatic.data.text import word_map
@@ -16,6 +17,44 @@ from lernomatic.data.coco import coco_dataset
 from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
+
+# TODO : make argument local to this function (ie: take out all GLOBAL_OPTS
+# references)
+def get_lr_finder(trainer, find_type='LogFinder'):
+    if not hasattr(learning_rate, find_type):
+        raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
+
+    lr_find_obj = getattr(learning_rate, find_type)
+    lr_finder = lr_find_obj(
+        trainer,
+        lr_min         = 1e-7,
+        lr_max         = 1.0,
+        lr_select_method = GLOBAL_OPTS['lr_select_method'],
+        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
+        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
+        print_every    = GLOBAL_OPTS['find_print_every']
+    )
+
+    return lr_finder
+
+
+def get_scheduler(lr_min, lr_max, sched_type='TriangularScheduler'):
+    if sched_type is None:
+        return None
+
+    if not hasattr(schedule, sched_type):
+        raise ValueError('Unknown scheduler type [%s]' % str(sched_type))
+
+    lr_sched_obj = getattr(schedule, sched_type)
+    lr_scheduler = lr_sched_obj(
+        stepsize = GLOBAL_OPTS['sched_stepsize'],    # TODO : optimal stepsize selection?
+        lr_min = lr_min,
+        lr_max = lr_max
+    )
+
+    return lr_scheduler
+
+
 
 def main():
 
@@ -120,10 +159,31 @@ def main():
         save_every      = GLOBAL_OPTS['save_every'],
         verbose         = GLOBAL_OPTS['verbose']
     )
+    # get lr finder
+    if GLOBAL_OPTS['find_lr'] is True:
+        lr_finder = get_lr_finder(trainer)
+        lr_min, lr_max = lr_finder.find()
+        scheduler = get_scheduler(lr_min, lr_max, GLOBAL_OPTS['sched_type'])
+        if GLOBAL_OPTS['verbose']:
+            print('Created scheduler [%s]\n %s' % (repr(scheduler), str(scheduler)))
+        trainer.set_lr_scheduler(scheduler)
+    else:
+        lr_finder = None
+        #enc_scheduler = get_scheduler(enc_lr_min, enc_lr_max, GLOBAL_OPTS['sched_type'])
+        #dec_scheduler = get_scheduler(dec_lr_min, dec_lr_max, GLOBAL_OPTS['sched_type'])
+        enc_scheduler = get_scheduler(0.0, GLOBAL_OPTS['enc_lr'], 'DecayWhenAcc')
+        dec_scheduler = get_scheduler(0.0, GLOBAL_OPTS['dec_lr'], 'DecayWhenAcc')
+        if GLOBAL_OPTS['verbose']:
+            print('Created scheduler (decoder) [%s]\n %s' % (repr(enc_scheduler), str(enc_scheduler)))
+            print('Created scheduler (encoder) [%s]\n %s' % (repr(dec_scheduler), str(dec_scheduler)))
+        trainer.set_enc_lr_scheduler(enc_scheduler)
+        trainer.set_dec_lr_scheduler(dec_scheduler)
 
-    # TODO: try to find a suitable learning rate with param tools
 
+    # TODO : implement the training schedule
+    # First train for 30 epochs
     trainer.train()
+
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -181,6 +241,16 @@ def get_parser():
                         help='Set dropout rate'
                         )
     # Training options
+    parser.add_argument('--find-lr',
+                        action='store_true',
+                        default=False,
+                        help='Use the learing rate finder to select a learning rate'
+                        )
+    #parser.add_argument('--find-only',
+    #                    action='store_true',
+    #                    default=False,
+    #                    help='Perform the learning rate search then exit'
+    #                    )
     parser.add_argument('--enc-lr',
                         type=float,
                         default=1e-4,
@@ -250,6 +320,38 @@ def get_parser():
                         type=float,
                         default=0.5,
                         help='Momentum for SGD'
+                        )
+    # scheduling options
+    parser.add_argument('--sched-type',
+                        type=str,
+                        default=None,
+                        help='Scheduler to use during training (default: None)'
+                        )
+    # finder options
+    parser.add_argument('--find-print-every',
+                        type=int,
+                        default=20,
+                        help='How often to print output from learning rate finder'
+                        )
+    parser.add_argument('--find-num-epochs',
+                        type=int,
+                        default=8,
+                        help='Maximum number of epochs to attempt to find learning rate'
+                        )
+    parser.add_argument('--find-explode-thresh',
+                        type=float,
+                        default=4.5,
+                        help='Threshold at which to stop increasing learning rate'
+                        )
+    parser.add_argument('--exp-decay',
+                        type=float,
+                        default=0.001,
+                        help='Exponential decay term'
+                        )
+    parser.add_argument('--sched-stepsize',
+                        type=int,
+                        default=4000,
+                        help='Size of step for learning rate scheduler'
                         )
     # Data options
     parser.add_argument('--train-data-path',

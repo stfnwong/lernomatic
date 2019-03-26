@@ -1,6 +1,7 @@
 #!/bin/bash
+# Process the first 5000 elements of the COCO dataset
 
-time python examples/ex_proc_coco_data.py \
+time python tools/proc_coco_data.py \
     --train-dataset-fname=hdf5/coco_train_5000.h5 \
     --test-dataset-fname=hdf5/coco_test_5000.h5 \
     --val-dataset-fname=hdf5/coco_val_5000.h5 \

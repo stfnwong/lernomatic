@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence
 from nltk.translate.bleu_score import corpus_bleu
 # other lernomatic modules
+from lernomatic.train import schedule
 from lernomatic.train import trainer
 from lernomatic.models import image_caption
 from lernomatic.util import util
@@ -261,26 +262,30 @@ class ImageCaptTrainer(trainer.Trainer):
     # set learning rates for the two optimizers
     def set_learning_rate(self, lr:float, param_zero=True) -> None:
         if param_zero:
-            self.dec_optimizer.param_groups[0]['lr'] = lr
-            self.enc_optimizer.param_groups[0]['lr'] = lr
+            self.deocder_optim.param_groups[0]['lr'] = lr
+            self.encoder_optim.param_groups[0]['lr'] = lr
         else:
-            for g in self.dec_optimizer.param_groups:
+            for g in self.deocder_optim.param_groups:
                 g['lr'] = lr
-            for g in self.enc_optimizer.param_groups:
+            for g in self.encoder_optim.param_groups:
                 g['lr'] = lr
 
     def set_dec_learning_rate(self, lr:float, param_zero=True) -> None:
+        if self.decoder_optim is None:
+            return
         if param_zero:
-            self.dec_optimizer.param_groups[0]['lr'] = lr
+            self.decoder_optim.param_groups[0]['lr'] = lr
         else:
-            for g in self.dec_optimizer.param_groups:
+            for g in self.decoder_optim.param_groups:
                 g['lr'] = lr
 
     def set_enc_learning_rate(self, lr:float, param_zero=True) -> None:
+        if self.encoder_optim is None:
+            return
         if param_zero:
-            self.enc_optimizer.param_groups[0]['lr'] = lr
+            self.encoder_optim.param_groups[0]['lr'] = lr
         else:
-            for g in self.enc_optimizer.param_groups:
+            for g in self.encoder_optim.param_groups:
                 g['lr'] = lr
 
     # Overload set_lr_scheduler
@@ -299,6 +304,32 @@ class ImageCaptTrainer(trainer.Trainer):
 
     def get_enc_lr_scheduler(self) -> None:
         return self.enc_lr_scheduler
+
+    # Apply the schedule
+    def apply_lr_schedule(self) -> None:
+        # encoder side
+        if self.enc_lr_scheduler is not None:
+            if isinstance(self.enc_lr_scheduler, schedule.TriangularDecayWhenAcc):
+                new_lr = self.enc_lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
+            elif isinstance(self.enc_lr_scheduler, schedule.EpochSetScheduler) or isinstance(self.enc_lr_scheduler, schedule.DecayWhenEpoch):
+                new_lr = self.enc_lr_scheduler.get_lr(self.cur_epoch)
+            elif isinstance(self.enc_lr_scheduler, schedule.DecayWhenAcc):
+                new_lr = self.enc_lr_scheduler.get_lr(self.acc_history[self.acc_iter])
+            else:
+                new_lr = self.enc_lr_scheduler.get_lr(self.loss_iter)
+            self.set_enc_learning_rate(new_lr)
+
+        # decoder side
+        if self.dec_lr_scheduler is not None:
+            if isinstance(self.dec_lr_scheduler, schedule.TriangularDecayWhenAcc):
+                new_lr = self.dec_lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
+            elif isinstance(self.dec_lr_scheduler, schedule.EpochSetScheduler) or isinstance(self.dec_lr_scheduler, schedule.DecayWhenEpoch):
+                new_lr = self.dec_lr_scheduler.get_lr(self.cur_epoch)
+            elif isinstance(self.dec_lr_scheduler, schedule.DecayWhenAcc):
+                new_lr = self.dec_lr_scheduler.get_lr(self.acc_history[self.acc_iter])
+            else:
+                new_lr = self.dec_lr_scheduler.get_lr(self.loss_iter)
+            self.set_dec_learning_rate(new_lr)
 
     # ======== TRAINING ======== #
     def train_epoch(self) -> None:
@@ -326,11 +357,13 @@ class ImageCaptTrainer(trainer.Trainer):
             scores, _  = pack_padded_sequence(scores, decode_lengths, batch_first=True)
             targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
-            # TODO : debug only - remove
+            # Try this hack (TODO: why does the shape of scores occasionally
+            # vary?)
             if scores.shape[0] != targets.shape[0]:
-                raise RuntimeError('[%s] batch <%d> scores.shape : %s != targets.shape : %s' %\
-                                   (self, n, str(scores.shape), str(targets.shape))
-                )
+                scores = scores.view(targets.shape[0], -1)
+                #raise RuntimeError('[%s] batch <%d> scores.shape : %s != targets.shape : %s' %\
+                #                   (self, n, str(scores.shape), str(targets.shape))
+                #)
 
             # compute loss
             loss = self.criterion(scores, targets)
@@ -362,10 +395,10 @@ class ImageCaptTrainer(trainer.Trainer):
 
             # do scheduling
             if self.dec_lr_scheduler is not None:
-                new_lr = self.apply_lr_scheduling()
+                new_lr = self.apply_lr_schedule()
                 self.set_dec_learning_rate(new_lr)
             if self.enc_lr_scheduler is not None:
-                new_lr = self.apply_lr_scheduling()
+                new_lr = self.apply_lr_schedule()
                 self.set_enc_learning_rate(new_lr)
 
             # update history

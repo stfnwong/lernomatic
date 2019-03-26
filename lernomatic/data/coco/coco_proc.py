@@ -15,6 +15,17 @@ import cv2
 #from pudb import set_trace; set_trace()
 
 
+# NOTE: the argument for writing this as a class is that we can save and load
+# the state (thereby preserving the experiment parameters). On the other hand,
+# there isn't all that much to put in the class other than this function and
+# the usual magic functions that we might have.
+
+# TODO : type hints for split, also ensure that we are using COCOSplit and not
+# DataSplit (generic split)
+def save_coco_proc_params(fname:str, split_data, **kwargs) -> None:
+    raise NotImplemented
+
+
 def process_coco_data_split(split_data, word_map, fname, **kwargs):
     """
     PROCESS_COCO_DATA_SPLIT
@@ -97,4 +108,3 @@ def process_coco_data_split(split_data, word_map, fname, **kwargs):
 
 
 #TODO : a version that stores captions in JSON format.
-#
