@@ -164,7 +164,7 @@ class Trainer(object):
     def get_model_params(self) -> dict:
         if self.model is None:
             return None
-        return self.model.get_model_state_dict()
+        return self.model.get_net_state_dict()
 
     # common getters/setters
     def get_learning_rate(self) -> float:
@@ -354,8 +354,8 @@ class Trainer(object):
             # check if we need to perform early stopping
             if self.early_stop is not None:
                 if self.cur_epoch > self.early_stop['num_epochs']:
-                    acc_then = self.roc_auc_history[self.acc_iter - self.early_stop['num_epochs']]
-                    acc_now  = self.roc_auc_history[self.acc_iter]
+                    acc_then = self.acc_history[self.acc_iter - self.early_stop['num_epochs']]
+                    acc_now  = self.acc_history[self.acc_iter]
                     acc_delta = acc_now - acc_then
                     if acc_delta < self.early_stop['improv']:
                         if self.verbose:
@@ -438,6 +438,7 @@ class Trainer(object):
         params['print_every']     = self.print_every
         # dataloader params (to regenerate data loader)
         params['batch_size']      = self.batch_size
+        params['test_batch_size'] = self.test_batch_size
         params['shuffle']         = self.shuffle
 
         return params
@@ -456,6 +457,7 @@ class Trainer(object):
         self.device_id       = params['device_id']
         # dataloader params
         self.batch_size      = params['batch_size']
+        self.test_batch_size = params['test_batch_size']
         self.shuffle         = params['shuffle']
 
         self._init_device()

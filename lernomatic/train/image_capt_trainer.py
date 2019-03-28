@@ -8,6 +8,7 @@ Stefan Wong 2019
 import time
 import torch
 import torch.nn.functional as F
+import numpy as np
 from torch.nn.utils.rnn import pack_padded_sequence
 from nltk.translate.bleu_score import corpus_bleu
 # other lernomatic modules
@@ -30,19 +31,6 @@ def clip_gradient(optimizer, grad_clip):
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
-# TODO : move to scheduler
-def adjust_learning_rate(optimizer, shrink_factor):
-    """
-    ADJUST_LEARNING_RATE
-    Shrinks learning rate by a specified factor
-    """
-
-    print('Decaying learning rate....')
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = param_group['lr'] * shrink_factor
-
-    print('New learning rate is %f\n' % (optimizer.param_groups[0]['lr']))
-
 def ica_accuracy(scores, targets, k):
     """
     ACCURACY
@@ -54,92 +42,6 @@ def ica_accuracy(scores, targets, k):
     correct_total = correct.view(-1).float().sum()  # 0-dimension tensor
 
     return correct_total.item() * (100.0 / batch_size)
-
-
-
-class COCOCaptTrainer(trainer.Trainer):
-    """
-    This is an attempt at a simpler caption trainer
-    """
-    def __init__(self, model, **kwargs):
-        super(COCOCaptTrainer, self).__init__(model, **kwargs)
-
-    def _init_optimizer(self):
-        self.optimizer = torch.optim.Adam(
-                params = filter(lambda p : p.requires_grad, self.model.parameters()),
-                lr = self.learning_rate,
-            )
-
-    def clip_gradient(self):
-        for group in self.optimizer.param_groups:
-            for param in group['params']:
-                if param.grad is not None:
-                    param.grad.data.clamp_(-self.grad_clip, self.grad_clip)
-
-    def train_epoch(self):
-        self.model.set_train()
-
-        for n, (imgs, caps, caplens) in enumerate(self.train_loader):
-            imgs = imgs.to(self.device)
-            caps = caps.to(self.device)
-            caplens = caplens.to(self.device)
-
-            self.optimizer.zero_grad()
-            output = self.model.forward(imgs, caps, caplens)
-            target_caps = pack_padded_sequence(caps, caplens)[0]
-            loss = self.criterion(output, target_caps)
-            loss.backward()
-
-            if self.grad_clip > 0.0:
-                self.clip_gradient()
-
-            self.optimizer.step()
-
-            # Display
-            if (n % self.print_every) == 0:
-                print('[TRAIN] :   Epoch       iteration         Loss')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
-
-            # do scheduling
-            if self.lr_scheduler is not None:
-                new_lr = self.lr_scheduler.get_lr(self.loss_iter)
-                self.set_learning_rate(new_lr)
-
-            # update history
-            self.loss_history[self.loss_iter] = loss.item()
-            self.loss_iter += 1
-            # save checkpoint
-            if n > 0 and (self.loss_iter % self.save_every == 0):
-                ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
-                if self.verbose:
-                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
-                self.save_checkpoint(ck_name)
-
-    def test_epoch(self):
-        self.model.set_eval()
-        # for now, ignore allcaps output
-        for n, (imgs, caps, caplens, _) in enumerate(self.test_loader):
-            imgs = imgs.to(self.device)
-            caps = caps.to(self.device)
-            caplens = caplens.to(self.device)
-
-            # test output
-            output = self.model.forward(imgs, caps, caplens)
-            target_caps = pack_padded_sequence(caps, caplens)[0]
-            test_loss = self.criterion(output, target_caps)
-
-            # display
-            if (n % self.print_every) == 0:
-                print('[TEST]  :   Epoch       iteration         Test Loss')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), test_loss.item()))
-
-            self.test_loss_history[self.test_loss_iter] = test_loss.item()
-            self.test_loss_iter += 1
-
-    # TODO : checkpointing?
 
 
 
@@ -221,7 +123,7 @@ class ImageCaptTrainer(trainer.Trainer):
             # training params
             'num_epochs'      : self.num_epochs,
             'batch_size'      : self.batch_size,
-            'test_batch_tize' : self.test_batch_size,
+            'test_batch_size' : self.test_batch_size,
             # data params
             'shuffle'         : self.shuffle,
             'num_workers'     : self.num_workers,
@@ -260,15 +162,9 @@ class ImageCaptTrainer(trainer.Trainer):
 
 
     # set learning rates for the two optimizers
-    def set_learning_rate(self, lr:float, param_zero=True) -> None:
-        if param_zero:
-            self.deocder_optim.param_groups[0]['lr'] = lr
-            self.encoder_optim.param_groups[0]['lr'] = lr
-        else:
-            for g in self.deocder_optim.param_groups:
-                g['lr'] = lr
-            for g in self.encoder_optim.param_groups:
-                g['lr'] = lr
+    def set_learning_rate(self, lr:float, param_zero:bool=True) -> None:
+        self.set_dec_learning_rate(lr, param_zero)
+        self.set_enc_learning_rate(lr, param_zero)
 
     def set_dec_learning_rate(self, lr:float, param_zero=True) -> None:
         if self.decoder_optim is None:
@@ -350,23 +246,31 @@ class ImageCaptTrainer(trainer.Trainer):
             # forward pass
             imgs = self.encoder.forward(imgs)
             scores, caps_sorted, decode_lengths, alphas,  sort_ind = self.decoder.forward(imgs, caps, caplens)
+            # TODO (remove after debug) : cache shapes here
+            shape_dict = {'scores' : scores.shape, 'caps_sorted' : caps_sorted.shape}
             # remove the <start> token from the output captions
             targets = caps_sorted[:, 1:]
+            shape_dict.update({'targets' : targets.shape})
             # remove timesteps that are pads or that we didn't do any decoding
             # for
-            scores, _  = pack_padded_sequence(scores, decode_lengths, batch_first=True)
-            targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
+            scores_packed  = pack_padded_sequence(scores,  decode_lengths, batch_first=True)
+            targets_packed = pack_padded_sequence(targets, decode_lengths, batch_first=True)
+
+            shape_dict.update(
+                {'padded_scores' : scores_packed[0].shape,
+                 'padded_targets' : targets_packed[0].shape
+                }
+            )
 
             # Try this hack (TODO: why does the shape of scores occasionally
             # vary?)
-            if scores.shape[0] != targets.shape[0]:
-                scores = scores.view(targets.shape[0], -1)
-                #raise RuntimeError('[%s] batch <%d> scores.shape : %s != targets.shape : %s' %\
-                #                   (self, n, str(scores.shape), str(targets.shape))
-                #)
+            if scores_packed[0].shape[0] != targets_packed[0].shape[0]:
+                print('batch [%d] shapes (%d decode lengths)' % (n, len(decode_lengths)))
+                for k, v in shape_dict.items():
+                    print('\t%s : %s' % (str(k), str(v)))
 
             # compute loss
-            loss = self.criterion(scores, targets)
+            loss = self.criterion(scores_packed[0], targets_packed[0])
             # add attention regularization
             loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
 
@@ -405,7 +309,7 @@ class ImageCaptTrainer(trainer.Trainer):
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
             # save checkpoint
-            if n > 0 and (self.loss_iter % self.save_every == 0):
+            if self.save_every > 0 and n > 0 and (self.loss_iter % self.save_every == 0):
                 ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
                     '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
                 if self.verbose:
@@ -438,12 +342,12 @@ class ImageCaptTrainer(trainer.Trainer):
             # get rid of the <start> token
             targets = caps_sorted[:, 1:]
             # prune out extra timesteps
-            scores_copy = scores.clone()
-            scores, _  = pack_padded_sequence(scores, decode_lengths, batch_first=True)
-            targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
+            scores_copy    = scores.clone()
+            scores_packed  = pack_padded_sequence(scores,  decode_lengths, batch_first=True)
+            targets_packed = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
             # compute loss, add attention regularization
-            test_loss = self.criterion(scores, targets)
+            test_loss = self.criterion(scores_packed[0], targets_packed[0])
             test_loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
 
             # display
@@ -481,6 +385,12 @@ class ImageCaptTrainer(trainer.Trainer):
                                  (len(references), len(hypotheses))
                 )
 
+        # print a random hypotheses
+        if self.verbose:
+            h_idx = np.random.randint(len(hypotheses))
+            print('Generated caption %d / %d' % (h_idx, len(hypotheses)))
+            caption_text = [self.word_map.lookup_word(w) for w in hypotheses[h_idx]]
+            print(str(caption_text))
 
         # compute the BLEU-4 score
         bleu4 = corpus_bleu(references, hypotheses)

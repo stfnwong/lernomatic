@@ -50,7 +50,7 @@ class LernomaticModel(object):
             raise ValueError('No network set in module %s' % repr(self))
         return self.net
 
-    def get_model_state_dict(self) -> dict:
+    def get_net_state_dict(self) -> dict:
         if self.net is None:
             raise ValueError('No network set in module %s' % repr(self))
         return self.net.state_dict()

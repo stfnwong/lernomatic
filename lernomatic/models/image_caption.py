@@ -13,6 +13,12 @@ from lernomatic.models import common
 # caption utils
 from lernomatic.util import caption as caption_utils
 
+# debug
+#from pudb import set_trace; set_trace()
+
+
+
+# ======== LERNOMATIC MODELS ======== #
 
 class COCOEncoder(common.LernomaticModel):
     def __init__(self, encoder: common.LernomaticModel, vocab_size: int, **kwargs) -> None:
@@ -26,6 +32,115 @@ class COCOEncoder(common.LernomaticModel):
         return 'COCOEncoder'
 
 
+class DecoderAtten(common.LernomaticModel):
+    def __init__(self,
+                 atten_dim: int = 1,
+                 embed_dim: int = 1,
+                 dec_dim: int = 1,
+                 vocab_size: int = 1,
+                 enc_dim: int = 2048,
+                 dropout: float = 0.5,
+                 **kwargs) -> None:
+        self.net = DecoderAttenModule(
+            atten_dim, embed_dim, dec_dim, vocab_size,
+            enc_dim, dropout, **kwargs)
+        self.model_name = 'DecoderAtten'
+        self.module_name = 'DecoderAttenModule'
+        self.import_path = 'lernomatic.models.image_caption'
+        self.module_import_path = 'lernomatic.models.image_caption'
+
+    def __repr__(self) -> str:
+        return 'DecoderAtten'
+
+    def send_to(self, device:torch.device) -> None:
+        self.net.send_to_device(device)
+
+    def embedding(self, X) -> torch.Tensor:
+        return self.net.embedding(X)
+
+    def forward(self, enc_feature, enc_capt, capt_lengths):
+        return self.net(enc_feature, enc_capt, capt_lengths)
+
+    def get_params(self) -> dict:
+        params = {
+            'model_state_dict'   : self.net.state_dict(),
+            'model_name'         : self.get_model_name(),
+            'model_import_path'  : self.get_model_path(),
+            'module_name'        : self.get_module_name(),
+            'module_import_path' : self.get_module_import_path(),
+            'atten_params'       : self.net.get_params()
+        }
+        return params
+
+    def set_params(self, params : dict) -> None:
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod()
+        self.net.load_state_dict(params['model_state_dict'])
+        self.net.set_params(params['atten_params'])
+
+
+class AttentionNet(common.LernomaticModel):
+    def __init__(self, enc_dim: int=1, dec_dim:int = 1, atten_dim:int=1) -> None:
+        self.net = AttentionNetModule(enc_dim, dec_dim, atten_dim)
+        self.model_name = 'AttentionNet'
+        self.module_name = 'AttentionNetModule'
+        self.import_path = 'lernomatic.models.image_caption'
+        self.module_import_path = 'lernomatic.models.image_caption'
+
+    def __repr__(self) -> str:
+        return 'AttentionNet'
+
+    def forward(self, enc_feature, dec_hidden) -> tuple:
+        return self.net(enc_feature, dec_hidden)
+
+
+class Encoder(common.LernomaticModel):
+    def __init__(self, **kwargs) -> None:
+        self.net = EncoderModule(**kwargs)
+        self.do_fine_tune = self.net.do_fine_tune   # shimming attribute
+
+        self.model_name = 'Encoder'
+        self.module_name = 'EncoderModule'
+        self.import_path = 'lernomatic.models.image_caption'
+        self.module_import_path = 'lernomatic.models.image_caption'
+
+    def __repr__(self) -> str:
+        return 'Encoder'
+
+    def send_to(self, device:torch.device) -> None:
+        self.net.send_to(device)
+
+    def get_params(self) -> dict:
+        params = {
+            'model_state_dict'   : self.net.state_dict(),
+            'model_name'         : self.get_model_name(),
+            'model_import_path'  : self.get_model_path(),
+            'module_name'        : self.get_module_name(),
+            'module_import_path' : self.get_module_import_path(),
+            'enc_params'       : self.net.get_params()
+        }
+        return params
+
+    def set_params(self, params : dict) -> None:
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod()
+        self.net.load_state_dict(params['model_state_dict'])
+        self.net.set_params(params['enc_params'])
+
+
+# ======== MODULES ======== #
 class COCOEncoderModule(nn.Module):
     def __init__(self, encoder, vocab_size, **kwargs) -> None:
         self.embed_size     = kwargs.pop('embed_size', 255)
@@ -57,22 +172,6 @@ class COCOEncoderModule(nn.Module):
 
     def generate(self, img, scale_size=256, crop_size=224):
         pass
-
-
-class AttentionNet(common.LernomaticModel):
-    def __init__(self, enc_dim: int=1, dec_dim:int = 1, atten_dim:int=1) -> None:
-        self.net = AttentionNetModule(enc_dim, dec_dim, atten_dim)
-        self.model_name = 'AttentionNet'
-        self.module_name = 'AttentionNetModule'
-        self.import_path = 'lernomatic.models.image_caption'
-        self.module_import_path = 'lernomatic.models.image_caption'
-
-    def __repr__(self) -> str:
-        return 'AttentionNet'
-
-    def forward(self, enc_feature, dec_hidden) -> tuple:
-        return self.net(enc_feature, dec_hidden)
-
 
 
 class AttentionNetModule(nn.Module):
@@ -118,61 +217,6 @@ class AttentionNetModule(nn.Module):
         return (atten_w_enc, alpha)
 
 
-class DecoderAtten(common.LernomaticModel):
-    def __init__(self,
-                 atten_dim: int = 1,
-                 embed_dim: int = 1,
-                 dec_dim: int = 1,
-                 vocab_size: int = 1,
-                 enc_dim: int = 2048,
-                 dropout: float = 0.5,
-                 **kwargs) -> None:
-        self.net = DecoderAttenModule(
-            atten_dim, embed_dim, dec_dim, vocab_size,
-            enc_dim, dropout, **kwargs)
-        self.model_name = 'DecoderAtten'
-        self.module_name = 'DecoderAttenModule'
-        self.import_path = 'lernomatic.models.image_caption'
-        self.module_import_path = 'lernomatic.models.image_caption'
-
-    def __repr__(self) -> str:
-        return 'DecoderAtten'
-
-    #def send_to_device(self, device):
-    #    pass
-    def send_to(self, device:torch.device) -> None:
-        self.net.send_to_device(device)
-
-    def embedding(self, X) -> torch.Tensor:
-        return self.net.embedding(X)
-
-    def forward(self, enc_feature, enc_capt, capt_lengths):
-        return self.net(enc_feature, enc_capt, capt_lengths)
-
-    def get_params(self) -> dict:
-        params = {
-            'model_state_dict'   : self.net.state_dict(),
-            'model_name'         : self.get_model_name(),
-            'model_import_path'  : self.get_model_path(),
-            'module_name'        : self.get_module_name(),
-            'module_import_path' : self.get_module_import_path(),
-            'atten_params'       : self.net.get_params()
-        }
-        return params
-
-    def set_params(self, params : dict) -> None:
-        self.import_path = params['model_import_path']
-        self.model_name  = params['model_name']
-        self.module_name = params['module_name']
-        self.module_import_path = params['module_import_path']
-        # Import the actual network module
-        imp = importlib.import_module(self.module_import_path)
-        mod = getattr(imp, self.module_name)
-        self.net = mod()
-        self.net.load_state_dict(params['model_state_dict'])
-        self.net.set_params(params['atten_params'])
-
-
 class DecoderAttenModule(nn.Module):
     def __init__(self, atten_dim=1, embed_dim=1,
                  dec_dim=1, vocab_size=1,
@@ -198,10 +242,10 @@ class DecoderAttenModule(nn.Module):
         self.vocab_size = vocab_size
         self.dropout    = dropout
         self.verbose    = kwargs.pop('verbose', False)
-        #self.device_id  = kwargs.pop('device_id', -1)
         self.device     = None      # archive the device for some internal forward pass stuff
         # create the actual network
         self._init_network()
+        self.init_weights()
 
     def __repr__(self) -> str:
         return 'DecoderAtten-%d' % self.dec_dim
@@ -222,7 +266,6 @@ class DecoderAttenModule(nn.Module):
         self.sigmoid     = nn.Sigmoid()
         # linear layer to find scores over vocab
         self.fc          = nn.Linear(self.dec_dim, self.vocab_size)
-        self.init_weights()
 
     def init_weights(self) -> None:
         """
@@ -307,7 +350,7 @@ class DecoderAttenModule(nn.Module):
             (scores for vocab, sorted encoded captions, decode lengths, weights, sort indices)
 
         """
-        N = enc_feature.size(0)
+        N = enc_feature.size(0)             # batch size
         enc_dim = enc_feature.size(-1)
         vocab_size = self.vocab_size
 
@@ -315,8 +358,8 @@ class DecoderAttenModule(nn.Module):
         enc_feature = enc_feature.view(N, -1, enc_dim)  # aka : (N, num_pixels, enc_dim)
         num_pixels  = enc_feature.size(1)
 
-        # Sort input data by decreasing lengths. We will pack this sequence and
-        # such that we flatten the tensor minus the padding timesteps
+        # pack_padded_sequence expects a sorted tensor (ie: longest to
+        # shortest)
         capt_lengths, sort_ind = capt_lengths.squeeze(1).sort(dim=0, descending=True)
         enc_feature = enc_feature[sort_ind]
         enc_capt = enc_capt[sort_ind]
@@ -325,7 +368,7 @@ class DecoderAttenModule(nn.Module):
         embeddings = self.embedding(enc_capt)       # shape = (N, dec_dim)
         # init LSTM state
         h, c = self.init_hidden_state(enc_feature)  # shape = (N, dec_dim)
-        # we won't decode the <end? position, since we've finished generating
+        # we won't decode the <end> position, since we've finished generating
         # as soon as we generate <end>. Therefore decoding lengths are
         # actual_lengths-1
         decode_lengths = (capt_lengths - 1).tolist()
@@ -344,9 +387,7 @@ class DecoderAttenModule(nn.Module):
                 enc_feature[:batch_size_t],
                 h[:batch_size_t]
             )
-            gate = self.sigmoid(self.f_beta(
-                h[:batch_size_t])
-            )       # gating scalar (batch_size_t, enc_dim)
+            gate = self.sigmoid(self.f_beta(h[:batch_size_t]))   # gating scalar (batch_size_t, enc_dim)
             atten_w_enc = atten_w_enc * gate
             h, c = self.decode_step(
                 torch.cat([embeddings[:batch_size_t, t, :], atten_w_enc], dim=1),
@@ -358,46 +399,6 @@ class DecoderAttenModule(nn.Module):
             alphas[:batch_size_t, t, ] = alpha
 
         return (predictions, enc_capt, decode_lengths, alphas, sort_ind)
-
-
-class Encoder(common.LernomaticModel):
-    def __init__(self, **kwargs) -> None:
-        self.net = EncoderModule(**kwargs)
-        self.do_fine_tune = self.net.do_fine_tune   # shimming attribute
-
-        self.model_name = 'Encoder'
-        self.module_name = 'EncoderModule'
-        self.import_path = 'lernomatic.models.image_caption'
-        self.module_import_path = 'lernomatic.models.image_caption'
-
-    def __repr__(self) -> str:
-        return 'Encoder'
-
-    def send_to(self, device:torch.device) -> None:
-        self.net.send_to(device)
-
-    def get_params(self) -> dict:
-        params = {
-            'model_state_dict'   : self.net.state_dict(),
-            'model_name'         : self.get_model_name(),
-            'model_import_path'  : self.get_model_path(),
-            'module_name'        : self.get_module_name(),
-            'module_import_path' : self.get_module_import_path(),
-            'enc_params'       : self.net.get_params()
-        }
-        return params
-
-    def set_params(self, params : dict) -> None:
-        self.import_path = params['model_import_path']
-        self.model_name  = params['model_name']
-        self.module_name = params['module_name']
-        self.module_import_path = params['module_import_path']
-        # Import the actual network module
-        imp = importlib.import_module(self.module_import_path)
-        mod = getattr(imp, self.module_name)
-        self.net = mod()
-        self.net.load_state_dict(params['model_state_dict'])
-        self.net.set_params(params['enc_params'])
 
 
 class EncoderModule(nn.Module):
@@ -420,8 +421,7 @@ class EncoderModule(nn.Module):
         # resize image to fixed size to allow input images of variable size
         self.adaptive_pool = nn.AdaptiveAvgPool2d((self.enc_img_size, self.enc_img_size))
 
-        if self.do_fine_tune:
-            self.fine_tune()
+        self.fine_tune(self.do_fine_tune)
 
     def send_to(self, device:torch.device) -> None:
         self.net = self.net.to(device)

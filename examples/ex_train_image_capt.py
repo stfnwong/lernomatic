@@ -7,6 +7,7 @@ Stefan Wong 2019
 
 import argparse
 from torchvision import transforms
+from lernomatic.param import image_caption_lr
 from lernomatic.train import schedule
 from lernomatic.train import image_capt_trainer
 from lernomatic.models import image_caption
@@ -20,11 +21,11 @@ GLOBAL_OPTS = dict()
 
 # TODO : make argument local to this function (ie: take out all GLOBAL_OPTS
 # references)
-def get_lr_finder(trainer, find_type='LogFinder'):
-    if not hasattr(learning_rate, find_type):
+def get_lr_finder(trainer, find_type='CaptionLogFinder'):
+    if not hasattr(image_caption_lr, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
-    lr_find_obj = getattr(learning_rate, find_type)
+    lr_find_obj = getattr(image_caption_lr, find_type)
     lr_finder = lr_find_obj(
         trainer,
         lr_min         = 1e-7,
@@ -55,8 +56,8 @@ def get_scheduler(lr_min, lr_max, sched_type='TriangularScheduler'):
     return lr_scheduler
 
 
-
-def main():
+# ======== MAIN ======== #
+def main() -> None:
 
     if GLOBAL_OPTS['train_data_path'] is None:
         raise ValueError('Must supply a train data path with argument --train-data-path')
@@ -171,8 +172,8 @@ def main():
         lr_finder = None
         #enc_scheduler = get_scheduler(enc_lr_min, enc_lr_max, GLOBAL_OPTS['sched_type'])
         #dec_scheduler = get_scheduler(dec_lr_min, dec_lr_max, GLOBAL_OPTS['sched_type'])
-        enc_scheduler = get_scheduler(0.0, GLOBAL_OPTS['enc_lr'], 'DecayWhenAcc')
-        dec_scheduler = get_scheduler(0.0, GLOBAL_OPTS['dec_lr'], 'DecayWhenAcc')
+        enc_scheduler = get_scheduler(1e-6, GLOBAL_OPTS['enc_lr'], 'DecayWhenAcc')
+        dec_scheduler = get_scheduler(1e-6, GLOBAL_OPTS['dec_lr'], 'DecayWhenAcc')
         if GLOBAL_OPTS['verbose']:
             print('Created scheduler (decoder) [%s]\n %s' % (repr(enc_scheduler), str(enc_scheduler)))
             print('Created scheduler (encoder) [%s]\n %s' % (repr(dec_scheduler), str(dec_scheduler)))
@@ -246,6 +247,11 @@ def get_parser():
                         default=False,
                         help='Use the learing rate finder to select a learning rate'
                         )
+    parser.add_argument('--lr-select-method',
+                        type=str,
+                        default='max_acc',
+                        help='Heuristic to use when selecting lr ranges (default: max_acc)'
+                        )
     #parser.add_argument('--find-only',
     #                    action='store_true',
     #                    default=False,
@@ -308,7 +314,7 @@ def get_parser():
                         )
     parser.add_argument('--weight-decay',
                         type=float,
-                        default=1e-4,
+                        default=0.0,
                         help='Weight decay to use for optimizer'
                         )
     parser.add_argument('--learning-rate',

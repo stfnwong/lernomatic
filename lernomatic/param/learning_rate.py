@@ -65,7 +65,7 @@ class LRFinder(object):
         return ''.join(s)
 
     def _print_find(self, epoch: int, batch_idx: int, loss: float) -> None:
-        print('[FIND_LR] :  Epoch    iteration         loss    best loss (smooth)  lr')
+        print('[FIND_LR] :  Epoch    iteration            loss    best loss (smooth)  lr')
         print('            [%d/%d]     [%6d/%6d]    %.6f     %.6f     %.6f' %\
             (epoch, self.num_epochs, batch_idx, len(self.trainer.train_loader),
             loss, self.best_loss, self.learning_rate)
