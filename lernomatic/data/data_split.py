@@ -207,3 +207,5 @@ class ListSplitter(DataSplitter):
                 print('\n\tdone')
 
         return splits
+
+# TODO : dict splitter?
