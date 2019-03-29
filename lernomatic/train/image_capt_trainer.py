@@ -368,7 +368,6 @@ class ImageCaptTrainer(trainer.Trainer):
                     map(lambda c: \
                         [w for w in c if w not in {self.word_map.word_map['<start>'], self.word_map.word_map['<pad>']}], img_caps)
                 )
-
                 references.append(img_captions)
 
             # hypotheses
@@ -388,6 +387,9 @@ class ImageCaptTrainer(trainer.Trainer):
         # print a random hypotheses
         if self.verbose:
             h_idx = np.random.randint(len(hypotheses))
+            print('Provided caption  %d / %d' % (h_idx, len(references)))
+            ref_text = [self.word_map.lookup_word(w) for w in references[h_idx]]
+            print(str(ref_text))
             print('Generated caption %d / %d' % (h_idx, len(hypotheses)))
             caption_text = [self.word_map.lookup_word(w) for w in hypotheses[h_idx]]
             print(str(caption_text))

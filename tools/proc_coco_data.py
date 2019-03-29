@@ -109,7 +109,7 @@ def get_parser():
     # processing options
     parser.add_argument('--max-capt-len',
                         type=int,
-                        default=48,
+                        default=64,
                         help='Maximum length of caption vector'
                         )
     # output file options

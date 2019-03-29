@@ -33,7 +33,7 @@ def get_lr_finder(trainer, find_type='CaptionLogFinder'):
         lr_select_method = GLOBAL_OPTS['lr_select_method'],
         num_epochs     = GLOBAL_OPTS['find_num_epochs'],
         explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
+        print_every    = GLOBAL_OPTS['print_every']
     )
 
     return lr_finder
