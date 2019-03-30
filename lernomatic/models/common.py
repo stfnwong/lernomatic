@@ -50,7 +50,7 @@ class LernomaticModel(object):
             raise ValueError('No network set in module %s' % repr(self))
         return self.net
 
-    def get_model_state_dict(self) -> dict:
+    def get_net_state_dict(self) -> dict:
         if self.net is None:
             raise ValueError('No network set in module %s' % repr(self))
         return self.net.state_dict()
@@ -88,3 +88,14 @@ class LernomaticModel(object):
         if self.net is None:
             raise ValueError('No network set in module %s' % repr(self))
         return self.net(X)
+
+    # Load the model component directly from a checkpoint
+    def load_checkpoint(self, fname, model_key='model'):
+        checkpoint_data = torch.load(fname)
+        model_params = dict()
+        model_params.update({'model_state_dict' : checkpoint_data[model_key]['model_state_dict']})
+        model_params.update({'model_name' : checkpoint_data[model_key]['mode_name']})
+        model_params.update({'model_import_path' : checkpoint_data[model_key]['model_import_path']})
+        model_params.update({'module_name' : checkpoint_data[model_key]['module_name']})
+        model_params.update({'module_import_path' : checkpoint_data[model_key]['module_import_path']})
+        self.set_params(model_params)
