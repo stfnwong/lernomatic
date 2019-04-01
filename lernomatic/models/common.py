@@ -139,9 +139,10 @@ class LernomaticModel(object):
         FREEZE
         Freeze all but the last layer of the module
         """
+        num_layers = self.get_num_layers()
         for l, param in enumerate(self.net.parameters()):
             param.requires_grad = False
-            if l == len(self.net.parameters()):
+            if l == num_layers-1:
                 break
 
     def freeze_all(self) -> None:

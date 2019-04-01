@@ -448,17 +448,11 @@ class Trainer(object):
         # Load optimizer
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint_data['optim'])
-        # set device
-        if self.device_map is not None:
-            if self.device_map < 0:
-                device = torch.device('cpu')
-            else:
-                device = torch.device('cuda:%d' % self.device_map)
-            # transfer optimizer
-            for state in self.optimizer.state.values():
-                for k, v in state.items():
-                    if isinstance(v, torch.Tensor):
-                        state[k] = v.to(device)
+        # Transfer all the tensors to the current device
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
 
         # restore trainer object info
         self.set_trainer_params(checkpoint_data['trainer_params'])
