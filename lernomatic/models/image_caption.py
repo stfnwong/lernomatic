@@ -7,6 +7,7 @@ Stefan Wong 2018
 
 import torch
 import torchvision
+import importlib
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from lernomatic.models import common
@@ -85,8 +86,8 @@ class DecoderAtten(common.LernomaticModel):
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
         self.net = mod()
-        self.net.load_state_dict(params['model_state_dict'])
         self.net.set_params(params['atten_params'])
+        #self.net.load_state_dict(params['model_state_dict'])
 
 
 class AttentionNet(common.LernomaticModel):
@@ -261,13 +262,14 @@ class DecoderAttenModule(nn.Module):
 
     def get_params(self) -> dict:
         params = dict()
-        params['enc_dim'] = self.enc_dim
-        params['dec_dim'] = self.dec_dim
-        params['embed_dim'] = self.embed_dim
-        params['atten_dim'] = self.atten_dim
+        params['enc_dim']    = self.enc_dim
+        params['dec_dim']    = self.dec_dim
+        params['embed_dim']  = self.embed_dim
+        params['atten_dim']  = self.atten_dim
         params['vocab_size'] = self.vocab_size
-        params['dropout'] = self.dropout
-        params['verbose'] = self.verbose
+        params['dropout']    = self.dropout
+        params['verbose']    = self.verbose
+        params['atten_net_dict'] = self.atten_net.state_dict()
 
         return params
 
@@ -280,6 +282,8 @@ class DecoderAttenModule(nn.Module):
         self.dropout = params['dropout']
         self.verbose = params['verbose']
         self._init_network()
+        # load the attention network parameters
+        self.atten_net.load_state_dict(params['atten_net_dict'])
 
     def load_pretrained_embeddings(self, embeddings) -> None:
         """

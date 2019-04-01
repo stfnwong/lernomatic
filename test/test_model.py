@@ -94,6 +94,7 @@ class TestModel(unittest.TestCase):
             self.assertEqual(v, dst_params[k])
 
         # Check the torch module params
+        print('Checking encoder module parameters...')
         src_model_params = src_model.get_net_state_dict()
         dst_model_params = dst_model.get_net_state_dict()
         print('Comparing models')

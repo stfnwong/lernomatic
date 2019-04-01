@@ -7,6 +7,7 @@ Stefan Wong 2019
 
 import time
 import torch
+import importlib
 import torch.nn.functional as F
 import numpy as np
 from torch.nn.utils.rnn import pack_padded_sequence
@@ -382,7 +383,7 @@ class ImageCaptTrainer(trainer.Trainer):
         self.acc_history[self.acc_iter] = bleu4
         self.acc_iter += 1
 
-        print('[TEST]  : Avg. Test Loss : %.4f, BLEU-4 : (%.4f)' %\
+        print('[TEST]  : Avg. Test Loss : %.4f, BLEU : (%.4f)' %\
               (avg_test_loss, bleu4)
         )
 
@@ -432,9 +433,6 @@ class ImageCaptTrainer(trainer.Trainer):
             step = 1
             max_step = 50
             while step < max_step:
-
-                # TODO : some of these need to  be updated to account for new
-                # model arch
                 embeddings = self.decoder.embedding(k_prev_words).squeeze(1)        # (s, embed_dim)
                 awe, _ = self.decoder.attention(enc_out, h)                         # attention-weighted embeddings
                 gate = self.decoder.sigmoid(self.decoder.f_beta(h))                 # gating scalar (s, enc_dim)
@@ -535,35 +533,40 @@ class ImageCaptTrainer(trainer.Trainer):
     def load_checkpoint(self, fname: str) -> None:
         checkpoint = torch.load(fname)
         self.set_trainer_params(checkpoint['trainer_state'])
-        # set meta data
+
+        # Create the model objects and load parameters
+        enc_model_path = checkpoint['encoder']['model_import_path']
+        imp = importlib.import_module(enc_model_path)
+        mod = getattr(imp, checkpoint['encoder']['model_name'])
+        self.encoder = mod()
         self.encoder.set_params(checkpoint['encoder'])
+
+        dec_model_path = checkpoint['decoder']['model_import_path']
+        imp = importlib.import_module(dec_model_path)
+        mod = getattr(imp, checkpoint['decoder']['model_name'])
+        self.decoder = mod()
         self.decoder.set_params(checkpoint['decoder'])
         # load weights from checkpoint
         self._init_optimizer()
         self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
         self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
 
-        if self.device_map is not None:
-            if self.device_map < 0:
-                device = torch.device('cpu')
-            else:
-                device = torch.device('cuda:%d' % self.device_map)
-            # transfer decoder optimizer
-            if self.decoder_optim is not None:
-                for state in self.decoder_optim.state.values():
-                    for k, v in state.items():
-                        if isinstance(v, torch.Tensor):
-                            state[k] = v.to(device)
-            # trasfer encoder optimizer
-            if self.encoder_optim is not None:
-                for state in self.encoder_optim.state.values():
-                    for k, v in state.items():
-                        if isinstance(v, torch.Tensor):
-                            state[k] = v.to(device)
-            self.device = self.device_map
+        # transfer decoder optimizer
+        if self.decoder_optim is not None:
+            for state in self.decoder_optim.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.to(self.device)
+        # transfer encoder optimizer
+        if self.encoder_optim is not None:
+            for state in self.encoder_optim.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.to(self.device)
+
         self._init_device()
         self._init_dataloaders()
-        self.send_to_device()
+        self._send_to_device()
 
     def save_history(self, fname):
         history = dict()

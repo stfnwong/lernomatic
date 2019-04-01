@@ -16,7 +16,7 @@ from lernomatic.train import cifar_trainer
 from lernomatic.infer import inferrer
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
