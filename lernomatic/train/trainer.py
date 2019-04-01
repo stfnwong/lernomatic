@@ -10,6 +10,7 @@ import torch
 from torch import nn
 import numpy as np
 from lernomatic.train import schedule
+from lernomatic.models import common
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -38,6 +39,7 @@ class Trainer(object):
         # checkpoint options
         self.checkpoint_dir  :str   = kwargs.pop('checkpoint_dir', 'checkpoint')
         self.checkpoint_name :str   = kwargs.pop('checkpoint_name', 'ck')
+        self.save_hist       :bool  = kwargs.pop('save_hist', True)
         # Internal options
         self.verbose         :float = kwargs.pop('verbose', True)
         self.print_every     :int   = kwargs.pop('print_every', 10)
@@ -161,6 +163,9 @@ class Trainer(object):
         raise NotImplementedError
 
     # ======== getters, setters
+    def get_model(self) -> common.LernomaticModel:
+        return self.model
+
     def get_model_params(self) -> dict:
         if self.model is None:
             return None
@@ -341,10 +346,11 @@ class Trainer(object):
                 self.test_epoch()
 
             # save history at the end of each epoch
-            hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
-            if self.verbose:
-                print('\t Saving history to file [%s] ' % str(hist_name))
-            self.save_history(hist_name)
+            if self.save_hist:
+                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
+                if self.verbose:
+                    print('\t Saving history to file [%s] ' % str(hist_name))
+                self.save_history(hist_name)
 
             # check we have reached the required accuracy and can stop early
             if self.stop_when_acc > 0.0 and self.test_loader is not None:

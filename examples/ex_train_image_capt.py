@@ -170,8 +170,6 @@ def main() -> None:
         trainer.set_lr_scheduler(scheduler)
     else:
         lr_finder = None
-        #enc_scheduler = get_scheduler(enc_lr_min, enc_lr_max, GLOBAL_OPTS['sched_type'])
-        #dec_scheduler = get_scheduler(dec_lr_min, dec_lr_max, GLOBAL_OPTS['sched_type'])
         enc_scheduler = get_scheduler(1e-6, GLOBAL_OPTS['enc_lr'], 'DecayWhenAcc')
         dec_scheduler = get_scheduler(1e-6, GLOBAL_OPTS['dec_lr'], 'DecayWhenAcc')
         if GLOBAL_OPTS['verbose']:
@@ -196,12 +194,12 @@ def get_parser():
                         )
     parser.add_argument('--print-every',
                         type=int,
-                        default=100,
+                        default=50,
                         help='Print output every N epochs'
                         )
     parser.add_argument('--save-every',
                         type=int,
-                        default=1000,
+                        default=-1,
                         help='Save model checkpoint every N epochs'
                         )
     parser.add_argument('--num-workers',
@@ -247,16 +245,7 @@ def get_parser():
                         default=False,
                         help='Use the learing rate finder to select a learning rate'
                         )
-    parser.add_argument('--lr-select-method',
-                        type=str,
-                        default='max_acc',
-                        help='Heuristic to use when selecting lr ranges (default: max_acc)'
-                        )
-    #parser.add_argument('--find-only',
-    #                    action='store_true',
-    #                    default=False,
-    #                    help='Perform the learning rate search then exit'
-    #                    )
+
     parser.add_argument('--enc-lr',
                         type=float,
                         default=1e-4,
@@ -266,21 +255,6 @@ def get_parser():
                         type=float,
                         default=4e-4,
                         help='Learning rate for decoder'
-                        )
-    parser.add_argument('--capt-per-img',
-                        type=int,
-                        default=4,
-                        help='Number of captions to use per image'
-                        )
-    parser.add_argument('--min-word-freq',
-                        type=int,
-                        default=5,
-                        help='Minimum number of times a word should appear in vocab to be included'
-                        )
-    parser.add_argument('--max-len',
-                        type=int,
-                        default=100,
-                        help='Maximum length allowable for a sentence vector'
                         )
     parser.add_argument('--alpha-c',
                         type=float,
@@ -334,10 +308,10 @@ def get_parser():
                         help='Scheduler to use during training (default: None)'
                         )
     # finder options
-    parser.add_argument('--find-print-every',
-                        type=int,
-                        default=20,
-                        help='How often to print output from learning rate finder'
+    parser.add_argument('--lr-select-method',
+                        type=str,
+                        default='max_acc',
+                        help='Heuristic to use when selecting lr ranges (default: max_acc)'
                         )
     parser.add_argument('--find-num-epochs',
                         type=int,

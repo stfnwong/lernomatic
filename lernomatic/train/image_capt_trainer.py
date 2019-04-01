@@ -246,28 +246,10 @@ class ImageCaptTrainer(trainer.Trainer):
             # forward pass
             imgs = self.encoder.forward(imgs)
             scores, caps_sorted, decode_lengths, alphas,  sort_ind = self.decoder.forward(imgs, caps, caplens)
-            # TODO (remove after debug) : cache shapes here
-            shape_dict = {'scores' : scores.shape, 'caps_sorted' : caps_sorted.shape}
             # remove the <start> token from the output captions
             targets = caps_sorted[:, 1:]
-            shape_dict.update({'targets' : targets.shape})
-            # remove timesteps that are pads or that we didn't do any decoding
-            # for
             scores_packed  = pack_padded_sequence(scores,  decode_lengths, batch_first=True)
             targets_packed = pack_padded_sequence(targets, decode_lengths, batch_first=True)
-
-            shape_dict.update(
-                {'padded_scores' : scores_packed[0].shape,
-                 'padded_targets' : targets_packed[0].shape
-                }
-            )
-
-            # Try this hack (TODO: why does the shape of scores occasionally
-            # vary?)
-            if scores_packed[0].shape[0] != targets_packed[0].shape[0]:
-                print('batch [%d] shapes (%d decode lengths)' % (n, len(decode_lengths)))
-                for k, v in shape_dict.items():
-                    print('\t%s : %s' % (str(k), str(v)))
 
             # compute loss
             loss = self.criterion(scores_packed[0], targets_packed[0])

@@ -17,21 +17,7 @@ from lernomatic.util import caption as caption_utils
 #from pudb import set_trace; set_trace()
 
 
-
 # ======== LERNOMATIC MODELS ======== #
-
-class COCOEncoder(common.LernomaticModel):
-    def __init__(self, encoder: common.LernomaticModel, vocab_size: int, **kwargs) -> None:
-        self.net = COCOEncoderModule(encoder, vocab_size, **kwargs)
-        self.model_name = 'COCOEncoder'
-        self.module_name = 'COCOEncoderModule'
-        self.import_path = 'lernomatic.models.image_caption'
-        self.module_import_path = 'lernomatic.models.image_caption'
-
-    def __repr__(self) -> str:
-        return 'COCOEncoder'
-
-
 class DecoderAtten(common.LernomaticModel):
     def __init__(self,
                  atten_dim: int = 1,
@@ -55,11 +41,29 @@ class DecoderAtten(common.LernomaticModel):
     def send_to(self, device:torch.device) -> None:
         self.net.send_to_device(device)
 
-    def embedding(self, X) -> torch.Tensor:
+    def embedding(self, X: torch.Tensor) -> torch.Tensor:
         return self.net.embedding(X)
+
+    def attention(self, X: torch.Tensor, hidden_state) -> torch.Tensor:
+        return self.net.atten_net(X, hidden_state)
+
+    def sigmoid(self, X:torch.Tensor) -> torch.Tensor:
+        return self.net.sigmoid(X)
+
+    def linear(self, X:torch.Tensor) -> torch.Tensor:
+        return self.net.fc(X)
 
     def forward(self, enc_feature, enc_capt, capt_lengths):
         return self.net(enc_feature, enc_capt, capt_lengths)
+
+    def init_hidden_state(self, X:torch.Tensor) -> tuple:
+        return self.net.init_hidden_state(X)
+
+    def f_beta(self, X:torch.Tensor) -> torch.Tensor:
+        return self.net.f_beta(X)
+
+    def decode_step(self, X:torch.Tensor) -> torch.Tensor:
+        return self.net.decode_step(X)
 
     def get_params(self) -> dict:
         params = {
@@ -141,39 +145,6 @@ class Encoder(common.LernomaticModel):
 
 
 # ======== MODULES ======== #
-class COCOEncoderModule(nn.Module):
-    def __init__(self, encoder, vocab_size, **kwargs) -> None:
-        self.embed_size     = kwargs.pop('embed_size', 255)
-        self.rnn_size       = kwargs.pop('rnn_size', 256)
-        self.num_rnn_layers = kwargs.pop('num_rnn_layers', 2)
-        self.share_weights  = kwargs.pop('share_weights', False)
-        super(COCOEncoderModule, self).__init__()
-
-        # components
-        self.encoder = encoder
-        self.encoder.fc = nn.Linear(self.encoder.fc.in_features, self.embed_size)
-        self.rnn = nn.LSTM(self.embed_size, self.rnn_size, num_layers=self.num_rnn_layers)
-        self.classifier = nn.Linear(self.rnn_size, vocab_size)
-        self.embedder = nn.Embedding(vocab_size, self.embed_size)
-
-        if self.share_weights:
-            self.embedder.weights = self.classifier.weights
-
-    def forward(self, imgs, captions, caplens) -> tuple:
-        embeddings        = self.embedder(captions)
-        enc_img           = self.encoder(imgs).unsqueeze(0)
-        embeddings        = torch.cat([enc_img, embeddings], 0)
-        packed_embeddings = pack_padded_sequence(embeddings, caplens)
-        features, state   = self.rnn(packed_embeddings)
-        pred              = self.classifier(features[0])
-
-        return pred, state
-
-
-    def generate(self, img, scale_size=256, crop_size=224):
-        pass
-
-
 class AttentionNetModule(nn.Module):
     def __init__(self, enc_dim=1, dec_dim=1, atten_dim=1) -> None:
         """
