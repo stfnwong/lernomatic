@@ -23,115 +23,163 @@ GLOBAL_OPTS = dict()
 VALID_SPLITS = ('all', 'train', 'test', 'val')
 
 
-# TODO : for imagenet we actually want to handle the three splits in three
-# different ways.
-# For the train split, we get label information from the folder names
-# For the val split we get label information from an extra file
-# For the test split we don't have any label information, so the resulting HDF5
-# file should just have images
-#
-# Therefore the obvious thing to do is refactor so that the generation of the
-# split and the processing are seperated.
+def prepare_train(split_path:str,
+                   split_name:str,
+                   max_elem:int) -> data_split.DataSplit:
+    """
+    prepare_train
+    Create a DataSplit object holding information from the Imagenet train split
+    """
+    split_data = data_split.DataSplit(split_name=split_name)
+    imagenet_label_folders = os.listdir(GLOBAL_OPTS['dataset_root'] + split_path)
+
+    print('Found %d folders in path [%s]' % (len(imagenet_label_folders), str(GLOBAL_OPTS['dataset_root'] + split_path)))
+    if len(imagenet_label_folders) != 1000:
+        raise ValueError('Expected 1000 class folders in imagenet, got %d folders' %\
+                        len(imagenet_label_folders)
+        )
 
 
+    folder_map = dict()
+    total = 0
+    for n, folder in enumerate(imagenet_label_folders):
+        folder_map[folder] = os.listdir(GLOBAL_OPTS['dataset_root'] + split_path + folder)
+        print('Processing folder [%d / %d] (%d items) ' %\
+            (n, len(imagenet_label_folders), len(folder_map[folder])), end='\r'
+        )
+        total += len(folder_map[folder])
+
+    print('\nFound %d items total' % total)
+
+    # Randomly shuffle data into datasplit object
+    idx_map    = dict()         # randomly permute the indexs
+    label_dims = dict()         # number of items for label k
+    label_ptr  = dict()         # points to current index of label k
+    for k, v in folder_map.items():
+        idx_map[k] = np.random.permutation(range(len(v)))
+        label_dims[k] = len(v)
+        label_ptr[k] = 0
+
+    # generate label map
+    label_map = OrderedDict()
+    n = 0
+    for k in folder_map.keys():
+        label_map[k] = n
+        n += 1
+
+    # cycle over the keys, iterate over each label until we run out of data
+    num_elem = 0
+    while num_elem < total:
+        for k in folder_map.keys():
+            if label_ptr[k] < label_dims[k]:
+                path = GLOBAL_OPTS['dataset_root'] + split_path + str(k) + '/' +  str(folder_map[k][idx_map[k][label_ptr[k]]])
+                label = str(k[1:] + '-' + str(k[0]))
+                label_ptr[k] += 1
+                split_data.add_path(path)
+                split_data.add_label(label_map[k])
+                split_data.add_id(np.string_(label))
+                num_elem += 1
+                print('Added element [%d / %d] with label [%s] (%d of %d total)' %\
+                    (label_ptr[k], label_dims[k], str(k), num_elem, total),
+                    end='\r'
+                )
+            if max_elem > 0 and num_elem >= max_elem:
+                print('\n split <%s> Stopping at element %d' % (split_data.split_name, max_elem))
+                num_elem = 2 * total + 1        # quit out of while loop
+                break
+
+    print('\n Split <%s> now contains %d elements' % (split_data.split_name, len(split_data)))
+    return split_data
 
 
-def prepare_split(split_path:str,
+def prepare_test(split_path:str,
+                  split_name:str,
+                  max_elem:int) -> data_split.DataSplit:
+    split_data = data_split.DataSplit(split_name=split_name)
+    """
+    prepare_test
+    Create a DataSplit object holding information from the Imagenet test split
+    """
+
+    file_list = os.listdir(GLOBAL_OPTS['dataset_root'] + split_path)
+    print('Found %d files in folder [%s]' % (len(file_list), str(GLOBAL_OPTS['dataset_root'] + split_path)))
+
+    for n, f in enumerate(file_list):
+        print('Adding element [%d / %d] to split <%s>' %\
+                (n, len(file_list), split_data.split_name), end='\r'
+        )
+        path = GLOBAL_OPTS['dataset_root'] + split_path + str(f)
+        item_id = np.string_(str(n))
+        split_data.add_path(path)
+        split_data.add_id(item_id)
+        if max_elem > 0 and n >= max_elem:
+            print('\n split <%s> Stopping at element %d' % (split_data.split_name, max_elem))
+            break
+
+    print('\n Split <%s> now contains %d elements' % (split_data.split_name, len(split_data)))
+    return split_data
+
+
+def prepare_val(split_path:str,
                   split_name:str,
                   max_elem:int = 0,
                   label_file:str=None) -> data_split.DataSplit:
+    """
+    prepare_val
+    Create a DataSplit object holding information from the Imagenet validation split
+    """
     split_data = data_split.DataSplit(split_name=split_name)
-    # get labels from file
-    if label_file is not None:
-        label_list = []
-        with open(label_file, 'r') as fp:
-            for line in fp:
-                label_list.append(line.strip())
+    label_list = []
+    with open(label_file, 'r') as fp:
+        for line in fp:
+            label_list.append(line.strip())
 
-        file_list = os.listdir(GLOBAL_OPTS['dataset_root'] + split_path)
-        print('Found %d files in folder [%s]' % (len(file_list), str(GLOBAL_OPTS['dataset_root'] + split_path)))
+    file_list = os.listdir(GLOBAL_OPTS['dataset_root'] + split_path)
+    print('Found %d files in folder [%s]' % (len(file_list), str(GLOBAL_OPTS['dataset_root'] + split_path)))
 
-        if len(label_list) != len(file_list):
-            raise ValueError('Number of labels (%d) does not match number of files (%d)' %\
-                             (len(label_list), len(file_list))
-            )
+    if max_elem == 0 and (len(label_list) != len(file_list)):
+        raise ValueError('Number of labels (%d) does not match number of files (%d)' %\
+                            (len(label_list), len(file_list))
+        )
 
-        # Now add the data to the split
-        for n, (label, fname) in enumerate(zip(label_list, file_list)):
-            print('Adding element [%d / %d] <%d> to split <%s>' %\
-                  (n, len(label_list), int(label), split_data.split_name), end='\r'
-            )
-            if max_elem > 0 and n >= max_elem:
-                print('\t Stopping at element %d' % max_elem)
-                break
-            path = GLOBAL_OPTS['dataset_root'] + split_path + str(fname)
-            label = int(label)
-            item_id = np.string_(str(label))
-            split_data.add_path(path)
-            split_data.add_label(label)
-            split_data.add_id(item_id)
-
-    # get labels from folder names
-    else:
-        imagenet_label_folders = os.listdir(GLOBAL_OPTS['dataset_root'] + split_path)
-        if len(imagenet_label_folders) != 1000:
-            raise ValueError('Expected 1000 class folders in imagenet, got %d folders' %\
-                            len(imagenet_label_folders)
-            )
-
-        print('Found %d folders in path [%s]' % (len(imagenet_label_folders), str(GLOBAL_OPTS['dataset_root'])))
-
-        folder_map = dict()
-        total = 0
-        for n, folder in enumerate(imagenet_label_folders):
-            folder_map[folder] = os.listdir(GLOBAL_OPTS['dataset_root'] + split_path + folder)
-            print('Processing folder [%d / %d] (%d items) ' %\
-                (n, len(imagenet_label_folders), len(folder_map[folder])), end='\r'
-            )
-            total += len(folder_map[folder])
-
-        print('\nFound %d items total' % total)
-
-        # Randomly shuffle data into datasplit object
-        idx_map    = dict()         # randomly permute the indexs
-        label_dims = dict()         # number of items for label k
-        label_ptr  = dict()         # points to current index of label k
-        for k, v in folder_map.items():
-            idx_map[k] = np.random.permutation(range(len(v)))
-            label_dims[k] = len(v)
-            label_ptr[k] = 0
-
-        # generate label map
-        label_map = OrderedDict()
-        n = 0
-        for k in folder_map.keys():
-            label_map[k] = n
-            n += 1
-
-        # cycle over the keys, iterate over each label until we run out of data
-        num_elem = 0
-        while num_elem < total:
-            for k in folder_map.keys():
-                if label_ptr[k] < label_dims[k]:
-                    path = GLOBAL_OPTS['dataset_root'] + split_path + str(k) + '/' +  str(folder_map[k][idx_map[k][label_ptr[k]]])
-                    label = str(k[1:] + '-' + str(k[0]))
-                    label_ptr[k] += 1
-                    split_data.add_path(path)
-                    split_data.add_label(label_map[k])
-                    split_data.add_id(np.string_(label))
-                    num_elem += 1
-                    print('Added element [%d / %d] with label [%s] (%d of %d total)' %\
-                        (label_ptr[k], label_dims[k], str(k), num_elem, total),
-                        end='\r'
-                    )
-                if max_elem > 0 and num_elem >= max_elem:
-                    print('\n split <%s> Stopping at element %d' % (split_data.split_name, max_elem))
-                    num_elem = 2 * total + 1        # quit out of while loop
-                    break
+    # Now add the data to the split
+    for n, (label, fname) in enumerate(zip(label_list, file_list)):
+        print('Adding element [%d / %d] <%d> to split <%s>' %\
+                (n, len(label_list), int(label), split_data.split_name), end='\r'
+        )
+        if max_elem > 0 and n >= max_elem:
+            print('\t Stopping at element %d' % max_elem)
+            break
+        path = GLOBAL_OPTS['dataset_root'] + split_path + str(fname)
+        label = int(label)
+        item_id = np.string_(str(label))
+        split_data.add_path(path)
+        split_data.add_label(label)
+        split_data.add_id(item_id)
 
     print('\n Split <%s> now contains %d elements' % (split_data.split_name, len(split_data)))
-
     return split_data
+
+
+def prepare_split(split_path:str,
+                  split_id:str,
+                  split_name:str,
+                  max_elem:int = 0,
+                  label_file:str=None) -> data_split.DataSplit:
+    """
+    prepare_split
+    Prepare one of the three Imagenet splits
+    """
+
+    if split_id == 'train':
+        return prepare_train(split_path, split_name, max_elem)
+    elif split_id == 'test':
+        return prepare_test(split_path, split_name, max_elem)
+    elif split_id == 'val':
+        return prepare_val(split_path, split_name, max_elem, label_file)
+    else:
+        raise ValueError('Invalid split %s' % str(split_id))
+
 
 def proc_split(
     split_data : data_split.DataSplit,
@@ -163,17 +211,17 @@ def proc() -> None:
         split_name = 'imagenet_' + str(split)
         print('Processing split [%d / %d] (%s)' % (n, len(splits), split_name))
         if split == 'val':
-            split_data = prepare_split(
-                path,
-                split_name,
-                GLOBAL_OPTS['max_elem'],
-                GLOBAL_OPTS['val_label_path'])
+            val_label_path = GLOBAL_OPTS['val_label_path']
         else:
-            split_data = prepare_split(
-                path,
-                split_name,
-                GLOBAL_OPTS['max_elem']
-            )
+            val_label_path = None
+
+        # generate the DataSplit object
+        split_data = prepare_split(
+            path,
+            str(split),
+            split_name,
+            max_elem=GLOBAL_OPTS['max_elem'],
+            label_file=GLOBAL_OPTS['val_label_path'])
 
         proc_split(split_data, h5_name)
 
