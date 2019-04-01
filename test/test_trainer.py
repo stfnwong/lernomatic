@@ -12,39 +12,58 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import torchvision
 # data split stuff
 #from sklearn.model_selection import test_train_split
 # unit under test
-from lernomatic.train import trainer
+from lernomatic.train import cifar_trainer
+# we use a CIFAR-10 model for testing the trainer
+from lernomatic.models import cifar
+# vis tools
+from lernomatic.vis import vis_loss_history
 
 # debug
 #from pudb import set_trace; set_trace()
 
+
 GLOBAL_OPTS = dict()
 
-class TestDCASETrainer(unittest.TestCase):
+def get_figure_subplots(num_subplots=2):
+    fig = plt.figure()
+    ax = []
+    for p in range(num_subplots):
+        sub_ax = fig.add_subplot(num_subplots, 1, (p+1))
+        ax.append(sub_ax)
+
+    return fig, ax
+
+
+class TestTrainer(unittest.TestCase):
     def setUp(self):
-        self.verbose         = GLOBAL_OPTS['verbose']
-        self.draw_plot       = GLOBAL_OPTS['draw_plot']
-        self.test_batch_size = 16
+        self.verbose          = GLOBAL_OPTS['verbose']
+        self.draw_plot        = GLOBAL_OPTS['draw_plot']
+        self.test_batch_size  = 16
+        self.test_num_workers = 2
+        self.test_num_epochs  = 2
+        self.shuffle          = True
+        self.data_dir         = 'data/'
 
     def test_save_load_checkpoint(self):
-        print('======== TestDCASETrainer.test_save_load_checkpoint ')
+        print('======== TestTrainer.test_save_load_checkpoint ')
 
-        test_dataset_file = 'hdf5/trainer_unit_test.h5'
-        model = dcase2018.DCASENet()
+        test_checkpoint = 'checkpoint/trainer_test_save_load.pkl'
 
+        # get a model
+        model = cifar.CIFAR10Net()
+        # get a trainer
         test_num_epochs = 1
-        src_tr = trainer.DCASETrainer(
+        src_tr = cifar_trainer.CIFAR10Trainer(
             model,
             num_epochs = test_num_epochs,
-            save_every = 1,
+            save_every = 0,
             device_id = GLOBAL_OPTS['device_id'],
-            # dataload options
-            checkpoint_name = 'save_load_test',
-            train_data_path = test_dataset_file,
-            batch_size = 16,
-            num_workers = GLOBAL_OPTS['num_workers']
+            batch_size = self.test_batch_size,
+            num_workers = self.test_num_workers
         )
 
         if self.verbose:
@@ -53,13 +72,14 @@ class TestDCASETrainer(unittest.TestCase):
 
         # train for one epoch
         src_tr.train()
+        src_tr.save_checkpoint(test_checkpoint)
         # Make a new trainer and load all parameters into that
         # I guess we need to put some kind of loader and model here...
-        dst_tr = trainer.DCASETrainer(
+        dst_tr = cifar_trainer.CIFAR10Trainer(
             model,
             device_id = GLOBAL_OPTS['device_id']
         )
-        dst_tr.load_checkpoint('checkpoint/save_load_test_epoch-0.pkl')
+        dst_tr.load_checkpoint(test_checkpoint)
 
         # Test object parameters
         self.assertEqual(src_tr.num_epochs, dst_tr.num_epochs)
@@ -84,6 +104,9 @@ class TestDCASETrainer(unittest.TestCase):
         print('\n ...done')
 
         # Test loss history
+        test_loss_history = 'test_save_load_history.pkl'
+        src_tr.save_history(test_loss_history)
+        dst_tr.load_history(test_loss_history)
         print('\t Comparing loss history....')
         self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
         for n in range(src_tr.loss_iter):
@@ -92,29 +115,25 @@ class TestDCASETrainer(unittest.TestCase):
 
         print('\n ...done')
 
-        print('======== TestDCASETrainer.test_save_load_checkpoint <END>')
+        print('======== TestTrainer.test_save_load_checkpoint <END>')
 
     def test_save_load_acc(self):
-        print('======== TestDCASETrainer.test_save_load_acc ')
+        print('======== TestTrainer.test_save_load_acc ')
 
-        test_dataset_file = 'hdf5/trainer_unit_test.h5'
-        val_dataset_file = 'hdf5/warblr_data.h5'
-        model = dcase2018.DCASENet()
+        test_checkpoint = 'checkpoint/trainer_test_save_load_acc.pkl'
 
+        model = cifar.CIFAR10Net()
         # Get trainer object
         test_num_epochs = 10
-        src_tr = trainer.DCASETrainer(
+        src_tr = cifar_trainer.CIFAR10Trainer(
             model,
-            save_every = 1,
+            save_every = 0,
             print_every = 50,
-            checkpoint_name = 'save_load_test',
             device_id = GLOBAL_OPTS['device_id'],
             # loader options,
-            num_epochs = test_num_epochs,
-            batch_size = GLOBAL_OPTS['batch_size'],
-            num_workers = GLOBAL_OPTS['num_workers'],
-            train_data_path = test_dataset_file,
-            val_data_path = val_dataset_file,
+            num_epochs = self.test_num_epochs,
+            batch_size = self.test_batch_size,
+            num_workers = self.test_num_workers,
         )
 
         if self.verbose:
@@ -123,19 +142,19 @@ class TestDCASETrainer(unittest.TestCase):
 
         # train for one epoch
         src_tr.train()
+        src_tr.save_checkpoint(test_checkpoint)
         self.assertIsNot(None, src_tr.acc_history)
 
         # Now try to load a checkpoint and ensure that there is an
         # acc history attribute that is not None
-        # TODO : check that we restore the loaders  as well
-        dst_tr = trainer.DCASETrainer(
+        dst_tr = cifar_trainer.CIFAR10Trainer(
             model,
-            device_id = GLOBAL_OPTS['device_id']        # TODO : not in checkpoint data...
+            device_id = GLOBAL_OPTS['device_id'],
+            verbose = self.verbose
         )
-        ck_fname = 'checkpoint/save_load_test_epoch-%d.pkl' % (test_num_epochs-1)
-        dst_tr.load_checkpoint(ck_fname)
-        #dst_tr.load_checkpoint('checkpoint/save_load_test_epoch-%d.pkl' % test_num_epochs-1)
-        self.assertIsNot(None, dst_tr.acc_history)
+        dst_tr.load_checkpoint(test_checkpoint)
+        # TODO : history is a seperate file, update unit test
+        #self.assertIsNot(None, dst_tr.acc_history)
 
         # Test object parameters
         self.assertEqual(src_tr.num_epochs, dst_tr.num_epochs)
@@ -165,14 +184,114 @@ class TestDCASETrainer(unittest.TestCase):
         print('\n ...done')
 
         # Test loss history
-        print('\t Comparing loss history....')
-        self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
-        for n in range(src_tr.loss_iter):
-            print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
-            self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
+        #print('\t Comparing loss history....')
+        #self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
+        #for n in range(src_tr.loss_iter):
+        #    print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
+        #    self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
 
-        print('======== TestDCASETrainer.test_save_load_acc <END>')
+        print('======== TestTrainer.test_save_load_acc <END>')
 
+    def test_train(self):
+        print('======== TestTrainer.test_train ')
+
+        test_checkpoint = 'checkpoint/trainer_train_test.pkl'
+        model = cifar.CIFAR10Net()
+        # Get trainer object
+        test_num_epochs = 10
+        trainer = cifar_trainer.CIFAR10Trainer(
+            model,
+            save_every = 0,
+            print_every = 50,
+            device_id = GLOBAL_OPTS['device_id'],
+            # loader options,
+            num_epochs = 10,
+            learning_rate = 3e-4,
+            batch_size = 128,
+            num_workers = self.test_num_workers,
+        )
+
+        if self.verbose:
+            print('Created trainer object')
+            print(trainer)
+
+        # train for one epoch
+        trainer.train()
+        trainer.save_checkpoint(test_checkpoint)
+
+        fig, ax = get_figure_subplots()
+        vis_loss_history.plot_train_history_2subplots(
+            ax,
+            trainer.loss_history,
+            acc_history = trainer.acc_history,
+            cur_epoch = trainer.cur_epoch,
+            iter_per_epoch = trainer.iter_per_epoch,
+            loss_title = 'CIFAR-10 Trainer Test loss',
+            acc_title = 'CIFAR-10 Trainer Test accuracy'
+        )
+        fig.savefig('figures/trainer_train_test_history.png', bbox_inches='tight')
+
+        print('======== TestTrainer.test_train <END>')
+
+    def test_history_extend(self):
+        print('======== TestTrainer.test_history_extend ')
+
+        test_checkpoint = 'checkpoint/test_history_extend.pkl'
+        test_history = 'checkpoint/test_history_extend_history.pkl'
+        test_num_epochs = 4
+        model = cifar.CIFAR10Net()
+        # Get trainer object
+        test_num_epochs = 10
+        trainer = cifar_trainer.CIFAR10Trainer(
+            model,
+            save_every = 0,
+            print_every = 50,
+            device_id = GLOBAL_OPTS['device_id'],
+            # loader options,
+            num_epochs = test_num_epochs,
+            learning_rate = 3e-4,
+            batch_size = 64,
+            num_workers = self.test_num_workers,
+        )
+        print('Training original model')
+        trainer.train()
+        trainer.save_checkpoint(test_checkpoint)
+        trainer.save_history(test_history)
+
+        # Load a new trainer, train for another 10 epochs (20 total)
+        extend_trainer = cifar_trainer.CIFAR10Trainer(
+            model,
+            save_every = 0,
+            print_every = 50,
+            device_id = GLOBAL_OPTS['device_id'],
+            # loader options,
+            num_epochs = 10,
+            learning_rate = 3e-4,
+            batch_size = 64,
+            num_workers = self.test_num_workers,
+        )
+        print('Loading checkpoint [%s] into extend trainer...' % str(test_checkpoint))
+        extend_trainer.load_checkpoint(test_checkpoint)
+        print('Loading history [%s] into extend trainer...' % str(test_history))
+        extend_trainer.load_history(test_history)
+        # Check history before extending
+        self.assertEqual(trainer.device_id, extend_trainer.device_id)
+        print('extend_trainer device : %s' % str(extend_trainer.device))
+        self.assertEqual(test_num_epochs, extend_trainer.num_epochs)
+        self.assertEqual(10, extend_trainer.cur_epoch)
+        self.assertIsNot(None, extend_trainer.loss_history)
+        self.assertEqual(10 * len(extend_trainer.train_loader), len(extend_trainer.loss_history))
+
+        # TODO : issue here with tensors not being on the correct device
+        extend_trainer.set_num_epochs(20)
+        self.assertEqual(20 * len(extend_trainer.train_loader), len(extend_trainer.loss_history))
+        for i in range(10 * len(extend_trainer.train_loader)):
+            print('Checking loss iter [%d / %d]' % (i, 20 * len(extend_trainer.train_loader)), end='\r')
+            self.assertEqual(trainer.loss_history[i], extend_trainer.loss_history[i])
+
+        extend_trainer.train()
+
+        print('======== TestTrainer.test_history_extend <END>')
 
 
 # Entry point

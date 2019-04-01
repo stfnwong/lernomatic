@@ -18,6 +18,7 @@ from lernomatic.models import common
 
 # TODO : detach model loading from trainer so that models can be attached,
 # detached, re-attached, etc.
+# TODO : automatically expand history if checkpoint is loaded
 class Trainer(object):
     """
     Trainer
@@ -96,6 +97,8 @@ class Trainer(object):
         return ''.join(s)
 
     def _init_optimizer(self) -> None:
+        # TODO : is it better to only pass model parameters that have
+        # requires_grad = True?
         if self.model is not None:
             if hasattr(torch.optim, self.optim_function):
                 self.optimizer = getattr(torch.optim, self.optim_function)(
@@ -161,6 +164,37 @@ class Trainer(object):
 
     def load_checkpoint(self, fname: str) -> None:
         raise NotImplementedError
+
+    def set_num_epochs(self, num_epochs:int) -> None:
+        if num_epochs > self.num_epochs:
+            # resize history
+            temp_loss_history = np.copy(self.loss_history)
+            if self.test_loss_history is not None:
+                temp_test_loss_history = np.copy(self.test_loss_history)
+            if self.acc_history is not None:
+                temp_acc_history = np.copy(self.acc_history)
+            temp_loss_iter = self.loss_iter
+            temp_test_loss_iter = self.test_loss_iter
+            temp_acc_iter = self.acc_iter
+            self.num_epochs = num_epochs
+            self._init_history()
+            # restore old history
+            self.loss_history[:len(temp_loss_history)] = temp_loss_history
+            if self.test_loss_history is not None:
+                self.test_loss_history[:len(temp_test_loss_history)] = temp_test_loss_history
+            if self.acc_history is not None:
+                self.acc_history[:len(temp_acc_history)] = temp_acc_history
+            self.loss_iter = temp_loss_iter
+            self.test_loss_iter = temp_test_loss_iter
+            self.acc_iter = temp_acc_iter
+        else:
+            self.num_epochs = num_epochs
+
+    def get_num_epochs(self) -> int:
+        return self.num_epochs
+
+    def get_cur_epoch(self) -> int:
+        return self.cur_epoch
 
     # ======== getters, setters
     def get_model(self) -> common.LernomaticModel:
@@ -398,6 +432,9 @@ class Trainer(object):
         torch.save(checkpoint_data, fname)
 
     def load_checkpoint(self, fname: str) -> None:
+        """
+        Load all data from a checkpoint
+        """
         checkpoint_data = torch.load(fname)
         # here we just load the object that derives from LernomaticModel. That
         # object will in turn load the actual nn.Module data from the
@@ -411,20 +448,27 @@ class Trainer(object):
         # Load optimizer
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint_data['optim'])
-        # set device
-        if self.device_map is not None:
-            if self.device_map < 0:
-                device = torch.device('cpu')
-            else:
-                device = torch.device('cuda:%d' % self.device_map)
-            # transfer optimizer
-            for state in self.optimizer.state.values():
-                for k, v in state.items():
-                    if isinstance(v, torch.Tensor):
-                        state[k] = v.to(device)
+        # Transfer all the tensors to the current device
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
 
         # restore trainer object info
         self.set_trainer_params(checkpoint_data['trainer_params'])
+        self._send_to_device()
+
+    def load_model_checkpoint(self, fname:str) -> None:
+        """
+        Load only the model component of a checkpoint. Trainer parameters
+        are not affected
+        """
+        checkpoint_data = torch.load(fname)
+        model_import_path = checkpoint_data['model']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['model']['model_name'])
+        self.model = mod()
+        self.model.set_params(checkpoint_data['model'])
         self._send_to_device()
 
     # Trainer parameters

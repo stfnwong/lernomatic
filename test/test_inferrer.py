@@ -32,13 +32,14 @@ def get_trainer(model:common.LernomaticModel,
     trainer = cifar_trainer.CIFAR10Trainer(
         model,
         batch_size = batch_size,
+        test_batch_size = 1,
         device_id = GLOBAL_OPTS['device_id'],
         checkpoint_name = checkpoint_name,
         save_every = save_every,
         save_hist = False,
         print_every = 50,
         num_epochs = 4,
-        learning_rate = 8e-4
+        learning_rate = 9e-4
     )
 
     return trainer
@@ -65,15 +66,21 @@ class TestInferrer(unittest.TestCase):
         infer_model = infer.get_model()
         trainer_model = trainer.get_model()
 
+        # check model parameters
         train_model_params = trainer.model.get_net_state_dict()
         infer_model_params = infer.model.get_net_state_dict()
-
         print('Comparing models')
         for n, (p1, p2) in enumerate(zip(train_model_params.items(), infer_model_params.items())):
             self.assertEqual(p1[0], p2[0])
-            print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(train_model_params.items())), end='\r')
+            print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(train_model_params.items())))
             self.assertEqual(True, torch.equal(p1[1], p2[1]))
         print('\n ...done')
+
+        # run the forward pass
+        test_img, _ = next(iter(trainer.test_loader))
+        pred = infer.forward(test_img)
+        print('Complete prediction vector (shape: %s)' % (str(pred.shape)))
+        print(str(pred))
 
         print('======== TestInferrer.test_save_load <END>')
 
@@ -94,7 +101,7 @@ if __name__ == '__main__':
     parser.add_argument('--num-workers',
                         type=int,
                         default=1,
-                        help='Number of worker processes to use for HDF5 load'
+                        help='Number of worker processes to use for reading HDF5'
                         )
     parser.add_argument('--batch-size',
                         type=int,
