@@ -1,6 +1,6 @@
 """
-CIFAR10_TRAINERS
-Example trainer for CIFAR10 dataset
+CIFAR_TRAINER
+Trainers for use with torchvision CIFAR datasets
 
 Stefan Wong 2019
 """
@@ -190,3 +190,4 @@ class CIFAR100Trainer(trainer.Trainer):
         self.model.load_state_dict(checkpoint['model'])
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint['optimizer'])
+
