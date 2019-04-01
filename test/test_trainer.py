@@ -233,6 +233,66 @@ class TestTrainer(unittest.TestCase):
 
         print('======== TestTrainer.test_train <END>')
 
+    def test_history_extend(self):
+        print('======== TestTrainer.test_history_extend ')
+
+        test_checkpoint = 'checkpoint/test_history_extend.pkl'
+        test_history = 'checkpoint/test_history_extend_history.pkl'
+        test_num_epochs = 4
+        model = cifar.CIFAR10Net()
+        # Get trainer object
+        test_num_epochs = 10
+        trainer = cifar_trainer.CIFAR10Trainer(
+            model,
+            save_every = 0,
+            print_every = 50,
+            device_id = GLOBAL_OPTS['device_id'],
+            # loader options,
+            num_epochs = test_num_epochs,
+            learning_rate = 3e-4,
+            batch_size = 64,
+            num_workers = self.test_num_workers,
+        )
+        print('Training original model')
+        trainer.train()
+        trainer.save_checkpoint(test_checkpoint)
+        trainer.save_history(test_history)
+
+        # Load a new trainer, train for another 10 epochs (20 total)
+        extend_trainer = cifar_trainer.CIFAR10Trainer(
+            model,
+            save_every = 0,
+            print_every = 50,
+            device_id = GLOBAL_OPTS['device_id'],
+            # loader options,
+            num_epochs = 10,
+            learning_rate = 3e-4,
+            batch_size = 64,
+            num_workers = self.test_num_workers,
+        )
+        print('Loading checkpoint [%s] into extend trainer...' % str(test_checkpoint))
+        extend_trainer.load_checkpoint(test_checkpoint)
+        print('Loading history [%s] into extend trainer...' % str(test_history))
+        extend_trainer.load_history(test_history)
+        # Check history before extending
+        self.assertEqual(trainer.device_id, extend_trainer.device_id)
+        print('extend_trainer device : %s' % str(extend_trainer.device))
+        self.assertEqual(test_num_epochs, extend_trainer.num_epochs)
+        self.assertEqual(10, extend_trainer.cur_epoch)
+        self.assertIsNot(None, extend_trainer.loss_history)
+        self.assertEqual(10 * len(extend_trainer.train_loader), len(extend_trainer.loss_history))
+
+        # TODO : issue here with tensors not being on the correct device
+        extend_trainer.set_num_epochs(20)
+        self.assertEqual(20 * len(extend_trainer.train_loader), len(extend_trainer.loss_history))
+        for i in range(10 * len(extend_trainer.train_loader)):
+            print('Checking loss iter [%d / %d]' % (i, 20 * len(extend_trainer.train_loader)), end='\r')
+            self.assertEqual(trainer.loss_history[i], extend_trainer.loss_history[i])
+
+        extend_trainer.train()
+
+        print('======== TestTrainer.test_history_extend <END>')
+
 
 # Entry point
 if __name__ == '__main__':

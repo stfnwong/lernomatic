@@ -72,15 +72,15 @@ class TestInferrer(unittest.TestCase):
         print('Comparing models')
         for n, (p1, p2) in enumerate(zip(train_model_params.items(), infer_model_params.items())):
             self.assertEqual(p1[0], p2[0])
-            print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(train_model_params.items())), end='\r')
+            print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(train_model_params.items())))
             self.assertEqual(True, torch.equal(p1[1], p2[1]))
         print('\n ...done')
 
         # run the forward pass
         test_img, _ = next(iter(trainer.test_loader))
         pred = infer.forward(test_img)
+        print('Complete prediction vector (shape: %s)' % (str(pred.shape)))
         print(str(pred))
-        print(str(pred.shape))
 
         print('======== TestInferrer.test_save_load <END>')
 
@@ -101,7 +101,7 @@ if __name__ == '__main__':
     parser.add_argument('--num-workers',
                         type=int,
                         default=1,
-                        help='Number of worker processes to use for HDF5 load'
+                        help='Number of worker processes to use for reading HDF5'
                         )
     parser.add_argument('--batch-size',
                         type=int,

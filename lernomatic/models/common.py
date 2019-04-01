@@ -10,6 +10,15 @@ import importlib
 
 
 class LernomaticModel(object):
+    """
+    LERNOMATICMODEL
+    Base class for models in Lernomatic.
+
+    This object wraps a torch.nn.Module. Its main purpose is to provide a consistent
+    interface for loading checkpoints, model weights, and so on. This is done by
+    documenting the paths and names of class attributes and later instantiating them
+    with importlib.
+    """
     def __init__(self, **kwargs) -> None:
         self.net               : torch.nn.Module = None
         self.import_path       : str             = 'lernomatic.model.common'
@@ -21,7 +30,16 @@ class LernomaticModel(object):
         return 'LernomaticModel'
 
     def get_model_parameters(self) -> dict:
+        """
+        Returns torch model parameters (state_dict)
+        """
         return self.net.parameters()
+
+    def get_num_layers(self) -> int:
+        n = 0
+        for l, param in enumerate(self.net.parameters()):
+            n += 1
+        return n
 
     def get_params(self) -> dict:
         params = {
@@ -80,17 +98,70 @@ class LernomaticModel(object):
         self.net.state_dict(sd)
 
     def send_to(self, device : torch.device) -> None:
+        """
+        Send the inner module(s) to a given device
+        """
         if self.net is None:
             raise ValueError('No network set in module %s' % repr(self))
         self.net.to(device)
 
     def forward(self, X) -> torch.Tensor:
+        """
+        Wraps the forward pass of the inner module(s)
+        """
         if self.net is None:
             raise ValueError('No network set in module %s' % repr(self))
         return self.net(X)
 
+    # Layer freezing
+    def freeze_to(self, N:int) -> None:
+        """
+        FREEZE_TO
+        Freeze the first N layers of the model
+        """
+        for l, param in enumerate(self.net.parameters()):
+            param.requires_grad = False
+            if l >= N:
+                break
+
+    def unfreeze_to(self, N:int) -> None:
+        """
+        UNFREEZE_TO
+        Freeze the first N layers of the model
+        """
+        for l, param in enumerate(self.net.parameters()):
+            param.requires_grad = True
+            if l >= N:
+                break
+
+    def freeze(self) -> None:
+        """
+        FREEZE
+        Freeze all but the last layer of the module
+        """
+        for l, param in enumerate(self.net.parameters()):
+            param.requires_grad = False
+            if l == len(self.net.parameters()):
+                break
+
+    def freeze_all(self) -> None:
+        """
+        FREEZE
+        Freeze all layers including the last layer of the module
+        """
+        for l, param in enumerate(self.net.parameters()):
+            param.requires_grad = False
+
+    def unfreeze(self) -> None:
+        for l, param in enumerate(self.net.parameters()):
+            param.requires_grad = True
+
     # Load the model component directly from a checkpoint
     def load_checkpoint(self, fname, model_key='model'):
+        """
+        load_checkpoint
+        Load model information from a trainer checkpoint file
+        """
         checkpoint_data = torch.load(fname)
         model_params = dict()
         model_params.update({'model_state_dict' : checkpoint_data[model_key]['model_state_dict']})

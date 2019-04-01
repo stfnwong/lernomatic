@@ -6,6 +6,7 @@ Stefan Wong 2019
 """
 
 import torch
+import importlib
 from lernomatic.models import common
 
 # debug
@@ -56,5 +57,8 @@ class Inferrer(object):
         model_params.update({'module_import_path' : checkpoint_data[model_key]['module_import_path']})
         model_params.update({'model_state_dict' : checkpoint_data[model_key]['model_state_dict']})
 
+        imp = importlib.import_module(checkpoint_data[model_key]['model_import_path'])
+        mod = getattr(imp, checkpoint_data[model_key]['model_name'])
+        self.model = mod()
         self.model.set_params(model_params)
         self._send_to_device()
