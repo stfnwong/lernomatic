@@ -5,15 +5,20 @@ Module for training networks
 Stefan Wong 2018
 """
 
+import importlib
 import torch
 from torch import nn
 import numpy as np
 from lernomatic.train import schedule
+from lernomatic.models import common
 
 # debug
 #from pudb import set_trace; set_trace()
 
 
+# TODO : detach model loading from trainer so that models can be attached,
+# detached, re-attached, etc.
+# TODO : automatically expand history if checkpoint is loaded
 class Trainer(object):
     """
     Trainer
@@ -21,38 +26,42 @@ class Trainer(object):
     Base class for model trainers in lernomatic. Note that this is not
     an abstract class and can be instantiated.
     """
-    def __init__(self, model=None, **kwargs):
+    def __init__(self, model=None, **kwargs) -> None:
         self.model           = model
         # Training loop options
-        self.num_epochs      = kwargs.pop('num_epochs', 10)
-        self.learning_rate   = kwargs.pop('learning_rate', 1e-4)
-        self.momentum        = kwargs.pop('momentum', 0.5)
-        self.weight_decay    = kwargs.pop('weight_decay', 1e-5)
-        self.loss_function   = kwargs.pop('loss_function', 'CrossEntropyLoss')
-        self.optim_function  = kwargs.pop('optim_function', 'Adam')
-        self.cur_epoch       = 0
+        self.num_epochs      :int   = kwargs.pop('num_epochs', 10)
+        self.learning_rate   :float = kwargs.pop('learning_rate', 1e-4)
+        self.momentum        :float = kwargs.pop('momentum', 0.5)
+        self.weight_decay    :float = kwargs.pop('weight_decay', 1e-5)
+        self.loss_function   :str   = kwargs.pop('loss_function', 'CrossEntropyLoss')
+        self.optim_function  :str   = kwargs.pop('optim_function', 'Adam')
+        self.cur_epoch       :int   = 0
         # validation options
         # checkpoint options
-        self.checkpoint_dir  = kwargs.pop('checkpoint_dir', 'checkpoint')
-        self.checkpoint_name = kwargs.pop('checkpoint_name', 'ck')
+        self.checkpoint_dir  :str   = kwargs.pop('checkpoint_dir', 'checkpoint')
+        self.checkpoint_name :str   = kwargs.pop('checkpoint_name', 'ck')
+        self.save_hist       :bool  = kwargs.pop('save_hist', True)
         # Internal options
-        self.verbose         = kwargs.pop('verbose', True)
-        self.print_every     = kwargs.pop('print_every', 10)
-        self.save_every      = kwargs.pop('save_every', -1)  # unit is iterations, -1 = save every epoch
-        self.save_best       = kwargs.pop('save_best', False)
+        self.verbose         :float = kwargs.pop('verbose', True)
+        self.print_every     :int   = kwargs.pop('print_every', 10)
+        self.save_every      :float = kwargs.pop('save_every', -1)  # unit is iterations, -1 = save every epoch
+        self.save_best       :float = kwargs.pop('save_best', False)
         # Device options
-        self.device_id       = kwargs.pop('device_id', -1)
-        # dataset/loader options
-        self.batch_size      = kwargs.pop('batch_size', 64)
-        self.test_batch_size = kwargs.pop('test_batch_size', 0)
-        self.train_dataset   = kwargs.pop('train_dataset', None)
-        self.test_dataset    = kwargs.pop('test_dataset', None)
-        self.val_dataset     = kwargs.pop('val_dataset', None)
-        self.shuffle         = kwargs.pop('shuffle', True)
-        self.num_workers     = kwargs.pop('num_workers' , 1)
-        # parameter scheduling
-        self.lr_scheduler    = kwargs.pop('lr_scheduler', None)
-        self.mtm_scheduler   = kwargs.pop('mtm_scheduler', None)
+        self.device_id       :int   = kwargs.pop('device_id', -1)
+        self.device_map      :float = kwargs.pop('device_map', None)
+        # dataset/loader opti:float ons
+        self.batch_size      :int   = kwargs.pop('batch_size', 64)
+        self.test_batch_size :int   = kwargs.pop('test_batch_size', 0)
+        self.train_dataset          = kwargs.pop('train_dataset', None)
+        self.test_dataset           = kwargs.pop('test_dataset', None)
+        self.val_dataset            = kwargs.pop('val_dataset', None)
+        self.shuffle         :float = kwargs.pop('shuffle', True)
+        self.num_workers     :int   = kwargs.pop('num_workers' , 1)
+        # parameter schedulin:float g
+        self.lr_scheduler           = kwargs.pop('lr_scheduler', None)
+        self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
+        self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
+        self.early_stop      :dict  = kwargs.pop('early_stop', None)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
@@ -75,10 +84,10 @@ class Trainer(object):
 
         self._send_to_device()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Trainer (%d epochs)' % self.num_epochs
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = []
         s.append('Trainer :\n')
         param = self.get_trainer_params()
@@ -87,11 +96,13 @@ class Trainer(object):
 
         return ''.join(s)
 
-    def _init_optimizer(self):
+    def _init_optimizer(self) -> None:
+        # TODO : is it better to only pass model parameters that have
+        # requires_grad = True?
         if self.model is not None:
             if hasattr(torch.optim, self.optim_function):
                 self.optimizer = getattr(torch.optim, self.optim_function)(
-                    self.model.parameters(),
+                    self.model.get_model_parameters(),
                     lr = self.learning_rate,
                     weight_decay = self.weight_decay
                 )
@@ -107,7 +118,7 @@ class Trainer(object):
         else:
             raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
 
-    def _init_history(self):
+    def _init_history(self) -> None:
         self.loss_iter = 0
         self.test_loss_iter = 0
         self.acc_iter = 0
@@ -120,7 +131,7 @@ class Trainer(object):
             self.test_loss_history = None
             self.acc_history = None
 
-    def _init_dataloaders(self):
+    def _init_dataloaders(self) -> None:
         if self.train_dataset is None:
             self.train_loader = None
         else:
@@ -139,102 +150,97 @@ class Trainer(object):
                 shuffle    = self.shuffle
             )
 
-    def _init_device(self):
+    def _init_device(self) -> None:
         if self.device_id < 0:
             self.device = torch.device('cpu')
         else:
             self.device = torch.device('cuda:%d' % self.device_id)
 
-    def _send_to_device(self):
-        self.model = self.model.to(self.device)
+    def _send_to_device(self) -> None:
+        self.model.send_to(self.device)
 
-    def save_checkpoint(self, fname):
+    def save_checkpoint(self, fname: str) -> None:
         raise NotImplementedError
 
-    def load_checkpoint(self, fname):
+    def load_checkpoint(self, fname: str) -> None:
         raise NotImplementedError
+
+    def set_num_epochs(self, num_epochs:int) -> None:
+        if num_epochs > self.num_epochs:
+            # resize history
+            temp_loss_history = np.copy(self.loss_history)
+            if self.test_loss_history is not None:
+                temp_test_loss_history = np.copy(self.test_loss_history)
+            if self.acc_history is not None:
+                temp_acc_history = np.copy(self.acc_history)
+            temp_loss_iter = self.loss_iter
+            temp_test_loss_iter = self.test_loss_iter
+            temp_acc_iter = self.acc_iter
+            self.num_epochs = num_epochs
+            self._init_history()
+            # restore old history
+            self.loss_history[:len(temp_loss_history)] = temp_loss_history
+            if self.test_loss_history is not None:
+                self.test_loss_history[:len(temp_test_loss_history)] = temp_test_loss_history
+            if self.acc_history is not None:
+                self.acc_history[:len(temp_acc_history)] = temp_acc_history
+            self.loss_iter = temp_loss_iter
+            self.test_loss_iter = temp_test_loss_iter
+            self.acc_iter = temp_acc_iter
+        else:
+            self.num_epochs = num_epochs
+
+    def get_num_epochs(self) -> int:
+        return self.num_epochs
+
+    def get_cur_epoch(self) -> int:
+        return self.cur_epoch
 
     # ======== getters, setters
-    def get_trainer_params(self):
-        params = dict()
-        params['num_epochs']      = self.num_epochs
-        params['learning_rate']   = self.learning_rate
-        params['momentum']        = self.momentum
-        params['weight_decay']    = self.weight_decay
-        params['loss_function']   = self.loss_function
-        params['optim_function']  = self.optim_function
-        params['cur_epoch']       = self.cur_epoch
-        params['iter_per_epoch']  = self.iter_per_epoch
-        params['device_id']       = self.device_id
-        # also get print, save params
-        params['save_every']      = self.save_every
-        params['print_every']     = self.print_every
-        # dataloader params (to regenerate data loader)
-        params['batch_size']      = self.batch_size
-        params['shuffle']         = self.shuffle
+    def get_model(self) -> common.LernomaticModel:
+        return self.model
 
-        return params
-
-    def set_trainer_params(self, params):
-        self.num_epochs      = params['num_epochs']
-        self.learning_rate   = params['learning_rate']
-        self.momentum        = params['momentum']
-        self.weigh_decay     = params['weight_decay']
-        self.loss_function   = params['loss_function']
-        self.optim_function  = params['optim_function']
-        self.cur_epoch       = params['cur_epoch']
-        self.iter_per_epoch  = params['iter_per_epoch']
-        self.save_every      = params['save_every']
-        self.print_every     = params['print_every']
-        self.device_id       = params['device_id']
-        # dataloader params
-        self.batch_size      = params['batch_size']
-        self.shuffle         = params['shuffle']
-
-        self._init_device()
-        self._init_dataloaders()
-
-    def get_model_params(self):
+    def get_model_params(self) -> dict:
         if self.model is None:
             return None
-        return self.model.state_dict()
+        return self.model.get_net_state_dict()
 
     # common getters/setters
-    def get_learning_rate(self):
+    def get_learning_rate(self) -> float:
         return self.optimizer.param_groups[0]['lr']
 
-    def set_learning_rate(self, lr, param_zero=True):
+    def set_learning_rate(self, lr: float, param_zero:bool=True) -> None:
         if param_zero:
             self.optimizer.param_groups[0]['lr'] = lr
         else:
             for g in self.optimizer.param_groups:
                 g['lr'] = lr
 
-    def get_momentum(self):
+    def get_momentum(self) -> float:
         optim_state = self.optimizer.state_dict()
         if 'momentum' in optim_state:
             return optim_state['momentum']
         return None
 
-    def set_momentum(self, momentum):
+    def set_momentum(self, momentum: float) -> None:
         optim_state = self.optimizer.state_dict()
         if 'momentum' in optim_state:
             for g in self.optimizer.param_groups:
                 g['momentum'] = momentum
 
-    def set_lr_scheduler(self, lr_scheduler):
+    def set_lr_scheduler(self, lr_scheduler: schedule.LRScheduler) -> None:
         self.lr_scheduler = lr_scheduler
 
-    def get_lr_scheduler(self):
+    def get_lr_scheduler(self) -> schedule.LRScheduler:
         return self.lr_scheduler
 
-    def set_mtm_scheduler(self, mtm_scheduler):
+    def set_mtm_scheduler(self, mtm_scheduler) -> None:
         self.mtm_scheduler = mtm_scheduler
 
-    def get_mtm_scheduler(self):
+    def get_mtm_scheduler(self) -> schedule.LRScheduler:
         return self.mtm_scheduler
 
-    def apply_lr_schedule(self):
+    def apply_lr_schedule(self) -> None:
         if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
             new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
         elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or isinstance(self.lr_scheduler, schedule.DecayWhenEpoch):
@@ -246,7 +252,7 @@ class Trainer(object):
         self.set_learning_rate(new_lr)
 
     # Layer freeze / unfreeze
-    def freeze_to(self, layer_num):
+    def freeze_to(self, layer_num: int) -> None:
         """
         Freeze layers in model from the start of the network forwards
         """
@@ -255,7 +261,7 @@ class Trainer(object):
             if n >= layer_num:
                 break
 
-    def unfreeze_to(self, layer_num):
+    def unfreeze_to(self, layer_num: int) -> None:
         """
         Unfreeze layers in model from the start of the network forwards
         """
@@ -265,12 +271,12 @@ class Trainer(object):
                 break
 
     # Basic training/test routines. Specialize these when needed
-    def train_epoch(self):
+    def train_epoch(self) -> None:
         """
         TRAIN_EPOCH
         Perform training on the model for a single epoch of the dataset
         """
-        self.model.train()
+        self.model.set_train()
         # training loop
         for n, (data, target) in enumerate(self.train_loader):
             # move data
@@ -278,7 +284,7 @@ class Trainer(object):
             target = target.to(self.device)
 
             # optimization
-            output = self.model(data)
+            output = self.model.forward(data)
             loss   = self.criterion(output, target)
             self.optimizer.zero_grad()
             loss.backward()
@@ -311,12 +317,12 @@ class Trainer(object):
                 new_mtm = self.mtm_scheduler.get_mtm(self.loss_iter)
                 self.set_momentum(new_mtm)
 
-    def test_epoch(self):
+    def test_epoch(self) -> None:
         """
         TEST_EPOCH
         Run a single epoch on the test dataset
         """
-        self.model.eval()
+        self.model.set_eval()
         test_loss = 0.0
         correct = 0
 
@@ -325,7 +331,7 @@ class Trainer(object):
             labels = labels.to(self.device)
 
             with torch.no_grad():
-                output = self.model(data)
+                output = self.model.forward(data)
             loss = self.criterion(output, labels)
             test_loss += loss.item()
 
@@ -359,7 +365,7 @@ class Trainer(object):
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
-    def train(self):
+    def train(self) -> None:
         """
         TRAIN
         Standard training routine
@@ -374,26 +380,135 @@ class Trainer(object):
                 self.test_epoch()
 
             # save history at the end of each epoch
-            hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
-            if self.verbose:
-                print('\t Saving history to file [%s] ' % str(hist_name))
-            self.save_history(hist_name)
+            if self.save_hist:
+                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
+                if self.verbose:
+                    print('\t Saving history to file [%s] ' % str(hist_name))
+                self.save_history(hist_name)
+
+            # check we have reached the required accuracy and can stop early
+            if self.stop_when_acc > 0.0 and self.test_loader is not None:
+                if self.roc_auc_history[self.acc_iter] >= self.stop_when_acc:
+                    return
+
+            # check if we need to perform early stopping
+            if self.early_stop is not None:
+                if self.cur_epoch > self.early_stop['num_epochs']:
+                    acc_then = self.acc_history[self.acc_iter - self.early_stop['num_epochs']]
+                    acc_now  = self.acc_history[self.acc_iter]
+                    acc_delta = acc_now - acc_then
+                    if acc_delta < self.early_stop['improv']:
+                        if self.verbose:
+                            print('[%s] Stopping early at epoch %d' % (repr(self), self.cur_epoch))
+                        return
 
             self.cur_epoch += 1
 
     # history getters - these provide the history up to the current iteration
-    def get_loss_history(self):
+    def get_loss_history(self) -> np.ndarray:
         if self.loss_iter == 0:
             return None
         return self.loss_history[0 : self.loss_iter]
 
-    def get_test_loss_history(self):
+    def get_test_loss_history(self) -> np.ndarray:
         if self.test_loss_iter == 0:
             return None
         return self.test_loss_history[0 : self.test_loss_iter]
 
-    def get_acc_history(self):
+    def get_acc_history(self) -> np.ndarray:
         if self.acc_iter == 0:
             return None
         return self.acc_history[0 : self.acc_iter]
 
+    # model checkpoints
+    def save_checkpoint(self, fname : str) -> None:
+        if self.verbose:
+            print('\t Saving checkpoint (epoch %d) to [%s]' % (self.cur_epoch, fname))
+        checkpoint_data = {
+            'model' : self.model.get_params(),
+            'optim' : self.optimizer.state_dict(),
+            'trainer_params' : self.get_trainer_params(),
+        }
+        torch.save(checkpoint_data, fname)
+
+    def load_checkpoint(self, fname: str) -> None:
+        """
+        Load all data from a checkpoint
+        """
+        checkpoint_data = torch.load(fname)
+        # here we just load the object that derives from LernomaticModel. That
+        # object will in turn load the actual nn.Module data from the
+        # checkpoint data with the 'model' key
+        model_import_path = checkpoint_data['model']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['model']['model_name'])
+        self.model = mod()
+        self.model.set_params(checkpoint_data['model'])
+
+        # Load optimizer
+        self._init_optimizer()
+        self.optimizer.load_state_dict(checkpoint_data['optim'])
+        # Transfer all the tensors to the current device
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        # restore trainer object info
+        self.set_trainer_params(checkpoint_data['trainer_params'])
+        self._send_to_device()
+
+    def load_model_checkpoint(self, fname:str) -> None:
+        """
+        Load only the model component of a checkpoint. Trainer parameters
+        are not affected
+        """
+        checkpoint_data = torch.load(fname)
+        model_import_path = checkpoint_data['model']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['model']['model_name'])
+        self.model = mod()
+        self.model.set_params(checkpoint_data['model'])
+        self._send_to_device()
+
+    # Trainer parameters
+    def get_trainer_params(self) -> dict:
+        params = dict()
+        params['num_epochs']      = self.num_epochs
+        params['learning_rate']   = self.learning_rate
+        params['momentum']        = self.momentum
+        params['weight_decay']    = self.weight_decay
+        params['loss_function']   = self.loss_function
+        params['optim_function']  = self.optim_function
+        params['cur_epoch']       = self.cur_epoch
+        params['iter_per_epoch']  = self.iter_per_epoch
+        params['device_id']       = self.device_id
+        # also get print, save params
+        params['save_every']      = self.save_every
+        params['print_every']     = self.print_every
+        # dataloader params (to regenerate data loader)
+        params['batch_size']      = self.batch_size
+        params['test_batch_size'] = self.test_batch_size
+        params['shuffle']         = self.shuffle
+
+        return params
+
+    def set_trainer_params(self, params: dict) -> None:
+        self.num_epochs      = params['num_epochs']
+        self.learning_rate   = params['learning_rate']
+        self.momentum        = params['momentum']
+        self.weigh_decay     = params['weight_decay']
+        self.loss_function   = params['loss_function']
+        self.optim_function  = params['optim_function']
+        self.cur_epoch       = params['cur_epoch']
+        self.iter_per_epoch  = params['iter_per_epoch']
+        self.save_every      = params['save_every']
+        self.print_every     = params['print_every']
+        self.device_id       = params['device_id']
+        # dataloader params
+        self.batch_size      = params['batch_size']
+        self.test_batch_size = params['test_batch_size']
+        self.shuffle         = params['shuffle']
+
+        self._init_device()
+        self._init_dataloaders()
