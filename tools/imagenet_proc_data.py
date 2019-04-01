@@ -23,8 +23,23 @@ GLOBAL_OPTS = dict()
 VALID_SPLITS = ('all', 'train', 'test', 'val')
 
 
-def proc_split(split_path:str, split_outfile_name:str, split_name:str, label_file:str=None) -> None:
+# TODO : for imagenet we actually want to handle the three splits in three
+# different ways.
+# For the train split, we get label information from the folder names
+# For the val split we get label information from an extra file
+# For the test split we don't have any label information, so the resulting HDF5
+# file should just have images
+#
+# Therefore the obvious thing to do is refactor so that the generation of the
+# split and the processing are seperated.
 
+
+
+
+def prepare_split(split_path:str,
+                  split_name:str,
+                  max_elem:int = 0,
+                  label_file:str=None) -> data_split.DataSplit:
     split_data = data_split.DataSplit(split_name=split_name)
     # get labels from file
     if label_file is not None:
@@ -46,6 +61,9 @@ def proc_split(split_path:str, split_outfile_name:str, split_name:str, label_fil
             print('Adding element [%d / %d] <%d> to split <%s>' %\
                   (n, len(label_list), int(label), split_data.split_name), end='\r'
             )
+            if max_elem > 0 and n >= max_elem:
+                print('\t Stopping at element %d' % max_elem)
+                break
             path = GLOBAL_OPTS['dataset_root'] + split_path + str(fname)
             label = int(label)
             item_id = np.string_(str(label))
@@ -106,13 +124,24 @@ def proc_split(split_path:str, split_outfile_name:str, split_name:str, label_fil
                         (label_ptr[k], label_dims[k], str(k), num_elem, total),
                         end='\r'
                     )
+                if max_elem > 0 and num_elem >= max_elem:
+                    print('\n split <%s> Stopping at element %d' % (split_data.split_name, max_elem))
+                    num_elem = 2 * total + 1        # quit out of while loop
+                    break
 
     print('\n Split <%s> now contains %d elements' % (split_data.split_name, len(split_data)))
+
+    return split_data
+
+def proc_split(
+    split_data : data_split.DataSplit,
+    split_outfile_name:str,
+    image_shape:tuple = (3, 256,256)) -> None:
 
     # Get an image processor to process images
     processor = image_proc.ImageDataProc(
         image_dataset_name = GLOBAL_OPTS['image_dataset_name'],
-        image_dataset_size = (3, 256, 256),
+        image_dataset_size = image_shape,
         label_dataset_name = GLOBAL_OPTS['label_dataset_name'],
         label_dataset_size = len(split_data.elem_ids[0]),
         id_dtype = 'S10',
@@ -134,9 +163,19 @@ def proc() -> None:
         split_name = 'imagenet_' + str(split)
         print('Processing split [%d / %d] (%s)' % (n, len(splits), split_name))
         if split == 'val':
-            proc_split(path, h5_name, split_name, GLOBAL_OPTS['val_label_path'])
+            split_data = prepare_split(
+                path,
+                split_name,
+                GLOBAL_OPTS['max_elem'],
+                GLOBAL_OPTS['val_label_path'])
         else:
-            proc_split(path, h5_name, split_name)
+            split_data = prepare_split(
+                path,
+                split_name,
+                GLOBAL_OPTS['max_elem']
+            )
+
+        proc_split(split_data, h5_name)
 
 
 def arg_parser() -> argparse.ArgumentParser:
@@ -160,6 +199,11 @@ def arg_parser() -> argparse.ArgumentParser:
                         type=str,
                         default=None,
                         help='Path to validation data'
+                        )
+    parser.add_argument('--max-elem',
+                        type=int,
+                        default=0,
+                        help='Maximum number of elements to place into split. 0 places all (default: 0)'
                         )
 
     # Dataset options
@@ -191,7 +235,7 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t%s : %s' % (str(k), str(v)))
 
 
     proc()

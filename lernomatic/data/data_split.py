@@ -20,6 +20,8 @@ class DataSplit(object):
         self.elem_ids    = list()
         self.split_name  = split_name
         self.idx         = 0
+        self.has_labels = False
+        self.has_ids    = False
 
     def __len__(self):
         return len(self.data_paths)
@@ -38,8 +40,14 @@ class DataSplit(object):
         if self.idx >= len(self.data_paths):
             raise StopIteration
         path  = self.data_paths[self.idx]
-        elem_id = self.elem_ids[self.idx]
-        label = self.data_labels[self.idx]
+        if self.has_ids:
+            elem_id = self.elem_ids[self.idx]
+        else:
+            elem_id = Nonec
+        if self.has_labels:
+            label = self.data_labels[self.idx]
+        else:
+            label = None
         self.idx += 1
 
         return (path, elem_id, label)
@@ -66,12 +74,16 @@ class DataSplit(object):
         self.data_paths.append(p)
 
     def add_label(self, l):
+        self.has_labels = True
         self.data_labels.append(l)
 
     def add_id(self, i):
+        self.has_ids = True
         self.elem_ids.append(i)
 
     def add_elem(self, p, i, l):
+        self.has_labels = True
+        self.has_ids = True
         self.data_paths.append(p)
         self.elem_ids.append(i)
         self.data_labels.append(l)
