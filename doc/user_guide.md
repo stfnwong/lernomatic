@@ -28,67 +28,64 @@ The basic trainer model in `lernomatic.train.trainer` has the following construc
 
 ```
 class Trainer(object):
-    def __init__(self, model: common.LernomaticModel, **kwargs) -> None:
-        self.model             : common.LernomaticModel = model
-        # Training loop options:
-        self.num_epochs        : int   = kwargs.pop('num_epochs', 10)
-        self.learning_rate     : float = kwargs.pop('learning_rate', 1e-4)
-        self.weight_decay      : float = kwargs.pop('weight_decay', 1e-5)
-        self.loss_function     : str   = kwargs.pop('loss_function', 'BCELoss')
-        self.optim_function    : str   = kwargs.pop('optim_function', 'Adam')
-        self.cur_epoch         : int   = 0
+    def __init__(self, model=None, **kwargs) -> None:
+        self.model           = model
+        # Training loop options
+        self.num_epochs      :int   = kwargs.pop('num_epochs', 10)
+        self.learning_rate   :float = kwargs.pop('learning_rate', 1e-4)
+        self.momentum        :float = kwargs.pop('momentum', 0.5)
+        self.weight_decay    :float = kwargs.pop('weight_decay', 1e-5)
+        self.loss_function   :str   = kwargs.pop('loss_function', 'CrossEntropyLoss')
+        self.optim_function  :str   = kwargs.pop('optim_function', 'Adam')
+        self.cur_epoch       :int   = 0
         # validation options
         # checkpoint options
-        self.checkpoint_dir    : str   = kwargs.pop('checkpoint_dir', '.')
-        self.checkpoint_prefix : str   = kwargs.pop('checkpoint_prefix', 'checkpoint')
-        self.checkpoint_name   : str   = kwargs.pop('checkpoint_name', 'ck')
+        self.checkpoint_dir  :str   = kwargs.pop('checkpoint_dir', 'checkpoint')
+        self.checkpoint_name :str   = kwargs.pop('checkpoint_name', 'ck')
+        self.save_hist       :bool  = kwargs.pop('save_hist', True)
         # Internal options
-        self.verbose           : bool  = kwargs.pop('verbose', True)
-        self.print_every       : int   = kwargs.pop('print_every', 10)
-        self.save_every        : int   = kwargs.pop('save_every', 1)
-        self.save_best         : bool  = kwargs.pop('save_best', False)
+        self.verbose         :float = kwargs.pop('verbose', True)
+        self.print_every     :int   = kwargs.pop('print_every', 10)
+        self.save_every      :float = kwargs.pop('save_every', -1)  # unit is iterations, -1 = save every epoch
+        self.save_best       :float = kwargs.pop('save_best', False)
         # Device options
-        self.device_id         : int   = kwargs.pop('device_id', -1)
-        self.device_map        : str   = kwargs.pop('device_map', None)
-        # dataset/loader option: s
-        self.batch_size        : int   = kwargs.pop('batch_size', 64)
-        self.test_batch_size   : int   = kwargs.pop('test_batch_size', 0)
-        self.train_dataset             = kwargs.pop('train_dataset', None)
-        self.test_dataset              = kwargs.pop('test_dataset', None)
-        self.val_dataset               = kwargs.pop('val_dataset', None)
-        self.num_workers       : int   = kwargs.pop('num_workers' , 1)
-        self.shuffle           : bool  = kwargs.pop('shuffle', True)
-        # schedulers
-        self.lr_scheduler              = kwargs.pop('lr_scheduler', None)
-
-        self.best_acc : float = 0.0
-        if self.save_every > 0:
-            self.save_best = True
+        self.device_id       :int   = kwargs.pop('device_id', -1)
+        self.device_map      :float = kwargs.pop('device_map', None)
+        # dataset/loader 
+        self.batch_size      :int   = kwargs.pop('batch_size', 64)
+        self.test_batch_size :int   = kwargs.pop('test_batch_size', 0)
+        self.train_dataset          = kwargs.pop('train_dataset', None)
+        self.test_dataset           = kwargs.pop('test_dataset', None)
+        self.val_dataset            = kwargs.pop('val_dataset', None)
+        self.shuffle         :float = kwargs.pop('shuffle', True)
+        self.num_workers     :int   = kwargs.pop('num_workers' , 1)
+        # parameter scheduling
+        self.lr_scheduler           = kwargs.pop('lr_scheduler', None)
+        self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
+        self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
+        self.early_stop      :dict  = kwargs.pop('early_stop', None)
 
         if self.test_batch_size == 0:
             self.test_batch_size = self.batch_size
+        self.best_acc = 0.0
+        if self.save_every > 0:
+            self.save_best = True
 
-        if self.model is not None:
-            if hasattr(torch.optim, self.optim_function):
-                self.optimizer = getattr(torch.optim, self.optim_function)(
-                    self.model.get_model_parameters(),
-                    lr = self.learning_rate,
-                    weight_decay = self.weight_decay
-                )
-            else:
-                raise ValueError('Cannot find optim function %s' % str(self.optim_function))
-        if hasattr(nn, self.loss_function):
-            loss_obj = getattr(nn, self.loss_function)
-            self.criterion = loss_obj()
-        else:
-            raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
-
+        # Setup optimizer. If we have no model then assume it will be
+        self._init_optimizer()
         # set up device
         self._init_device()
         # Init the internal dataloader options. If nothing provided assume that
         # we will load options in later (eg: from checkpoint)
         self._init_dataloaders()
-        self._init_history()
+        # Init the loss and accuracy history. If no train_loader is provided
+        # then we assume that one will be loaded later (eg: in some checkpoint
+        # data)
+        if self.train_loader is not None:
+            self._init_history()
+
+        self._send_to_device()
+
 ```
 
 Each trainer is expected to provide a `train()` method that trains the model. In the default implementation, sub routines are implemented for training and testing/validation. It is recommended that this approach be followed for trainers, however the only API requirement is that a `train()` method be exposed.
