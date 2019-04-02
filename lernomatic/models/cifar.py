@@ -8,11 +8,25 @@ Stefan Wong 2019
 import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
+from lernomatic.models import common
+
+
+class CIFAR10Net(common.LernomaticModel):
+    def __init__(self, **kwargs) -> None:
+        self.net = CIFAR10Module()        # Put **kwargs here if required
+        self.import_path = 'lernomatic.models.cifar'
+        self.model_name = 'CIFAR10Net'
+        self.module_name = 'CIFAR10Module'
+        self.module_import_path = 'lernomatic.models.cifar'
+
+    def __repr__(self) -> str:
+        return 'CIFAR10Net'
+
 
 # A really simple network for testing with CIFAR-10 dataset
-class CIFAR10Net(nn.Module):
+class CIFAR10Module(nn.Module):
   def __init__(self):
-    super(CIFAR10Net, self).__init__()
+    super(CIFAR10Module, self).__init__()
     self.conv1 = nn.Conv2d(3, 6, 5)
     self.pool = nn.MaxPool2d(2, 2)
     self.conv2 = nn.Conv2d(6, 16, 5)
@@ -31,7 +45,7 @@ class CIFAR10Net(nn.Module):
 
 
 # Try CIFAR100 with a pretrained resnet34
-class CIFAR100NetR34(nn.Module):
+class CIFAR100NetR34Module(nn.Module):
     def __init__(self, grad=False):
         self.net = torchvision.models.resnet56(pretrained=True)
         for param in self.net.parameters():

@@ -18,25 +18,27 @@ class LRFinder(object):
     LRFinder
     Finds optimal learning rates
     """
-    def __init__(self, trainer, **kwargs):
-        self.trainer = trainer
+    def __init__(self, trainer, **kwargs) -> None:
+        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range')
+        self.trainer        = trainer
         # learning params
-        self.num_epochs     = kwargs.pop('num_epochs', 8)
+        self.num_epochs       = kwargs.pop('num_epochs', 8)
         # lr params
-        self.lr_mult        = kwargs.pop('lr_mult', 0)
-        self.lr_min         = kwargs.pop('lr_min', 1e-6)
-        self.lr_max         = kwargs.pop('lr_max', 10)
-        self.explode_thresh = kwargs.pop('explode_thresh', 4.0)      # fast.ai uses 4 * min_smoothed_loss
-        self.beta           = kwargs.pop('beta', 0.999)
-        self.gamma          = kwargs.pop('gamma', 0.999995)
-        self.lr_min_factor  = kwargs.pop('lr_min_factor', 2.0)
-        self.lr_max_scale   = kwargs.pop('lr_max_scale', 1.0)
+        self.lr_mult          :float = kwargs.pop('lr_mult', 0)
+        self.lr_min           :float = kwargs.pop('lr_min', 1e-6)
+        self.lr_max           :float = kwargs.pop('lr_max', 10)
+        self.explode_thresh   :float = kwargs.pop('explode_thresh', 4.0)      # fast.ai uses 4 * min_smoothed_loss
+        self.beta             :float = kwargs.pop('beta', 0.999)
+        self.gamma            :float = kwargs.pop('gamma', 0.999995)
+        self.lr_min_factor    :float = kwargs.pop('lr_min_factor', 2.0)
+        self.lr_max_scale     :float = kwargs.pop('lr_max_scale', 1.0)
+        self.lr_select_method :str   = kwargs.pop('lr_select_method', 'max_acc')
         # gradient params
-        self.grad_thresh    = kwargs.pop('grad_thresh', 0.002)
+        self.grad_thresh      :float = kwargs.pop('grad_thresh', 0.002)
         # other
-        self.acc_test       = kwargs.pop('acc_test', True)
-        self.print_every    = kwargs.pop('print_every', 20)
-        self.verbose        = kwargs.pop('verbose', False)
+        self.acc_test         :bool  = kwargs.pop('acc_test', True)
+        self.print_every      :int   = kwargs.pop('print_every', 20)
+        self.verbose          :bool  = kwargs.pop('verbose', False)
 
         # trainer and model params
         self.model_params = None
@@ -44,81 +46,93 @@ class LRFinder(object):
         # loss params
         self.avg_loss = 0.0
         self.best_loss = 1e6
+        self.best_loss_idx = 0
+        # acc params
+        self.best_acc = 0.0
+        self.best_acc_idx = 0
         # learning rate params
         self.learning_rate = 0.0
 
         self._init_history()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'LRFinder'
 
-    def _print_find(self, epoch, batch_idx, loss):
+    def __str__(self) -> str:
+        s = []
+        s.append('%s (%.4f -> %.4f)\n' % (repr(self), self.lr_min, self.lr_max))
+        s.append('Method [%s]\n' % str(self.lr_select_method))
+        return ''.join(s)
+
+    def _print_find(self, epoch: int, batch_idx: int, loss: float) -> None:
         print('[FIND_LR] :  Epoch    iteration         loss    best loss (smooth)  lr')
         print('            [%d/%d]     [%6d/%6d]    %.6f     %.6f     %.6f' %\
             (epoch, self.num_epochs, batch_idx, len(self.trainer.train_loader),
             loss, self.best_loss, self.learning_rate)
         )
 
-    def _print_acc(self, avg_test_loss, correct, acc, dataset_size):
+    def _print_acc(self, avg_test_loss: float, correct: int, acc: float, dataset_size: int) -> None:
         print('[FIND_LR ACC]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
               (avg_test_loss, correct, dataset_size, 100.0 * acc)
         )
 
-    def _init_history(self):
+    def _init_history(self) -> None:
         self.smooth_loss_history = []
         self.log_lr_history = []
         self.acc_history = []
         self.loss_grad_history = []
 
-    def _calc_loss(self, batch_idx, loss):
+    def _calc_loss(self, batch_idx: int, loss: float) -> float:
         self.avg_loss = self.beta * self.avg_loss + (1.0 - self.beta) * loss
         smooth_loss = self.avg_loss / (1.0 - self.beta ** (batch_idx+1))
 
         return smooth_loss
 
-    def save_model_params(self, params):
+    def save_model_params(self, params: dict) -> None:
         self.model_params = copy.deepcopy(params)
 
-    def save_trainer_params(self, params):
+    def save_trainer_params(self, params: dict) -> None:
         self.trainer_params = copy.deepcopy(params)
 
-    def load_model_params(self):
+    def load_model_params(self) -> dict:
         return self.model_params
 
-    def load_trainer_params(self):
+    def load_trainer_params(self) -> dict:
         return self.trainer_params
 
-    def check_loaders(self):
+    def check_loaders(self) -> None:
         if self.trainer.train_loader is None:
             raise ValueError('No train_loader in trainer')
         if self.trainer.test_loader is None:
             raise ValueError('No test_loader in trainer')
 
-    def get_lr_history(self):
+    def get_lr_history(self) -> list:
         if len(self.log_lr_history) < 1:
             return None
         return self.log_lr_history
 
-    def find(self):
+    def find(self) -> tuple:
         raise NotImplementedError('This method should be implemented in subclass')
 
-    def get_lr_range(self):
-        # TODO : this heuristic is not very good.
-        # compute suitable range values and return
-        lr_max = self.log_lr_history[-3] * self.lr_max_scale
-        lr_min = lr_max * self.lr_min_factor
-
-        # should we just invert the history curve and compute the derivative
-        # (ie: compute the derivative in the left-facing direction), and use
-        # that to choose the minimum?
-        #
-        # This might work well enough on a resnet, but not sure how well it
-        # will do on other networks.
+    def get_lr_range(self) -> tuple:
+        if self.lr_select_method == 'max_acc':
+            lr_max = self.log_lr_history[self.best_acc_idx] * self.lr_max_scale
+            lr_min = lr_max * self.lr_min_factor
+        elif self.lr_select_method == 'min_loss':
+            lr_max = self.log_lr_history[self.best_loss_idx] * self.lr_max_scale
+            lr_min = lr_max * self.lr_min_factor
+        elif self.lr_select_method == 'max_range':
+            lr_max = self.log_lr_history[-1] * self.lr_max_scale
+            lr_min = lr_max * self.lr_min_factor
+        elif self.lr_select_method == 'min_range':
+            raise NotImplementedError('TODO : min_range method')
+        else:
+            raise ValueError('Invalid range selection method [%s]' % str(self.lr_select_method))
 
         return (10 ** lr_min, 10**lr_max)
 
     # plotting
-    def plot_lr_vs_acc(self, ax, title=None, log=False):
+    def plot_lr_vs_acc(self, ax, title:str=None, log:bool=False) -> None:
         if len(self.log_lr_history) < 1:
             raise RuntimeError('[%s] no learning rate history' % repr(self))
         if len(self.acc_history) < 1:
@@ -144,9 +158,9 @@ class LRFinder(object):
         if title is not None:
             ax.set_title(title)
         else:
-            ax.set_title('Accuracy vs. Learning rate')
+            ax.set_title('Accuracy vs. Learning rate [%s]' % str(self.lr_select_method))
 
-    def plot_lr_vs_loss(self, ax, title=None, log=False):
+    def plot_lr_vs_loss(self, ax, title:str=None, log:bool=False) -> None:
         if len(self.log_lr_history) < 1:
             raise ValueError('[%s] no learning rate history' % repr(self))
         if len(self.acc_history) < 1:
@@ -172,7 +186,7 @@ class LRFinder(object):
         if title is not None:
             ax.set_title(title)
         else:
-            ax.set_title('Learning rate vs. Loss')
+            ax.set_title('Learning rate vs. Loss [%s]' % str(self.lr_select_method))
 
 
 # ======== Finder schedules ========  #
@@ -180,18 +194,18 @@ class LogFinder(LRFinder):
     """
     Implements logarithmic learning rate search
     """
-    def __init__(self, trainer, **kwargs):
+    def __init__(self, trainer, **kwargs) -> dict:
         super(LogFinder, self).__init__(trainer, **kwargs)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'LogFinder'
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = []
         s.append('LogFinder. lr range [%f -> %f]\n' % (self.lr_min, self.lr_max))
         return ''.join(s)
 
-    def find(self):
+    def find(self) -> tuple:
         """
         find_lr()
         Search for an optimal learning rate
@@ -213,12 +227,12 @@ class LogFinder(LRFinder):
         explode = False
         for epoch in range(self.num_epochs):
             for batch_idx, (data, labels) in enumerate(self.trainer.train_loader):
-                self.trainer.model.train()
+                self.trainer.model.set_train()
                 data = data.to(self.trainer.device)
                 labels = labels.to(self.trainer.device)
 
                 self.trainer.optimizer.zero_grad()
-                outputs = self.trainer.model(data)
+                outputs = self.trainer.model.forward(data)
                 loss = self.trainer.criterion(outputs, labels)
 
                 #smooth_loss = self._calc_loss(batch_idx, loss.item())
@@ -235,6 +249,7 @@ class LogFinder(LRFinder):
                 # save loss
                 if smooth_loss < self.best_loss:
                     self.best_loss = smooth_loss
+                    self.best_loss_idx = len(self.log_lr_history)
 
                 # display
                 if batch_idx % self.print_every == 0:
@@ -246,6 +261,10 @@ class LogFinder(LRFinder):
                         self.acc(self.trainer.test_loader, batch_idx)
                     else:
                         self.acc(self.trainer.train_loader, batch_idx)
+                    # keep a record of the best acc
+                    if self.acc_history[-1] > self.best_acc:
+                        self.best_acc = self.acc_history[-1]
+                        self.best_acc_idx = len(self.acc_history)
 
                 # update history
                 self.smooth_loss_history.append(smooth_loss)
@@ -271,36 +290,31 @@ class LogFinder(LRFinder):
         print('[FIND_LR] : restoring trainer state')
         self.trainer.set_trainer_params(self.load_trainer_params())
         print('[FIND_LR] : restoring model state')
-        self.trainer.model.state_dict(self.load_model_params())
+        self.trainer.model.set_net_state_dict(self.load_model_params())
 
         return self.get_lr_range()
 
 
-    def acc(self, data_loader, batch_idx):
+    def acc(self, data_loader, batch_idx) -> None:
         """
         acc()
         Collect accuracy stats while finding learning rate
         """
         test_loss = 0.0
         correct = 0
-        self.trainer.model.eval()
+        self.trainer.model.set_eval()
         for n, (data, labels) in enumerate(data_loader):
             data = data.to(self.trainer.device)
             labels = labels.to(self.trainer.device)
 
             with torch.no_grad():
-                output = self.trainer.model(data)
+                output = self.trainer.model.forward(data)
             loss = self.trainer.criterion(output, labels)
             test_loss += loss.item()
 
             # accuracy
             pred = output.data.max(1, keepdim=True)[1]
             correct += pred.eq(labels.data.view_as(pred)).sum().item()
-
-            #if (n % self.print_every) == 0:
-            #    print('[FIND_LR ACC]  :   iteration         Test Loss')
-            #    print('                  [%6d/%6d]  %.6f' %\
-            #          (n, len(data_loader), loss.item()))
 
         avg_test_loss = test_loss / len(data_loader)
         acc = correct / len(data_loader.dataset)

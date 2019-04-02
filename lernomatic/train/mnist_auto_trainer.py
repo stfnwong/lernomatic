@@ -11,13 +11,14 @@ import torchvision
 # save images
 from torchvision.utils import save_image
 # lernomatic modules
+from lernomatic.models import common
 from lernomatic.models import mnist
 from lernomatic.train import trainer
 
 # debug
 #from pudb import set_trace; set_trace()
 
-def to_img(X):
+def to_img(X : torch.Tensor) -> torch.Tensor:
     X = X.view(X.size(0), 1, 28, 28)
     return X
 
@@ -26,7 +27,7 @@ class MNISTAutoTrainer(trainer.Trainer):
     Trainer for Autoencoder model. Trying to work out what is the best way
     to design the API for this
     """
-    def __init__(self, model, **kwargs):
+    def __init__(self, model: common.LernomaticModel, **kwargs) -> None:
         self.save_img_every = kwargs.pop('save_img_every', 10)
         self.save_img_dir   = kwargs.pop('save_img_dir', 'examples/')
         self.data_dir       = kwargs.pop('data_dir', 'data/')
@@ -37,10 +38,10 @@ class MNISTAutoTrainer(trainer.Trainer):
         self.criterion = torch.nn.MSELoss()
         self._init_history()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'AutoTrainer-%d' % self.train_loader.batch_size
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = []
         s.append('AutoTrainer [%s]\n' % str(self.criterion))
         s.append('\tnum epochs    : %d\n' % self.num_epochs)
@@ -51,10 +52,7 @@ class MNISTAutoTrainer(trainer.Trainer):
 
         return ''.join(s)
 
-    def __eq__(self, other):
-        pass
-
-    def _init_dataloaders(self):
+    def _init_dataloaders(self) -> None:
         dataset_transform = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize( (0.1307,), (0.3081,))
@@ -89,7 +87,7 @@ class MNISTAutoTrainer(trainer.Trainer):
         self.loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
         self.loss_iter = 0
 
-    def save_history(self, fname):
+    def save_history(self, fname: str) -> None:
         history = dict()
         history['loss_history']   = self.loss_history
         history['loss_iter']      = self.loss_iter
@@ -100,7 +98,7 @@ class MNISTAutoTrainer(trainer.Trainer):
 
         torch.save(history, fname)
 
-    def load_history(self, fname):
+    def load_history(self, fname: str) -> None:
         history = torch.load(fname)
         self.loss_history   = history['loss_history']
         self.loss_iter      = history['loss_iter']
@@ -109,30 +107,15 @@ class MNISTAutoTrainer(trainer.Trainer):
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
 
-    def save_checkpoint(self, fname):
-        checkpoint = dict()
-        checkpoint['model'] = self.model.state_dict()
-        checkpoint['optimizer'] = self.optimizer.state_dict()
-        checkpoint['trainer'] = self.get_trainer_params()
-        torch.save(checkpoint, fname)
-
-    def load_checkpoint(self, fname):
-        checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer'])
-        self.model = mnist.MNISTNet()
-        self.model.load_state_dict(checkpoint['model'])
-        self._init_optimizer()
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-    def train_epoch(self):
-        self.model.train()
+    def train_epoch(self) -> None:
+        self.model.set_train()
         for n, data in enumerate(self.train_loader):
             img, _ = data
             img = img.view(img.size(0), -1)
             img = img.to(self.device)
 
             # forward pass
-            output = self.model(img)
+            output = self.model.forward(img)
             loss = self.criterion(output, img)
             # backward pass
             self.optimizer.zero_grad()
@@ -156,7 +139,7 @@ class MNISTAutoTrainer(trainer.Trainer):
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
 
-    def train(self):
+    def train(self) -> None:
         if self.train_loader is None:
             raise ValueError('Internal dataloader not set')
 

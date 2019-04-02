@@ -12,6 +12,7 @@ import torchvision.transforms as transforms
 
 from lernomatic.train import trainer
 from lernomatic.models import resnets
+from lernomatic.models import common
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -22,7 +23,7 @@ class ResnetTrainer(trainer.Trainer):
     RESNETTRAINER
     Trainer object for resnet experiments
     """
-    def __init__(self, model, **kwargs):
+    def __init__(self, model: common.LernomaticModel, **kwargs) -> None:
         self.data_dir      = kwargs.pop('data_dir', 'data/')
         self.augment_data  = kwargs.pop('augment_data', False)
         self.train_dataset = kwargs.pop('train_dataset', None)
@@ -31,10 +32,10 @@ class ResnetTrainer(trainer.Trainer):
 
         self.criterion = torch.nn.CrossEntropyLoss()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'ResnetTrainer'
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = []
         s.append('ResnetTrainer \n')
         if self.train_loader is not None:
@@ -48,7 +49,7 @@ class ResnetTrainer(trainer.Trainer):
 
         return ''.join(s)
 
-    def _init_dataloaders(self):
+    def _init_dataloaders(self) -> None:
         """
         _INIT_DATALOADERS
         Generate dataloaders
@@ -108,7 +109,7 @@ class ResnetTrainer(trainer.Trainer):
             num_workers = self.num_workers
         )
 
-    def save_history(self, fname):
+    def save_history(self, fname: str) -> None:
         history = dict()
         history['loss_history']      = self.loss_history
         history['loss_iter']         = self.loss_iter
@@ -123,7 +124,7 @@ class ResnetTrainer(trainer.Trainer):
 
         torch.save(history, fname)
 
-    def load_history(self, fname):
+    def load_history(self, fname: str) -> None:
         history = torch.load(fname)
         self.loss_history      = history['loss_history']
         self.loss_iter         = history['loss_iter']
@@ -135,18 +136,3 @@ class ResnetTrainer(trainer.Trainer):
         self.iter_per_epoch    = history['iter_per_epoch']
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
-
-    def save_checkpoint(self, fname):
-        checkpoint = dict()
-        checkpoint['model'] = self.model.state_dict()
-        checkpoint['optimizer'] = self.optimizer.state_dict()
-        checkpoint['trainer'] = self.get_trainer_params()
-        torch.save(checkpoint, fname)
-
-    def load_checkpoint(self, fname):
-        checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer'])
-        self.model = resnets.WideResnet(28, 10, 1)   # state dict overwrites values?
-        self.model.load_state_dict(checkpoint['model'])
-        self._init_optimizer()
-        self.optimizer.load_state_dict(checkpoint['optimizer'])

@@ -8,19 +8,20 @@ Stefan Wong 2018
 import torch
 from lernomatic.train import trainer
 from lernomatic.models import cvdnet
+from lernomatic.models import common
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class CVDTrainer(trainer.Trainer):
-    def __init__(self, model, **kwargs):
+    def __init__(self, model:common.LernomaticModel, **kwargs) -> None:
         super(CVDTrainer, self).__init__(model, **kwargs)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'CVDTrainer'
 
-    def save_history(self, fname):
+    def save_history(self, fname: str) -> None:
         history = dict()
         history['loss_history']   = self.loss_history
         history['loss_iter']      = self.loss_iter
@@ -31,7 +32,7 @@ class CVDTrainer(trainer.Trainer):
 
         torch.save(history, fname)
 
-    def load_history(self, fname):
+    def load_history(self, fname: str) -> None:
         history = torch.load(fname)
         self.loss_history   = history['loss_history']
         self.loss_iter      = history['loss_iter']
@@ -40,23 +41,8 @@ class CVDTrainer(trainer.Trainer):
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
 
-    def save_checkpoint(self, fname):
-        checkpoint = dict()
-        checkpoint['model'] = self.model.state_dict()
-        checkpoint['optimizer'] = self.optimizer.state_dict()
-        checkpoint['trainer'] = self.get_trainer_params()
-        torch.save(checkpoint, fname)
-
-    def load_checkpoint(self, fname):
-        checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer'])
-        self.model = cvdnet.CVDNet()
-        self.model.load_state_dict(checkpoint['model'])
-        self._init_optimizer()
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-    def test_epoch(self):
-        self.model.eval()
+    def test_epoch(self) -> None:
+        self.model.set_eval()
         test_loss = 0.0
         correct = 0
 
@@ -64,7 +50,7 @@ class CVDTrainer(trainer.Trainer):
             data = data.to(self.device)
             labels = labels.to(self.device)
 
-            output = self.model(data)
+            output = self.model.forward(data)
             loss = self.criterion(output, labels)
             test_loss += loss.item()
 

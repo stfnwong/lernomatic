@@ -11,17 +11,17 @@ import matplotlib.pyplot as plt
 # debug
 #from pudb import set_trace; set_trace()
 
-def get_figure_subplots(num_subplots=2):
+def get_figure_subplots(num_subplots=2) -> tuple:
     fig = plt.figure()
     ax = []
     for p in range(num_subplots):
         sub_ax = fig.add_subplot(num_subplots, 1, (p+1))
         ax.append(sub_ax)
 
-    return fig, ax
+    return (fig, ax)
 
 
-def smooth_loss(loss_history, beta=0.98):
+def smooth_loss(loss_history:np.ndarray, beta=0.98) -> np.ndarray:
     avg_loss = 0.0
     smoothed_loss = np.zeros(len(loss_history))
     for n, loss in enumerate(loss_history):
@@ -31,13 +31,13 @@ def smooth_loss(loss_history, beta=0.98):
     return smoothed_loss
 
 
-def plot_train_history(ax, loss_history, **kwargs):
-    test_loss_history = kwargs.pop('test_loss_history', None)
-    acc_history       = kwargs.pop('acc_history', None)
-    plot_title      = kwargs.pop('title', 'Loss curve')
-    iter_per_epoch  = kwargs.pop('iter_per_epoch', 0)
-    cur_epoch       = kwargs.pop('cur_epoch', 0)
-    max_ticks       = kwargs.pop('max_ticks', 6)
+def plot_train_history(ax, loss_history: np.ndarray, **kwargs) -> None:
+    test_loss_history : np.ndarray = kwargs.pop('test_loss_history', None)
+    acc_history       : np.ndarray = kwargs.pop('acc_history', None)
+    plot_title        : str        = kwargs.pop('title', 'Loss curve')
+    iter_per_epoch    : int        = kwargs.pop('iter_per_epoch', 0)
+    cur_epoch         : int        = kwargs.pop('cur_epoch', 0)
+    max_ticks         : int        = kwargs.pop('max_ticks', 6)
 
     legend_entries = []
     gen_epoch_ticks = (cur_epoch > 0) and (iter_per_epoch != 0)
@@ -82,20 +82,20 @@ def plot_train_history(ax, loss_history, **kwargs):
     ax.legend(legend_entries)
 
 
-def plot_train_history_2subplots(ax, loss_history, **kwargs):
+def plot_train_history_2subplots(ax, loss_history: np.ndarray, **kwargs) -> None:
     if type(ax) is not list:
         raise ValueError('ax must be a list of axes handles')
     if len(ax) < 2:
         raise ValueError('ax list must contain at least 2 axes handles')
 
-    test_loss_history = kwargs.pop('test_loss_history', None)
-    test_loss_title   = kwargs.pop('test_loss_title', 'Test Loss curve')
-    acc_history       = kwargs.pop('acc_history', None)
-    iter_per_epoch    = kwargs.pop('iter_per_epoch', 0)
-    cur_epoch         = kwargs.pop('cur_epoch', 0)
-    max_ticks         = kwargs.pop('max_ticks', 6)
-    loss_title        = kwargs.pop('loss_title', None)
-    acc_title         = kwargs.pop('acc_title', None)
+    test_loss_history : np.ndarray = kwargs.pop('test_loss_history', None)
+    test_loss_title   : str        = kwargs.pop('test_loss_title', 'Test Loss curve')
+    acc_history       : np.ndarray = kwargs.pop('acc_history', None)
+    iter_per_epoch    : int        = kwargs.pop('iter_per_epoch', 0)
+    cur_epoch         : int        = kwargs.pop('cur_epoch', 0)
+    max_ticks         : int        = kwargs.pop('max_ticks', 6)
+    loss_title        : str        = kwargs.pop('loss_title', None)
+    acc_title         : str        = kwargs.pop('acc_title', None)
 
     # plot the loss
     ax[0].plot(np.arange(len(loss_history)), loss_history)

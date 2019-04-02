@@ -12,7 +12,7 @@ import numpy as np
 #from pudb import set_trace; set_trace()
 
 class HDF5Data(object):
-    def __init__(self, fname, **kwargs):
+    def __init__(self, fname: str, **kwargs) -> None:
         """
         HDF5Data
         Wrapper around an HDF5 dataset
@@ -32,13 +32,13 @@ class HDF5Data(object):
 
         self._init_data()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.fp.close()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'HDF5Data-%s' % str(self.shapes)
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = []
         s.append('HDF5Data')
         if self.filename is not None:
@@ -58,7 +58,7 @@ class HDF5Data(object):
 
         return ''.join(s)
 
-    def _init_data(self):
+    def _init_data(self) -> None:
         """
         Init meta information about dataset
         """
@@ -75,7 +75,7 @@ class HDF5Data(object):
                 self.size[k]     = self.fp[k].shape[0]
                 self.data_ptr[k] = 0
 
-    def _meta_to_dict(self):
+    def _meta_to_dict(self) -> dict:
         meta = dict()
         meta['dtype'] = self.dtype
         meta['shape'] = self.shape
@@ -84,7 +84,7 @@ class HDF5Data(object):
 
         return meta
 
-    def compute_dataset_nbytes(self, k):
+    def compute_dataset_nbytes(self, k) -> int:
         if k not in self.data.keys():
             return 0
         num_bytes = 0
@@ -93,7 +93,7 @@ class HDF5Data(object):
 
         return num_bytes
 
-    def create_dataset(self, k, N, shape, dtype=np.float32):
+    def create_dataset(self, k:str, N:int, shape:tuple, dtype=np.float32) -> None:
         """
         CREATE_DATASET
         Create a new dataset.
@@ -122,7 +122,7 @@ class HDF5Data(object):
         self.fp.create_dataset(k, (self.size[k],) + self.shape[k], dtype=self.dtype[k])
         self.data_ptr[k] = 0
 
-    def append_data(self, k, data):
+    def append_data(self, k:str, data) -> None:
         """
         APPEND_DATA
         Append a data element at the end of the dataset with key k
@@ -135,10 +135,10 @@ class HDF5Data(object):
         self.fp[k][self.data_ptr[k]] = data
         self.data_ptr[k] += 1
 
-    def add_attr(self, attr_name, attr_data):
+    def add_attr(self, attr_name:str, attr_data) -> None:
         self.fp.attrs[attr_name] = attr_data
 
-    def add_attrs(self, attrs):
+    def add_attrs(self, attrs) -> None:
         if type(attrs) is not dict:
             raise ValueError('attrs must be a dict of attributes')
         for k, v in attrs.items():
@@ -147,7 +147,7 @@ class HDF5Data(object):
         for k, v in self.attrs.items():
             self.fp.attrs[k] = v
 
-    def dump_meta(self):
+    def dump_meta(self) -> dict:
         """
         DUMP_META
         Returns metadata from file
@@ -170,12 +170,12 @@ class HDF5Data(object):
         return self._meta_to_dict()
 
     # various getters
-    def get_elem(self, k, idx):
+    def get_elem(self, k:str, idx:int):
         if idx > self.size[k]:
             raise IndexError('Max element in dataset %s is %d' % (str(k), self.size[k]))
         return self.fp[k][idx]
 
-    def get_data(self, k, asarray=False):
+    def get_data(self, k:str, asarray=False):
         if k not in self.fp.keys():
             return None
         if asarray is True:
@@ -191,17 +191,17 @@ class HDF5Data(object):
     def get_datasets(self):
         return self.fp.keys()
 
-    def has_dataset(self, k):
+    def has_dataset(self, k) -> bool:
         if k in self.fp.keys():
             return True
         return False
 
-    def get_shape(self, k):
+    def get_shape(self, k:str) -> tuple:
         if k not in self.fp.keys():
             return None
         return self.fp[k].shape
 
-    def get_size(self, k):
+    def get_size(self, k:str) -> tuple:
         if k not in self.fp.keys():
             return None
         return self.fp[k].shape[0]
