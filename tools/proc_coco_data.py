@@ -18,9 +18,10 @@ from lernomatic.data.text import word_map
 #from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
+VALID_SPLITS = ('train', 'test', 'val', 'all')
 
 
-def main():
+def main() -> None:
 
     train_data = coco_data.COCODataSplit(
         GLOBAL_OPTS['coco_json'],
@@ -81,6 +82,10 @@ def main():
 
     # Process the data in the splits
     for k, v in split_objs.items():
+        # Cheap way to skip splits we aren't doing without writing a new
+        # subroutine
+        if GLOBAL_OPTS['split'] != 'all' and str(k) != GLOBAL_OPTS['split']:
+            continue
         print('Processing data for split <%s>' % str(k))
         coco_proc.process_coco_data_split(v, wmap.get_word_map(), split_names[k], split_name=str(k))
         if GLOBAL_OPTS['verbose']:
@@ -113,6 +118,11 @@ def get_parser():
                         help='Maximum length of caption vector'
                         )
     # output file options
+    parser.add_argument('--split',
+                        type=str,
+                        default='all',
+                        help='Which split to process from %s (default: all)' % str(VALID_SPLITS)
+                        )
     parser.add_argument('--train-dataset-fname',
                         type=str,
                         default='hdf5/coco_train.h5',

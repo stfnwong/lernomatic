@@ -55,6 +55,7 @@ class Trainer(object):
         self.train_dataset          = kwargs.pop('train_dataset', None)
         self.test_dataset           = kwargs.pop('test_dataset', None)
         self.val_dataset            = kwargs.pop('val_dataset', None)
+        self.lr_find_dataset        = kwargs.pop('lr_find_dataset', None)
         self.shuffle         :float = kwargs.pop('shuffle', True)
         self.num_workers     :int   = kwargs.pop('num_workers' , 1)
         # parameter schedulin:float g
@@ -148,6 +149,24 @@ class Trainer(object):
                 self.test_dataset,
                 batch_size = self.test_batch_size,
                 shuffle    = self.shuffle
+            )
+
+        # In some cases we might want to use a special dataset for determining
+        # the learning rate with a learning rate finder (eg: because the real
+        # test dataset is too large). In those cases we can pass another
+        # dataset object here. The LRFinder will always use the test_lr_loader
+        # attribute. In cases where we don't need a special test dataset then
+        # this attribute will just point to the regular test dataset
+        if self.lr_find_dataset is None:
+            if self.test_loader is None:
+                self.lr_test_loader = None
+            else:
+                self.lr_test_loader = self.test_loader
+        else:
+            self.lr_test_loader = torch.utils.data.DataLoader(
+                self.lr_find_dataset,
+                batch_size = self.test_batch_size,
+                shuffle = self.shuffle
             )
 
     def _init_device(self) -> None:

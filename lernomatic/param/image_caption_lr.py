@@ -104,8 +104,8 @@ class CaptionLogFinder(learning_rate.LRFinder):
 
                 # accuracy test
                 if self.acc_test is True:
-                    if self.trainer.test_loader is not None:
-                        self.acc(self.trainer.test_loader, batch_idx)
+                    if self.trainer.lr_test_loader is not None:
+                        self.acc(self.trainer.lr_test_loader, batch_idx)
                     else:
                         self.acc(self.trainer.train_loader, batch_idx)
                     # keep a record of the best acc

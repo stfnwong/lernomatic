@@ -133,6 +133,18 @@ def main() -> None:
             print('Validation dataset :')
             print(val_dataset)
 
+    if GLOBAL_OPTS['lr_find_test_path'] is not None:
+        lr_find_dataset = coco_dataset.CaptionDataset(
+            GLOBAL_OPTS['lr_find_test_path'],
+            transforms = transforms.Compose([normalize]),
+            shuffle=True,
+            num_workers = GLOBAL_OPTS['num_workers'],
+            pin_memory  = GLOBAL_OPTS['pin_memory'],
+            verbose     = GLOBAL_OPTS['verbose']
+        )
+    else:
+        lr_find_dataset = None
+
     # Get a trainer
     trainer = image_capt_trainer.ImageCaptTrainer(
         encoder,
@@ -150,6 +162,7 @@ def main() -> None:
         train_dataset   = train_dataset,
         test_dataset    = test_dataset,
         val_dataset     = val_dataset,
+        lr_find_dataset = lr_find_dataset,
         # device
         device_id       = GLOBAL_OPTS['device_id'],
         # checkpoint
@@ -363,6 +376,11 @@ def get_parser():
                         type=str,
                         default=None,
                         help='Path to validation data (HDF5 file)'
+                        )
+    parser.add_argument('--lr-find-test-path',
+                        type=str,
+                        default=None,
+                        help='Path to test data for lr finder (HDF5 file)'
                         )
     # Checkpoint options
     parser.add_argument('--checkpoint-dir',
