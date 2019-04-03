@@ -95,7 +95,7 @@ class ImageCaptTrainer(trainer.Trainer):
                 lr = self.dec_lr,
             )
 
-        if self.encoder is None or (self.encoder.do_fine_tune is False):
+        if self.encoder is None or (self.encoder.do_fine_tune() is False):
             self.encoder_optim = None
         else:
             self.encoder_optim = torch.optim.Adam(
@@ -109,58 +109,13 @@ class ImageCaptTrainer(trainer.Trainer):
         if self.encoder is not None:
             self.encoder.send_to(self.device)
 
-    def get_trainer_params(self) -> dict:
-        return {
-            # image caption specific parameters
-            'dec_lr'          : self.dec_lr,
-            'dec_mom'         : self.dec_mom,
-            'dec_wd'          : self.dec_wd,
-            'enc_lr'          : self.enc_lr,
-            'enc_mom'         : self.enc_mom,
-            'enc_wd'          : self.enc_wd,
-            'alpha_c'         : self.alpha_c,
-            'grad_clip'       : self.grad_clip,
-            'word_map'        : self.word_map,
-            # training params
-            'num_epochs'      : self.num_epochs,
-            'batch_size'      : self.batch_size,
-            'test_batch_size' : self.test_batch_size,
-            # data params
-            'shuffle'         : self.shuffle,
-            'num_workers'     : self.num_workers,
-            # checkpoint params
-            'checkpoint_name' : self.checkpoint_name,
-            'checkpoint_dir'  : self.checkpoint_dir,
-            'save_every'      : self.save_every,
-            # display params
-            'print_every'     : self.print_every,
-            'verbose'         : self.verbose,
-            # other
-            'device_id'       : self.device_id,
-        }
+    def enc_set_fine_tune(self) -> None:
+        self.encoder.set_fine_tune()
+        self._init_optimizer()
 
-    def set_trainer_params(self, params:dict) -> None:
-        self.dec_lr          = params['dec_lr']
-        self.dec_mom         = params['dec_mom']
-        self.dec_wd          = params['dec_wd']
-        self.enc_lr          = params['enc_lr']
-        self.enc_mom         = params['enc_mom']
-        self.enc_wd          = params['enc_wd']
-        self.alpha_c         = params['alpha_c']
-        self.grad_clip       = params['grad_clip']
-        self.word_map        = params['word_map']
-        self.num_epochs      = params['num_epochs']
-        self.batch_size      = params['batch_size']
-        self.test_batch_size = params['test_batch_size']
-        self.shuffle         = params['shuffle']
-        self.num_workers     = params['num_workers']
-        self.checkpoint_name = params['checkpoint_name']
-        self.checkpoint_dir  = params['checkpoint_dir']
-        self.save_every      = params['save_every']
-        self.print_every     = params['print_every']
-        self.verbose         = params['verbose']
-        self.device_id       = params['device_id']
-
+    def enc_unset_fine_tune(self) -> None:
+        self.encoder.unset_fine_tune()
+        self._init_optimizer()
 
     # set learning rates for the two optimizers
     def set_learning_rate(self, lr:float, param_zero:bool=True) -> None:
@@ -170,6 +125,8 @@ class ImageCaptTrainer(trainer.Trainer):
     def set_dec_learning_rate(self, lr:float, param_zero=True) -> None:
         if self.decoder_optim is None:
             return
+        if self.verbose:
+            print('[%s] : updating decoder learning rate to %f' % (str(self), lr))
         if param_zero:
             self.decoder_optim.param_groups[0]['lr'] = lr
         else:
@@ -179,6 +136,8 @@ class ImageCaptTrainer(trainer.Trainer):
     def set_enc_learning_rate(self, lr:float, param_zero=True) -> None:
         if self.encoder_optim is None:
             return
+        if self.verbose:
+            print('[%s] : updating encoder learning rate to %f' % (str(self), lr))
         if param_zero:
             self.encoder_optim.param_groups[0]['lr'] = lr
         else:
@@ -596,3 +555,57 @@ class ImageCaptTrainer(trainer.Trainer):
             self.acc_iter          = history['acc_iter']
         else:
             self.acc_iter = 0
+
+    # Object parameters
+    def get_trainer_params(self) -> dict:
+        return {
+            # image caption specific parameters
+            'dec_lr'          : self.dec_lr,
+            'dec_mom'         : self.dec_mom,
+            'dec_wd'          : self.dec_wd,
+            'enc_lr'          : self.enc_lr,
+            'enc_mom'         : self.enc_mom,
+            'enc_wd'          : self.enc_wd,
+            'alpha_c'         : self.alpha_c,
+            'grad_clip'       : self.grad_clip,
+            'word_map'        : self.word_map,
+            # training params
+            'num_epochs'      : self.num_epochs,
+            'batch_size'      : self.batch_size,
+            'test_batch_size' : self.test_batch_size,
+            # data params
+            'shuffle'         : self.shuffle,
+            'num_workers'     : self.num_workers,
+            # checkpoint params
+            'checkpoint_name' : self.checkpoint_name,
+            'checkpoint_dir'  : self.checkpoint_dir,
+            'save_every'      : self.save_every,
+            # display params
+            'print_every'     : self.print_every,
+            'verbose'         : self.verbose,
+            # other
+            'device_id'       : self.device_id,
+        }
+
+    def set_trainer_params(self, params:dict) -> None:
+        self.dec_lr          = params['dec_lr']
+        self.dec_mom         = params['dec_mom']
+        self.dec_wd          = params['dec_wd']
+        self.enc_lr          = params['enc_lr']
+        self.enc_mom         = params['enc_mom']
+        self.enc_wd          = params['enc_wd']
+        self.alpha_c         = params['alpha_c']
+        self.grad_clip       = params['grad_clip']
+        self.word_map        = params['word_map']
+        self.num_epochs      = params['num_epochs']
+        self.batch_size      = params['batch_size']
+        self.test_batch_size = params['test_batch_size']
+        self.shuffle         = params['shuffle']
+        self.num_workers     = params['num_workers']
+        self.checkpoint_name = params['checkpoint_name']
+        self.checkpoint_dir  = params['checkpoint_dir']
+        self.save_every      = params['save_every']
+        self.print_every     = params['print_every']
+        self.verbose         = params['verbose']
+        self.device_id       = params['device_id']
+

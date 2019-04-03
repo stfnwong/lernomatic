@@ -165,6 +165,10 @@ class Trainer(object):
     def load_checkpoint(self, fname: str) -> None:
         raise NotImplementedError
 
+    def set_batch_size(self, batch_size:int) -> None:
+        self.batch_size = batch_size
+        self._init_dataloaders()
+
     def set_num_epochs(self, num_epochs:int) -> None:
         if num_epochs > self.num_epochs:
             # resize history

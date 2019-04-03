@@ -141,11 +141,13 @@ class TestImageCaptTrainer(unittest.TestCase):
         num_neg = 0
         for n, (p1, p2) in enumerate(zip(src_encoder_net_params.items(), dst_encoder_net_params.items())):
             self.assertEqual(p1[0], p2[0])
-            print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(src_encoder_net_params.items())))
+            print('Checking parameter %s [%d/%d] \t' % (str(p1[0]), n+1, len(src_encoder_net_params.items())), end='')
             if torch.equal(p1[1], p2[1]):
                 num_pos += 1
+                print(' [MATCH]')
             else:
                 num_neg += 1
+                print(' [MISMATCH]')
             #self.assertEqual(True, torch.equal(p1[1], p2[1]))
         print('\n ...done')
         print('%d items correct' % num_pos)
@@ -170,11 +172,13 @@ class TestImageCaptTrainer(unittest.TestCase):
         num_neg = 0
         for n, (p1, p2) in enumerate(zip(src_decoder_net_params.items(), dst_decoder_net_params.items())):
             self.assertEqual(p1[0], p2[0])
-            print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(src_decoder_net_params.items())))
+            print('Checking parameter %s [%d/%d] \t' % (str(p1[0]), n+1, len(src_decoder_net_params.items())), end='')
             if torch.equal(p1[1], p2[1]):
                 num_pos += 1
+                print(' [MATCH]')
             else:
                 num_neg += 1
+                print(' [MISMATCH]')
             #self.assertEqual(True, torch.equal(p1[1], p2[1]))
         print('\n ...done')
         print('%d items correct' % num_pos)

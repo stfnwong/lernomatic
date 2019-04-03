@@ -76,6 +76,7 @@ class CaptionInferrer(inferrer.Inferrer):
 
         k = self.beam_size
 
+        # TODO : factor out this beam search implementation
         while step < self.max_step:
             embeddings = self.decoder.embedding(k_prev_words).squeeze(1)
             atten_w_embed, alpha = self.decoder.attention(enc_img, h)

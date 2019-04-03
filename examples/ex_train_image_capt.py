@@ -164,6 +164,7 @@ def main() -> None:
     if GLOBAL_OPTS['find_lr'] is True:
         lr_finder = get_lr_finder(trainer)
         lr_min, lr_max = lr_finder.find()
+        print('Found LR range as %.4f -> %.4f' % (lr_min, lr_max))
         scheduler = get_scheduler(lr_min, lr_max, GLOBAL_OPTS['sched_type'])
         if GLOBAL_OPTS['verbose']:
             print('Created scheduler [%s]\n %s' % (repr(scheduler), str(scheduler)))
@@ -178,9 +179,18 @@ def main() -> None:
         trainer.set_enc_lr_scheduler(enc_scheduler)
         trainer.set_dec_lr_scheduler(dec_scheduler)
 
-
-    # TODO : implement the training schedule
+    # Training schedule
+    print('Training for %d epochs without fine tunining' % trainer.get_num_epochs())
     # First train for 30 epochs
+    trainer.enc_unset_fine_tune()
+    trainer.train()
+
+    # Turn on fine tuning and train for another 30 epochs
+    # TODO : the batch size will need to be reduced here
+    trainer.enc_set_fine_tune()
+    trainer.set_batch_size(GLOBAL_OPTS['fine_tune_batch_size'])
+    trainer.set_num_epochs(60)
+    print('Added fine tuning, training until %d epochs' % trainer.get_num_epochs())
     trainer.train()
 
 
@@ -282,6 +292,11 @@ def get_parser():
                         help='Epoch to stop training at'
                         )
     parser.add_argument('--batch-size',
+                        type=int,
+                        default=64,
+                        help='Batch size to use during training'
+                        )
+    parser.add_argument('--fine-tune-batch-size',
                         type=int,
                         default=64,
                         help='Batch size to use during training'

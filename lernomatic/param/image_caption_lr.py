@@ -44,7 +44,6 @@ class CaptionLogFinder(learning_rate.LRFinder):
     def find(self) -> tuple:
         self.check_loaders()
         # cache parameters for later
-        #self.save_model_params(self.trainer.get_model_params())
         self.save_decoder_params(self.trainer.decoder.get_net_state_dict())
         if self.trainer.encoder is not None:
             self.save_encoder_params(self.trainer.encoder.get_net_state_dict())
@@ -142,7 +141,6 @@ class CaptionLogFinder(learning_rate.LRFinder):
         print('[FIND_LR] : restoring trainer state')
         self.trainer.set_trainer_params(self.load_trainer_params())
         print('[FIND_LR] : restoring model state')
-        #self.trainer.model.set_net_state_dict(self.load_model_params())
         self.trainer.decoder.set_net_state_dict(self.load_decoder_params())
         if self.trainer.encoder is not None:
             self.trainer.encoder.set_net_state_dict(self.load_encoder_params())
@@ -183,8 +181,6 @@ class CaptionLogFinder(learning_rate.LRFinder):
             # add attention regularization
             loss += self.trainer.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
 
-            #pred = output.data.max(1, keepdim=True)[1]
-
             # accuracy
             # references
             allcaps = allcaps[sort_ind]     # decoder sorts images, we re-order here to match
@@ -211,13 +207,11 @@ class CaptionLogFinder(learning_rate.LRFinder):
                 raise ValueError('len(references) <%d> != len(hypotheses) <%d>' %\
                                  (len(references), len(hypotheses))
                 )
-            #correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
         bleu4 = corpus_bleu(references, hypotheses)
         avg_test_loss = test_loss / len(data_loader)
-        #acc = correct / len(data_loader.dataset)
         self.acc_history.append(bleu4)
         if batch_idx % self.print_every == 0:
-            print('[FIND_LR ACC]  : Avg. Test Loss : %.4f, BLEU4 (%.4f)' %\
+            print('[FIND_LR ACC]  : Avg. Test Loss : %.4f, BLEU (%.4f)' %\
                 (avg_test_loss, bleu4)
             )

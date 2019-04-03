@@ -108,8 +108,6 @@ class AttentionNet(common.LernomaticModel):
 class Encoder(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:
         self.net = EncoderModule(**kwargs)
-        self.do_fine_tune = self.net.do_fine_tune   # shimming attribute
-
         self.model_name = 'Encoder'
         self.module_name = 'EncoderModule'
         self.import_path = 'lernomatic.models.image_caption'
@@ -120,6 +118,15 @@ class Encoder(common.LernomaticModel):
 
     def send_to(self, device:torch.device) -> None:
         self.net.send_to(device)
+
+    def do_fine_tune(self) -> bool:
+        return self.net.do_fine_tune
+
+    def set_fine_tune(self) -> None:
+        self.net.fine_tune(True)
+
+    def unset_fine_tune(self) -> None:
+        self.net.fine_tune(False)
 
     def get_params(self) -> dict:
         params = {
@@ -418,6 +425,7 @@ class EncoderModule(nn.Module):
         Allow or prevent the computation of gradients for
         convolutional blocks 2 through 4 of the encoder (resnet 101)
         """
+        self.do_fine_tune = tune
         for p in self.net.parameters():
             p.requires_grad = False
         # if fine-tuning only fine tune convolutional blocks 2 through 4
