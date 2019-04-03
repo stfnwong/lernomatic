@@ -4,15 +4,37 @@ Variational Autoencoder for use with MNIST dataset
 
 Stefan Wong 2019
 """
+
+import torch
 from torch import nn
 from torch.autograd import Variable
+from lernomatic.models import common
 
 # debug
 #from pudb import set_trace; set_trace()
 
-class MNISTVAE(nn.Module):
-    def __init__(self, zdims, **kwargs):
-        super(MNISTVAE, self).__init__()
+
+class MNISTVAE(common.LernomaticModel):
+    def __init__(self, zdims, **kwargs) -> None:
+        self.net = MNISTVAEModule(zdims, **kwargs)
+        self.model_name = 'MNISTVAE'
+        self.module_name = 'MNISTVAEModule'
+        self.import_path = 'lernomatic.models.mnist_vae'
+        self.module_import_path = 'lernomatic.models.mnist_vae'
+
+    def __repr__(self) -> str:
+        return 'MNISTVAE'
+
+    def get_input_size(self) -> int:
+        return self.net.input_size
+
+    def get_hidden_size(self) -> int:
+        return self.net.hidden_size
+
+
+class MNISTVAEModule(nn.Module):
+    def __init__(self, zdims, **kwargs) -> None:
+        super(MNISTVAEModule, self).__init__()
         self.zdims = zdims
         self.input_size = kwargs.pop('input_size', 784)
         self.hidden_size = kwargs.pop('hidden_size', 400)
@@ -26,7 +48,7 @@ class MNISTVAE(nn.Module):
         self.fc4 = nn.Linear(self.hidden_size, self.input_size)
         self.sigmoid = nn.Sigmoid()
 
-    def encode(self, X):
+    def encode(self, X) -> torch.Tensor:
         """
         ENCODE
 
@@ -90,7 +112,7 @@ class MNISTVAE(nn.Module):
         h3 = self.relu(self.fc3(Z))
         return self.sigmoid(self.fc4(h3))
 
-    def forward(self, X):
+    def forward(self, X) -> torch.Tensor:
         # Encode the input vector and produce our two distribution vectors
         mu, logvar = self.encode(X.view(-1, 784))
         z = self.reparam(mu, logvar)

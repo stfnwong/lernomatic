@@ -31,7 +31,7 @@ class TextTrainer(trainer.Trainer):
         self.model.train()
         hidden = self.model.init_hidden(self.batch_size)
 
-        for n (seq, targets, seqlen) in enumerate(self.train_loader):
+        for n, (seq, targets, seqlen) in enumerate(self.train_loader):
             hidden = self.remove_hidden_hist(hidden)
             self.optimizer.zero_grad()
             output, hidden = self.model(seq, hidden)
@@ -70,7 +70,7 @@ class TextTrainer(trainer.Trainer):
         total_loss = 0.0
         hidden = self.model.init_hidden(self.batch_size)
 
-        for n (seq, target, seqlen) in enumerate(self.test_loader):
+        for n, (seq, target, seqlen) in enumerate(self.test_loader):
             output, hidden = self.model(data, hidden)
             output_flat = output.view(-1, self.num_tokens)
             loss = self.criterion(output_flat, targets)
