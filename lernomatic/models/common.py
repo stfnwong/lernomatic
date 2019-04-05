@@ -153,6 +153,17 @@ class LernomaticModel(object):
         for l, param in enumerate(self.net.parameters()):
             param.requires_grad = False
 
+    def freeze_these(self, items:list) -> None:
+        """
+        FREEZE_THESE
+        Freeze only the layer numbers given in a list
+        """
+        item_ptr = 0
+        for l, param in enumerate(self.net.parameters()):
+            if l == items[item_ptr]:
+                param.requires_grad = False
+                item_ptr += 1
+
     def unfreeze(self) -> None:
         for l, param in enumerate(self.net.parameters()):
             param.requires_grad = True

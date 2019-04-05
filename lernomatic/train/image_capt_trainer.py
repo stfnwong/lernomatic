@@ -22,16 +22,6 @@ from lernomatic.util import util
 from pudb import set_trace; set_trace()
 
 
-def clip_gradient(optimizer, grad_clip):
-    """
-    CLIP_GRADIENT
-    Clips gradients commputed during backpropagation to avoid gradient explosion.
-    """
-    for group in optimizer.param_groups:
-        for param in group['params']:
-            if param.grad is not None:
-                param.grad.data.clamp_(-grad_clip, grad_clip)
-
 def ica_accuracy(scores, targets, k):
     """
     ACCURACY
@@ -43,7 +33,6 @@ def ica_accuracy(scores, targets, k):
     correct_total = correct.view(-1).float().sum()  # 0-dimension tensor
 
     return correct_total.item() * (100.0 / batch_size)
-
 
 
 class ImageCaptTrainer(trainer.Trainer):
@@ -86,7 +75,6 @@ class ImageCaptTrainer(trainer.Trainer):
         return ''.join(s)
 
     def _init_optimizer(self) -> None:
-        # TODO : ADAM kwargs are betas, eps, weight_decay
         if self.decoder is None:
             self.decoder_optim = None
         else:
@@ -109,6 +97,21 @@ class ImageCaptTrainer(trainer.Trainer):
         if self.encoder is not None:
             self.encoder.send_to(self.device)
 
+    def clip_gradient(self):
+        if self.grad_clip is None:
+            return
+
+        for group in self.decoder_optim.param_groups:
+            for param in group['params']:
+                if param.grad is not None:
+                    param.grad.data.clamp_(-self.grad_clip, self.grad_clip)
+
+        if self.encoder_optim is not None:
+            for group in self.encoder_optim.param_groups:
+                for param in group['params']:
+                    if param.grad is not None:
+                        param.grad.data.clamp_(-self.grad_clip, self.grad_clip)
+
     def enc_set_fine_tune(self) -> None:
         self.encoder.set_fine_tune()
         self._init_optimizer()
@@ -125,8 +128,6 @@ class ImageCaptTrainer(trainer.Trainer):
     def set_dec_learning_rate(self, lr:float, param_zero=True) -> None:
         if self.decoder_optim is None:
             return
-        if self.verbose:
-            print('[%s] : updating decoder learning rate to %f' % (str(self), lr))
         if param_zero:
             self.decoder_optim.param_groups[0]['lr'] = lr
         else:
@@ -136,8 +137,6 @@ class ImageCaptTrainer(trainer.Trainer):
     def set_enc_learning_rate(self, lr:float, param_zero=True) -> None:
         if self.encoder_optim is None:
             return
-        if self.verbose:
-            print('[%s] : updating encoder learning rate to %f' % (str(self), lr))
         if param_zero:
             self.encoder_optim.param_groups[0]['lr'] = lr
         else:
@@ -223,10 +222,7 @@ class ImageCaptTrainer(trainer.Trainer):
             loss.backward()
 
             # perform gradient clip
-            if self.grad_clip is not None:
-                clip_gradient(self.decoder_optim, self.grad_clip)
-                if self.encoder_optim is not None:
-                    clip_gradient(self.encoder_optim, self.grad_clip)
+            self.clip_gradient()
 
             # update weights
             self.decoder_optim.step()
@@ -240,12 +236,7 @@ class ImageCaptTrainer(trainer.Trainer):
                       (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
 
             # do scheduling
-            if self.dec_lr_scheduler is not None:
-                new_lr = self.apply_lr_schedule()
-                self.set_dec_learning_rate(new_lr)
-            if self.enc_lr_scheduler is not None:
-                new_lr = self.apply_lr_schedule()
-                self.set_enc_learning_rate(new_lr)
+            self.apply_lr_schedule()
 
             # update history
             self.loss_history[self.loss_iter] = loss.item()
@@ -350,7 +341,7 @@ class ImageCaptTrainer(trainer.Trainer):
         if bleu4 > self.best_acc:
             self.best_acc = bleu4
             if self.save_every > 0:
-                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name + '.pkl'
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)

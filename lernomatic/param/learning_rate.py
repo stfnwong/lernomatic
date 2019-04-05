@@ -39,6 +39,9 @@ class LRFinder(object):
         self.acc_test         :bool  = kwargs.pop('acc_test', True)
         self.print_every      :int   = kwargs.pop('print_every', 20)
         self.verbose          :bool  = kwargs.pop('verbose', False)
+        # loaders
+        self.train_loader            = kwargs.pop('train_loader', None)
+        self.test_loader             = kwargs.pop('test_loader', None)
 
         # trainer and model params
         self.model_params = None
@@ -54,6 +57,13 @@ class LRFinder(object):
         self.learning_rate = 0.0
 
         self._init_history()
+
+        # If we were not supplied with any specific loaders then use
+        # the ones in the trainer object
+        if self.train_loader is None:
+            self.train_loader = self.trainer.train_loader
+        if self.test_loader is None:
+            self.test_loader = self.trainer.test_loader
 
     def __repr__(self) -> str:
         return 'LRFinder'
@@ -226,7 +236,7 @@ class LogFinder(LRFinder):
         # train the network while varying the learning rate
         explode = False
         for epoch in range(self.num_epochs):
-            for batch_idx, (data, labels) in enumerate(self.trainer.train_loader):
+            for batch_idx, (data, labels) in enumerate(self.train_loader):
                 self.trainer.model.set_train()
                 data = data.to(self.trainer.device)
                 labels = labels.to(self.trainer.device)
@@ -258,9 +268,9 @@ class LogFinder(LRFinder):
                 # accuracy test
                 if self.acc_test is True:
                     if self.trainer.lr_test_loader is not None:
-                        self.acc(self.trainer.lr_test_loader, batch_idx)
+                        self.acc(self.lr_test_loader, batch_idx)
                     else:
-                        self.acc(self.trainer.train_loader, batch_idx)
+                        self.acc(self.train_loader, batch_idx)
                     # keep a record of the best acc
                     if self.acc_history[-1] > self.best_acc:
                         self.best_acc = self.acc_history[-1]

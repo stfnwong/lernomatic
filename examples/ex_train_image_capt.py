@@ -5,12 +5,14 @@ Image captioning training example
 Stefan Wong 2019
 """
 
+import sys
 import argparse
 from torchvision import transforms
 from lernomatic.param import image_caption_lr
 from lernomatic.train import schedule
 from lernomatic.train import image_capt_trainer
 from lernomatic.models import image_caption
+from lernomatic.models import common
 from lernomatic.data.text import word_map
 from lernomatic.data.coco import coco_dataset
 
@@ -19,27 +21,48 @@ from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-# TODO : make argument local to this function (ie: take out all GLOBAL_OPTS
-# references)
-def get_lr_finder(trainer, find_type='CaptionLogFinder'):
+
+def get_transforms():
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std =[0.229, 0.224, 0.225]
+    )
+
+    return transforms.Compose([normalize])
+
+# get a finder object
+def get_lr_finder(trainer:image_capt_trainer.ImageCaptTrainer,
+                  find_type:str='CaptionLogFinder',
+                  **kwargs) -> image_caption_lr.CaptionLogFinder:
+
     if not hasattr(image_caption_lr, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
+
+    # get keyword args
+    lr_select_method = kwargs.pop('lr_select_method', 'max_acc')
+    num_epochs       = kwargs.pop('num_epochs', 4)
+    explode_thresh   = kwargs.pop('explode_thresh', 6.0)
+    print_every      = kwargs.pop('print_every', 50)
 
     lr_find_obj = getattr(image_caption_lr, find_type)
     lr_finder = lr_find_obj(
         trainer,
-        lr_min         = 1e-7,
-        lr_max         = 1.0,
-        lr_select_method = GLOBAL_OPTS['lr_select_method'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['print_every']
+        lr_min           = 1e-7,
+        lr_max           = 1.0,
+        lr_select_method = lr_select_method,
+        num_epochs       = num_epochs,
+        explode_thresh   = explode_thresh,
+        print_every      = print_every
     )
 
     return lr_finder
 
 
-def get_scheduler(lr_min, lr_max, sched_type='TriangularScheduler'):
+# get a scheduler object
+def get_scheduler(lr_min:float,
+                  lr_max:float,
+                  sched_type:str='TriangularScheduler',
+                  stepsize:int=6000) -> schedule.LRScheduler:
     if sched_type is None:
         return None
 
@@ -48,12 +71,115 @@ def get_scheduler(lr_min, lr_max, sched_type='TriangularScheduler'):
 
     lr_sched_obj = getattr(schedule, sched_type)
     lr_scheduler = lr_sched_obj(
-        stepsize = GLOBAL_OPTS['sched_stepsize'],    # TODO : optimal stepsize selection?
+        stepsize = stepsize,    # TODO : optimal stepsize selection?
         lr_min = lr_min,
         lr_max = lr_max
     )
 
     return lr_scheduler
+
+def get_word_map(fname:str) -> word_map.WordMap:
+    wmap = word_map.WordMap()
+    wmap.load(fname)
+
+    return wmap
+
+def get_models(wmap:word_map.WordMap) -> tuple:
+    encoder = image_caption.Encoder(
+        do_fine_tune = GLOBAL_OPTS['fine_tune']
+    )
+
+    decoder = image_caption.DecoderAtten(
+        GLOBAL_OPTS['atten_dim'],
+        GLOBAL_OPTS['embed_dim'],
+        GLOBAL_OPTS['dec_dim'],
+        vocab_size = len(wmap),
+        dropout = GLOBAL_OPTS['dropout'],
+        verbose = GLOBAL_OPTS['verbose']
+    )
+
+    return (encoder, decoder)
+
+# TODO : fix args?
+def get_trainer(encoder:common.LernomaticModel,
+                decoder:common.LernomaticModel,
+                wmap:word_map.WordMap,
+                train_dataset:coco_dataset.CaptionDataset=None,
+                test_dataset: coco_dataset.CaptionDataset=None,
+                val_dataset:  coco_dataset.CaptionDataset=None
+                ) -> image_capt_trainer.ImageCaptTrainer:
+    # Get a trainer
+    trainer = image_capt_trainer.ImageCaptTrainer(
+        encoder,
+        decoder,
+        # training parameters
+        batch_size      = GLOBAL_OPTS['batch_size'],
+        num_epochs      = GLOBAL_OPTS['num_epochs'],
+        learning_rate   = GLOBAL_OPTS['learning_rate'],
+        momentum        = GLOBAL_OPTS['momentum'],
+        weight_decay    = GLOBAL_OPTS['weight_decay'],
+        early_stop      = {'num_epochs' : 20, 'improv': 0.05},
+        # word map
+        word_map        = wmap,
+        # data
+        train_dataset   = train_dataset,
+        test_dataset    = test_dataset,
+        val_dataset     = val_dataset,
+        # device
+        device_id       = GLOBAL_OPTS['device_id'],
+        # checkpoint
+        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
+        checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
+        # display,
+        print_every     = GLOBAL_OPTS['print_every'],
+        save_every      = GLOBAL_OPTS['save_every'],
+        verbose         = GLOBAL_OPTS['verbose']
+    )
+
+    return trainer
+
+
+def get_dataset(fname:str,
+                transforms,
+                num_workers:int,
+                pin_memory:bool,
+                verbose:bool=False,
+                shuffle:bool=False
+                ) -> coco_dataset.CaptionDataset:
+    # TODO : type hint
+    dataset = coco_dataset.CaptionDataset(
+        fname,
+        transforms = transforms,
+        shuffle=shuffle,
+        num_workers = num_workers,
+        pin_memory  = pin_memory,
+    )
+
+    return dataset
+
+def overfit() -> None:
+    # Try to overfit the classifier on some small amount of data
+
+    overfit_dataset = get_dataset(
+        GLOBAL_OPTS['overfit_data_path'],
+        get_transforms(),
+        GLOBAL_OPTS['num_workers'],
+        GLOBAL_OPTS['pin_memory'],
+        verbose = GLOBAL_OPTS['verbose'],
+        shuffle=True
+    )
+
+    wmap = get_word_map(GLOBAL_OPTS['wordmap'])
+    encoder, decoder = get_models(wmap)
+    trainer = get_trainer(
+        encoder,
+        decoder,
+        wmap,
+        train_dataset = overfit_dataset
+    )
+    trainer.checkpoint_name = 'nic_overfit_test'
+    trainer.save_every = 0
+    trainer.train()
 
 
 # ======== MAIN ======== #
@@ -62,63 +188,39 @@ def main() -> None:
     if GLOBAL_OPTS['train_data_path'] is None:
         raise ValueError('Must supply a train data path with argument --train-data-path')
 
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std =[0.229, 0.224, 0.225]
-    )
-
-    wmap = word_map.WordMap()
-    wmap.load(GLOBAL_OPTS['wordmap'])
-
-    # Set up encoder and decoder
-    decoder = image_caption.DecoderAtten(
-        GLOBAL_OPTS['atten_dim'],
-        GLOBAL_OPTS['embed_dim'],
-        GLOBAL_OPTS['dec_dim'],
-        vocab_size = len(wmap),
-        #GLOBAL_OPTS['vocab_size'],
-        #enc_dim = GLOBAL_OPTS['enc_dim'],
-        dropout = GLOBAL_OPTS['dropout'],
-        device_id = GLOBAL_OPTS['device_id'],
-        verbose = GLOBAL_OPTS['verbose']
-    )
-
-    encoder = image_caption.Encoder(
-        #GLOBAL_OPTS['feature_size'],
-        do_fine_tune = GLOBAL_OPTS['fine_tune']
-    )
+    wmap = get_word_map(GLOBAL_OPTS['wordmap'])
+    encoder, decoder = get_models(wmap)
 
     # create dataset objects
-    train_dataset = coco_dataset.CaptionDataset(
+    train_dataset = get_dataset(
         GLOBAL_OPTS['train_data_path'],
-        transforms = transforms.Compose([normalize]),
-        shuffle=True,
-        num_workers = GLOBAL_OPTS['num_workers'],
-        pin_memory  = GLOBAL_OPTS['pin_memory'],
-        verbose     = GLOBAL_OPTS['verbose']
+        get_transforms(),
+        GLOBAL_OPTS['num_workers'],
+        GLOBAL_OPTS['pin_memory'],
+        verbose = GLOBAL_OPTS['verbose'],
+        shuffle = True
     )
 
     if GLOBAL_OPTS['test_data_path'] is not None:
-        test_dataset = coco_dataset.CaptionDataset(
+        test_dataset = get_dataset(
             GLOBAL_OPTS['test_data_path'],
-            transforms = transforms.Compose([normalize]),
+            get_transforms(),
+            GLOBAL_OPTS['num_workers'],
+            GLOBAL_OPTS['pin_memory'],
+            verbose     = GLOBAL_OPTS['verbose'],
             shuffle=True,
-            num_workers = GLOBAL_OPTS['num_workers'],
-            pin_memory  = GLOBAL_OPTS['pin_memory'],
-            verbose     = GLOBAL_OPTS['verbose']
         )
     else:
         test_dataset = None
 
-
     if GLOBAL_OPTS['val_data_path'] is not None:
-        val_dataset = coco_dataset.CaptionDataset(
+        val_dataset = get_dataset(
             GLOBAL_OPTS['val_data_path'],
-            transforms = transforms.Compose([normalize]),
+            get_transforms(),
+            GLOBAL_OPTS['num_workers'],
+            GLOBAL_OPTS['pin_memory'],
+            verbose     = GLOBAL_OPTS['verbose'],
             shuffle=True,
-            num_workers = GLOBAL_OPTS['num_workers'],
-            pin_memory  = GLOBAL_OPTS['pin_memory'],
-            verbose     = GLOBAL_OPTS['verbose']
         )
     else:
         val_dataset = None
@@ -134,13 +236,13 @@ def main() -> None:
             print(val_dataset)
 
     if GLOBAL_OPTS['lr_find_test_path'] is not None:
-        lr_find_dataset = coco_dataset.CaptionDataset(
+        lr_find_dataset = get_dataset(
             GLOBAL_OPTS['lr_find_test_path'],
-            transforms = transforms.Compose([normalize]),
+            get_transforms(),
+            GLOBAL_OPTS['num_workers'],
+            GLOBAL_OPTS['pin_memory'],
+            verbose     = GLOBAL_OPTS['verbose'],
             shuffle=True,
-            num_workers = GLOBAL_OPTS['num_workers'],
-            pin_memory  = GLOBAL_OPTS['pin_memory'],
-            verbose     = GLOBAL_OPTS['verbose']
         )
     else:
         lr_find_dataset = None
@@ -162,7 +264,6 @@ def main() -> None:
         train_dataset   = train_dataset,
         test_dataset    = test_dataset,
         val_dataset     = val_dataset,
-        lr_find_dataset = lr_find_dataset,
         # device
         device_id       = GLOBAL_OPTS['device_id'],
         # checkpoint
@@ -173,6 +274,8 @@ def main() -> None:
         save_every      = GLOBAL_OPTS['save_every'],
         verbose         = GLOBAL_OPTS['verbose']
     )
+    # TODO : I wonder if its better to just pre-train with a fixed schedule
+    # and then run the learning rate finder on the resulting trained network
     # get lr finder
     if GLOBAL_OPTS['find_lr'] is True:
         lr_finder = get_lr_finder(trainer)
@@ -192,14 +295,16 @@ def main() -> None:
         trainer.set_enc_lr_scheduler(enc_scheduler)
         trainer.set_dec_lr_scheduler(dec_scheduler)
 
+    # If we load a checkpoint, we need to decide what to do for the 'rest' of
+    # the training schedule
+
     # Training schedule
-    print('Training for %d epochs without fine tunining' % trainer.get_num_epochs())
+    print('Training for %d epochs without fine tuning' % trainer.get_num_epochs())
     # First train for 30 epochs
     trainer.enc_unset_fine_tune()
     trainer.train()
 
     # Turn on fine tuning and train for another 30 epochs
-    # TODO : the batch size will need to be reduced here
     trainer.enc_set_fine_tune()
     trainer.set_batch_size(GLOBAL_OPTS['fine_tune_batch_size'])
     trainer.set_num_epochs(60)
@@ -409,6 +514,17 @@ def get_parser():
                         default='wordmap.json',
                         help='Name of wordmap file to load'
                         )
+    # test options
+    parser.add_argument('--overfit',
+                        action='store_true',
+                        default=False,
+                        help='Perform overfit test then exit'
+                        )
+    parser.add_argument('--overfit-data-path',
+                        type=str,
+                        default=None,
+                        help='Path to dataset to overfit on'
+                        )
 
     return parser
 
@@ -423,6 +539,10 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
+
+    if GLOBAL_OPTS['overfit'] is True:
+        overfit()
+        sys.exit(1)
 
     main()

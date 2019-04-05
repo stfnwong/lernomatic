@@ -168,12 +168,7 @@ class AttentionNetModule(nn.Module):
         self.enc_dim = enc_dim
         self.dec_dim = dec_dim
         self.atten_dim = atten_dim
-        # layers
-        self.enc_att  = nn.Linear(enc_dim, atten_dim)    # transform encoded feature
-        self.dec_att  = nn.Linear(dec_dim, atten_dim)    # transform decoder output (hidden state)
-        self.full_att = nn.Linear(atten_dim, 1)          # compute values to be softmaxed
-        self.relu     = nn.ReLU()
-        self.softmax  = nn.Softmax(dim=1)       # softmax to calculate weights
+        self._init_network()
 
     def __repr__(self) -> str:
         return 'AttentionNet-%d' % self.atten_dim
@@ -185,6 +180,13 @@ class AttentionNetModule(nn.Module):
                  (self.enc_dim, self.dec_dim, self.atten_dim))
         return ''.join(s)
 
+    def _init_network(self) -> None:
+        self.enc_att  = nn.Linear(self.enc_dim, self.atten_dim)    # transform encoded feature
+        self.dec_att  = nn.Linear(self.dec_dim, self.atten_dim)    # transform decoder output (hidden state)
+        self.full_att = nn.Linear(self.atten_dim, 1)          # compute values to be softmaxed
+        self.relu     = nn.ReLU()
+        self.softmax  = nn.Softmax(dim=1)       # softmax to calculate weights
+
     def forward(self, enc_feature, dec_hidden) -> tuple:
         att1 = self.enc_att(enc_feature)        # shape : (N, num_pixels, atten_dim)
         att2 = self.dec_att(dec_hidden)         # shape : (N, atten_dim)
@@ -194,6 +196,20 @@ class AttentionNetModule(nn.Module):
         atten_w_enc = (enc_feature * alpha.unsqueeze(2)).sum(dim=1)     # shape : (N, enc_dim)
 
         return (atten_w_enc, alpha)
+
+    def get_params(self) -> dict:
+        params = {
+            'enc_dim' : self.enc_dim,
+            'dec_dim' : self.dec_dim,
+            'atten_dim' : self.atten_dim
+        }
+        return params
+
+    def set_params(self, params:dict) -> None:
+        self.enc_dim   = params['enc_dim']
+        self.dec_dim   = params['dec_dim']
+        self.atten_dim = params['atten_dim']
+        self._init_network()
 
 
 class DecoderAttenModule(nn.Module):
@@ -277,6 +293,7 @@ class DecoderAttenModule(nn.Module):
         params['dropout']    = self.dropout
         params['verbose']    = self.verbose
         params['atten_net_dict'] = self.atten_net.state_dict()
+        params['atten_net_params'] = self.atten_net.get_params()
 
         return params
 
@@ -290,6 +307,7 @@ class DecoderAttenModule(nn.Module):
         self.verbose = params['verbose']
         self._init_network()
         # load the attention network parameters
+        self.atten_net.set_params(params['atten_net_params'])
         self.atten_net.load_state_dict(params['atten_net_dict'])
 
     def load_pretrained_embeddings(self, embeddings) -> None:
@@ -429,9 +447,10 @@ class EncoderModule(nn.Module):
         for p in self.net.parameters():
             p.requires_grad = False
         # if fine-tuning only fine tune convolutional blocks 2 through 4
-        for c in list(self.net.children())[5:]:
-            for p in c.parameters():
-                p.requires_grad = tune
+        if self.do_fine_tune:
+            for c in list(self.net.children())[5:]:
+                for p in c.parameters():
+                    p.requires_grad = True
 
     def forward(self, X) -> torch.Tensor:
         """
