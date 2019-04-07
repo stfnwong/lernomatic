@@ -28,8 +28,8 @@ GLOBAL_OPTS = dict()
 def get_model():
     if GLOBAL_OPTS['model'] == 'resnet':
         model = resnets.WideResnet(
-            GLOBAL_OPTS['resnet_depth'],
-            10,
+            depth=GLOBAL_OPTS['resnet_depth'],
+            num_classes=10,
             input_channels = 3
         )
     elif GLOBAL_OPTS['model'] == 'cifar':

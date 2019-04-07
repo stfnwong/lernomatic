@@ -10,7 +10,7 @@ import copy
 import torch
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 
 class LRFinder(object):
@@ -19,7 +19,7 @@ class LRFinder(object):
     Finds optimal learning rates
     """
     def __init__(self, trainer, **kwargs) -> None:
-        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range')
+        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range', 'laplace', 'sobel')
         self.trainer        = trainer
         # learning params
         self.num_epochs       = kwargs.pop('num_epochs', 8)
@@ -88,6 +88,33 @@ class LRFinder(object):
 
         return smooth_loss
 
+    def _laplace_loss(self) -> tuple:
+        k = np.array([-1, 4, -1])
+
+        #Xs = np.zeros(len(self.smooth_loss_history))
+        #for n in range(len(k), len(self.smooth_loss_history) - len(k)):
+        #    for w in range(-int(len(k) / 2), int(len(k) / 2), 1):
+        #        Xs[n] += X[n + w] * k[w + int(len(k) / 2)]
+
+        Xs = np.convolve(np.asarray(self.log_lr_history), k)
+        xs_max = Xs[5:len(Xs)-5].argmax()
+        xs_min = Xs[5:len(Xs)-5].argmin()
+        lr_max = self.log_lr_history[xs_max]
+        lr_min = self.log_lr_history[xs_min]
+
+        return (lr_min, lr_max)
+
+    def _sobel_loss(self) -> tuple:
+        k = np.array([-1, 0, 1])
+        Xs = np.convolve(np.asarray(self.log_lr_history), k)
+
+        xs_max = Xs[5:len(Xs)-5].argmax()
+        xs_min = Xs[5:len(Xs)-5].argmin()
+        lr_max = self.log_lr_history[xs_max]
+        lr_min = self.log_lr_history[xs_min]
+
+        return (lr_min, lr_max)
+
     def save_model_params(self, params: dict) -> None:
         self.model_params = copy.deepcopy(params)
 
@@ -126,10 +153,14 @@ class LRFinder(object):
             lr_min = lr_max * self.lr_min_factor
         elif self.lr_select_method == 'min_range':
             raise NotImplementedError('TODO : min_range method')
+        elif self.lr_select_method == 'laplace':
+            lr_min, lr_max = self._laplace_loss()
+        elif self.lr_select_method == 'sobel':
+            lr_min, lr_max = self._sobel_loss()
         else:
             raise ValueError('Invalid range selection method [%s]' % str(self.lr_select_method))
 
-        return (10 ** lr_min, 10**lr_max)
+        return (10**lr_min, 10**lr_max)
 
     # plotting
     def plot_lr_vs_acc(self, ax, title:str=None, log:bool=False) -> None:
