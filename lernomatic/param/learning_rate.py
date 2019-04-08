@@ -8,9 +8,10 @@ Stefan Wong 2018
 import numpy as np
 import copy
 import torch
+from sklearn import metrics
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class LRFinder(object):
@@ -33,6 +34,7 @@ class LRFinder(object):
         self.lr_min_factor    :float = kwargs.pop('lr_min_factor', 2.0)
         self.lr_max_scale     :float = kwargs.pop('lr_max_scale', 1.0)
         self.lr_select_method :str   = kwargs.pop('lr_select_method', 'max_acc')
+        self.lr_trunc         :int   = kwargs.pop('lr_trunc', 10)
         # gradient params
         self.grad_thresh      :float = kwargs.pop('grad_thresh', 0.002)
         # other
@@ -90,28 +92,23 @@ class LRFinder(object):
 
     def _laplace_loss(self) -> tuple:
         k = np.array([-1, 4, -1])
-
-        #Xs = np.zeros(len(self.smooth_loss_history))
-        #for n in range(len(k), len(self.smooth_loss_history) - len(k)):
-        #    for w in range(-int(len(k) / 2), int(len(k) / 2), 1):
-        #        Xs[n] += X[n + w] * k[w + int(len(k) / 2)]
-
-        Xs = np.convolve(np.asarray(self.log_lr_history), k)
-        xs_max = Xs[5:len(Xs)-5].argmax()
-        xs_min = Xs[5:len(Xs)-5].argmin()
-        lr_max = self.log_lr_history[xs_max]
-        lr_min = self.log_lr_history[xs_min]
+        Xs = np.convolve(np.asarray(self.acc_history), k)
+        clip_point = Xs[self.lr_trunc : len(Xs) - self.lr_trunc].max() * 0.9
+        Xc = Xs[Xs < clip_point] = 0
+        idxs = np.argwhere(Xs > 0)
+        lr_max = self.log_lr_history[idxs[0][0]]
+        lr_min = self.log_lr_history[idxs[-2][0]]
 
         return (lr_min, lr_max)
 
     def _sobel_loss(self) -> tuple:
         k = np.array([-1, 0, 1])
-        Xs = np.convolve(np.asarray(self.log_lr_history), k)
-
-        xs_max = Xs[5:len(Xs)-5].argmax()
-        xs_min = Xs[5:len(Xs)-5].argmin()
-        lr_max = self.log_lr_history[xs_max]
-        lr_min = self.log_lr_history[xs_min]
+        Xs = np.convolve(np.asarray(self.acc_history), k)
+        clip_point = Xs[self.lr_trunc : len(Xs) - self.lr_trunc].max() * 0.9
+        Xc = Xs[Xs < clip_point] = 0
+        idxs = np.argwhere(Xs > 0)
+        lr_max = self.log_lr_history[idxs[0][0]]
+        lr_min = self.log_lr_history[idxs[-2][0]]
 
         return (lr_min, lr_max)
 
@@ -243,7 +240,7 @@ class LogFinder(LRFinder):
         """
         self.check_loaders()
         # cache parameters for later
-        self.save_model_params(self.trainer.get_model_params())
+        self.save_model_params(self.trainer.model.get_net_state_dict())
         self.save_trainer_params(self.trainer.get_trainer_params())
         self.learning_rate = self.lr_min
         self.lr_mult = (self.lr_max / self.lr_min) ** (1.0 / len(self.trainer.train_loader))
@@ -325,7 +322,6 @@ class LogFinder(LRFinder):
 
         return self.get_lr_range()
 
-
     def acc(self, data_loader, batch_idx) -> None:
         """
         acc()
@@ -334,18 +330,18 @@ class LogFinder(LRFinder):
         test_loss = 0.0
         correct = 0
         self.trainer.model.set_eval()
-        for n, (data, labels) in enumerate(data_loader):
-            data = data.to(self.trainer.device)
-            labels = labels.to(self.trainer.device)
+        with torch.no_grad():
+            for n, (data, labels) in enumerate(data_loader):
+                data = data.to(self.trainer.device)
+                labels = labels.to(self.trainer.device)
 
-            with torch.no_grad():
                 output = self.trainer.model.forward(data)
-            loss = self.trainer.criterion(output, labels)
-            test_loss += loss.item()
+                loss = self.trainer.criterion(output, labels)
+                test_loss += loss.item()
 
-            # accuracy
-            pred = output.data.max(1, keepdim=True)[1]
-            correct += pred.eq(labels.data.view_as(pred)).sum().item()
+                # accuracy
+                pred = output.data.max(1, keepdim=True)[1]
+                correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
         avg_test_loss = test_loss / len(data_loader)
         acc = correct / len(data_loader.dataset)
