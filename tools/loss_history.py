@@ -16,10 +16,7 @@ from lernomatic.vis import vis_loss_history
 GLOBAL_OPTS = dict()
 
 def main():
-
-    fig, ax = plt.subplots()
     history = torch.load(GLOBAL_OPTS['input'])
-
     loss_history = history['loss_history'][0 : history['loss_iter']]
     if GLOBAL_OPTS['verbose']:
         print('%d training iterations ' % history['loss_iter'])
@@ -38,8 +35,13 @@ def main():
     else:
         test_loss_history = None
 
+    if acc_history is not None:
+        fig, ax = vis_loss_history.get_figure_subplots(2)
+    else:
+        fig, ax = vis_loss_history.get_figure_subplots(1)
+
     # plot the visualization
-    vis_loss_history.plot_loss_history(
+    vis_loss_history.plot_train_history_2subplots(
         ax,
         loss_history,
         test_loss_curve = test_loss_history,

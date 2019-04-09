@@ -10,6 +10,9 @@ import numpy as np
 # debug
 #from pudb import set_trace; set_trace()
 
+EXP_DEFAULT_K = 1e-4
+# TODO : genericized to param sched?
+
 # ---- Learning Rate ---- #
 class LRScheduler(object):
     """
@@ -200,7 +203,7 @@ class WarmRestartScheduler(LRScheduler):
         self.step_per_epoch = kwargs.pop('step_per_epoch', 1000)
         super(WarmRestartScheduler, self).__init__(**kwargs)
         self.cur_lr = self.lr_max
-        self.batch_since_restart = 0
+        self.batch_since_restart = 1
 
     def __repr__(self) -> str:
         return 'WarmRestartScheduler'
@@ -216,7 +219,8 @@ class WarmRestartScheduler(LRScheduler):
         if cur_iter < 1:
             restart_frac = 1.0 / (2 * self.stepsize * self.step_per_epoch)
         else:
-            restart_frac = self.batch_since_restart / (2 * self.stepsize * self.step_per_epoch)
+            restart_frac = self.batch_since_restart / (2 * self.stepsize) # * self.step_per_epoch)
+        self.batch_since_restart += 1
         new_lr = self.lr_min + 0.5 * (self.lr_max - self.lr_min) * (1 + np.cos(restart_frac * np.pi))
         self._update_lr_history(new_lr)
 
@@ -244,22 +248,52 @@ class TriangularScheduler(LRScheduler):
 
     def get_lr(self, cur_iter: int) -> float:
         itr = cur_iter - self.start_iter
-        if itr > 0:
-            cycle = itr / (2 * self.stepsize)
-            x = itr - (2 * cycle + 1) * self.stepsize
-            x /= self.stepsize
-            rate = self.lr_min + (self.lr_max - self.lr_min) *\
-                np.maximum(0.0, 1.0 - np.abs(x))
-            self._update_lr_history(rate)
-            return rate
+        if itr < 1:
+            self._update_lr_history(self.lr_min)
+            return self.lr_min
 
-        self._update_lr_history(self.lr_min)
-        return self.lr_min
+        cycle = np.floor(1 + itr / (2 * self.stepsize))
+        x = np.abs(itr / self.stepsize - 2 * cycle + 1)
+        rate = self.lr_min + (self.lr_max - self.lr_min) *\
+            np.maximum(0.0, 1.0 - np.abs(x))
+        self._update_lr_history(rate)
+        return rate
 
+
+class InvTriangularScheduler(LRScheduler):
+    """
+    InvTriangularScheduler
+    """
+    def __init__(self, **kwargs) -> None:
+        super(InvTriangularScheduler, self).__init__(**kwargs)
+
+    def __repr__(self) -> str:
+        return 'InvTriangularScheduler'
+
+    def __str__(self) -> str:
+        s = []
+        s.append('Inverse Triangular Learning Rate Scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+
+        return ''.join(s)
+
+    def get_lr(self, cur_iter: int) -> float:
+        itr = cur_iter - self.start_iter
+        if itr < 1:
+            self._update_lr_history(self.lr_max)
+            return self.lr_max
+
+        cycle = np.floor(1 + itr / (2 * self.stepsize))
+        x = np.abs(itr / self.stepsize - 2 * cycle + 1)
+        rate = self.lr_min + (self.lr_max - self.lr_min) *\
+            np.maximum(0.0, 1.0 - np.abs(x))
+        rate = self.lr_max - rate
+        self._update_lr_history(rate)
+        return rate
 
 class TriangularExpScheduler(LRScheduler):
     def __init__(self, **kwargs) -> None:
-        self.k :float = kwargs.pop('k', 0.1)
+        self.k :float = kwargs.pop('k', EXP_DEFAULT_K)
         super(TriangularExpScheduler, self).__init__(**kwargs)
 
     def __repr__(self) -> str:
@@ -275,9 +309,8 @@ class TriangularExpScheduler(LRScheduler):
     def get_lr(self, cur_iter: int) -> float:
         itr = cur_iter - self.start_iter
         if itr > 0:
-            cycle = itr / (2 * self.stepsize)
-            x = itr - (2 * cycle + 1) * self.stepsize
-            x /= self.stepsize
+            cycle = np.floor(1 + itr / (2 * self.stepsize))
+            x = np.abs(itr / self.stepsize - 2 * cycle + 1)
             rate = self.lr_min + (self.lr_max - self.lr_min) *\
                 np.maximum(0.0, 1.0 - np.abs(x))
             rate = rate * np.exp(-self.k * cur_iter)
@@ -305,11 +338,10 @@ class Triangular2Scheduler(LRScheduler):
     def get_lr(self, cur_iter: int) -> float:
         itr = cur_iter - self.start_iter
         if itr > 0:
-            cycle = itr / (2 * self.stepsize)
-            x = itr - (2 * cycle + 1) * self.stepsize
-            x /= self.stepsize
+            cycle = np.floor(1 + itr / (2 * self.stepsize))
+            x = np.abs(itr / self.stepsize - 2 * cycle + 1)
             rate = self.lr_min + (self.lr_max - self.lr_min) *\
-                np.minimum(1.0, np.maximum(0.0, (1.0 - np.abs(x) / np.power(2, cycle))))
+                np.minimum(1.0, np.maximum(0.0, 1.0 - np.abs(x) / np.power(2, cycle)))
             self._update_lr_history(rate)
             return rate
 
@@ -319,7 +351,7 @@ class Triangular2Scheduler(LRScheduler):
 
 class Triangular2ExpScheduler(LRScheduler):
     def __init__(self, **kwargs) -> None:
-        self.k :float = kwargs.pop('k', 0.1)
+        self.k :float = kwargs.pop('k', EXP_DEFAULT_K)
         super(Triangular2ExpScheduler, self).__init__(**kwargs)
 
     def __repr__(self) -> str:
@@ -335,11 +367,11 @@ class Triangular2ExpScheduler(LRScheduler):
     def get_lr(self, cur_iter: int) -> float:
         itr = cur_iter - self.start_iter
         if itr > 0:
-            cycle = itr / (2 * self.stepsize)
-            x = itr - (2 * cycle + 1) * self.stepsize
-            x /= self.stepsize
+            cycle = np.floor(1 + itr / (2 * self.stepsize))
+            x = np.abs(itr / self.stepsize - 2 * cycle + 1)
             rate = self.lr_min + (self.lr_max - self.lr_min) *\
-                np.minimum(1.0, np.maximum(0.0, (1.0 - np.abs(x) / np.power(2, cycle))))
+                np.minimum(1.0, np.maximum(0.0, 1.0 - np.abs(x) / np.power(2, cycle)))
+
             rate = rate * np.exp(-self.k * cur_iter)
             self._update_lr_history(rate)
             return rate

@@ -26,7 +26,7 @@ class Trainer(object):
     Base class for model trainers in lernomatic. Note that this is not
     an abstract class and can be instantiated.
     """
-    def __init__(self, model=None, **kwargs) -> None:
+    def __init__(self, model:common.LernomaticModel=None, **kwargs) -> None:
         self.model           = model
         # Training loop options
         self.num_epochs      :int   = kwargs.pop('num_epochs', 10)
@@ -251,6 +251,17 @@ class Trainer(object):
             new_lr = self.lr_scheduler.get_lr(self.loss_iter)
         self.set_learning_rate(new_lr)
 
+    def apply_mtm_schedule(self) -> None:
+        if isinstance(self.mtm_scheduler, schedule.TriangularDecayWhenAcc):
+            new_mtm = self.mtm_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
+        elif isinstance(self.mtm_scheduler, schedule.EpochSetScheduler) or isinstance(self.mtm_scheduler, schedule.DecayWhenEpoch):
+            new_mtm = self.mtm_scheduler.get_lr(self.cur_epoch)
+        elif isinstance(self.mtm_scheduler, schedule.DecayWhenAcc):
+            new_mtm = self.mtm_scheduler.get_lr(self.acc_history[self.acc_iter])
+        else:
+            new_mtm = self.mtm_scheduler.get_lr(self.loss_iter)
+        self.set_momentum(new_mtm)
+
     # Layer freeze / unfreeze
     def freeze_to(self, layer_num: int) -> None:
         """
@@ -314,8 +325,7 @@ class Trainer(object):
                 self.apply_lr_schedule()
 
             if self.mtm_scheduler is not None:
-                new_mtm = self.mtm_scheduler.get_mtm(self.loss_iter)
-                self.set_momentum(new_mtm)
+                self.apply_mtm_schedule()
 
     def test_epoch(self) -> None:
         """
@@ -388,7 +398,7 @@ class Trainer(object):
 
             # check we have reached the required accuracy and can stop early
             if self.stop_when_acc > 0.0 and self.test_loader is not None:
-                if self.roc_auc_history[self.acc_iter] >= self.stop_when_acc:
+                if self.acc_history[self.acc_iter] >= self.stop_when_acc:
                     return
 
             # check if we need to perform early stopping

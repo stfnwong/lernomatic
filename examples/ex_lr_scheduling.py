@@ -11,8 +11,10 @@ import matplotlib.pyplot as plt
 from lernomatic.param import learning_rate
 from lernomatic.vis import vis_lr
 # we use CIFAR-10 for this example
+from lernomatic.models import common
 from lernomatic.models import cifar
 from lernomatic.models import resnets
+from lernomatic.train import trainer
 from lernomatic.train import cifar_trainer
 from lernomatic.train import schedule
 # vis tools
@@ -25,7 +27,7 @@ GLOBAL_OPTS = dict()
 
 
 # Helper functions for models
-def get_model():
+def get_model() -> common.LernomaticModel:
     if GLOBAL_OPTS['model'] == 'resnet':
         model = resnets.WideResnet(
             depth=GLOBAL_OPTS['resnet_depth'],
@@ -41,7 +43,7 @@ def get_model():
 
 
 # Helper function for finder
-def get_lr_finder(trainer, find_type='LogFinder'):
+def get_lr_finder(trainer, find_type='LogFinder') -> learning_rate.LRFinder:
     if not hasattr(learning_rate, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
@@ -60,7 +62,10 @@ def get_lr_finder(trainer, find_type='LogFinder'):
 
 
 # Helper function for scheduler
-def get_scheduler(lr_min, lr_max, sched_type='TriangularScheduler'):
+def get_scheduler(lr_min:float,
+                  lr_max:float,
+                  stepsize:int,
+                  sched_type:str='TriangularScheduler') -> schedule.LRScheduler:
     if sched_type is None:
         return None
 
@@ -69,9 +74,9 @@ def get_scheduler(lr_min, lr_max, sched_type='TriangularScheduler'):
 
     lr_sched_obj = getattr(schedule, sched_type)
     lr_scheduler = lr_sched_obj(
-        stepsize = GLOBAL_OPTS['sched_stepsize'],    # TODO : optimal stepsize selection?
         lr_min = lr_min,
-        lr_max = lr_max
+        lr_max = lr_max,
+        stepsize = stepsize
     )
 
     return lr_scheduler
@@ -121,10 +126,12 @@ def run_schedule(trainer, sched_type, checkpoint_name, lr_min=None, lr_max=None)
     if GLOBAL_OPTS['find_only'] is True:
         return lr_finder
 
+    stepsize = len(trainer.train_loader)
     # get scheduler
     lr_scheduler = get_scheduler(
         lr_min,
         lr_max,
+        stepsize,
         sched_type
     )
     print('Got scheduler [%s]' % repr(lr_scheduler))
@@ -132,7 +139,8 @@ def run_schedule(trainer, sched_type, checkpoint_name, lr_min=None, lr_max=None)
     trainer.set_lr_scheduler(lr_scheduler)
     trainer.train()
 
-    return trainer      # TODO : do we need to return anything (since we pass in trainer)?
+    # TODO : determine mutability of trainer object
+    return trainer
 
 
 # Find lr for a given trainer
@@ -324,7 +332,7 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     schedulers = [
         'TriangularScheduler',

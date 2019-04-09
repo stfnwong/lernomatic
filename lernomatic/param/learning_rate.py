@@ -8,7 +8,6 @@ Stefan Wong 2018
 import numpy as np
 import copy
 import torch
-from sklearn import metrics
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -21,7 +20,7 @@ class LRFinder(object):
     """
     def __init__(self, trainer, **kwargs) -> None:
         valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range', 'laplace', 'sobel')
-        self.trainer        = trainer
+        self.trainer          = trainer
         # learning params
         self.num_epochs       = kwargs.pop('num_epochs', 8)
         # lr params

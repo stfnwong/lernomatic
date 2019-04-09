@@ -83,6 +83,11 @@ class CIFAR10Trainer(trainer.Trainer):
         history['iter_per_epoch'] = self.iter_per_epoch
         if self.test_loss_history is not None:
             history['test_loss_history'] = self.test_loss_history
+            history['test_loss_iter']    = self.test_loss_iter
+
+        if self.acc_history is not None:
+            history['acc_history'] = self.acc_history
+            history['acc_iter']    = self.acc_iter
 
         torch.save(history, fname)
 
@@ -94,7 +99,10 @@ class CIFAR10Trainer(trainer.Trainer):
         self.iter_per_epoch = history['iter_per_epoch']
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
-
+            self.test_loss_iter    = history['test_loss_iter']
+        if 'acc_history' in history:
+            self.acc_history = history['acc_history']
+            self.acc_iter    = history['acc_iter']
 
 
 class CIFAR100Trainer(trainer.Trainer):
@@ -164,6 +172,11 @@ class CIFAR100Trainer(trainer.Trainer):
         history['iter_per_epoch'] = self.iter_per_epoch
         if self.test_loss_history is not None:
             history['test_loss_history'] = self.test_loss_history
+            history['test_loss_iter']    = self.test_loss_iter
+
+        if self.acc_history is not None:
+            history['acc_history'] = self.acc_history
+            history['acc_iter']    = self.acc_iter
 
         torch.save(history, fname)
 
@@ -175,6 +188,10 @@ class CIFAR100Trainer(trainer.Trainer):
         self.iter_per_epoch = history['iter_per_epoch']
         if 'test_loss_history' in history:
             self.test_loss_history = history['test_loss_history']
+            self.test_loss_iter    = history['test_loss_iter']
+        if 'acc_history' in history:
+            self.acc_history = history['acc_history']
+            self.acc_iter    = history['acc_iter']
 
     def save_checkpoint(self, fname):
         checkpoint = dict()
