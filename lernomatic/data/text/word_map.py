@@ -50,6 +50,10 @@ class WordMap(object):
                 print('No word map data, exiting...')
             return
 
+        #data = {
+        #    'word_map' : self.word_map,
+        #    #'map_word' : self.map_word
+        #}
         with open(fname, 'w') as fp:
             json.dump(self.word_map, fp)
 
@@ -59,7 +63,11 @@ class WordMap(object):
         Load a word map from a JSON on disk
         """
         with open(fname, 'r') as fp:
+            #data = json.load(fp)
+            #self.word_map = data['word_map']
             self.word_map = json.load(fp)
+            self.gen_map_word()
+            #self.map_word = data['map_word']
 
     def get_vocab_size(self) -> int:
         return len(self.word_map)
@@ -92,6 +100,18 @@ class WordMap(object):
         except:
             return self.map_word[self.word_map['<unk>']]
 
+    def tok2word(self, tok:int) -> str:
+        try:
+            return self.map_word[tok]
+        except:
+            return self.map_word[self.word_map['<unk>']]
+
+    def word2tok(self, word:str) -> int:
+        try:
+            return self.word_map[word]
+        except:
+            return self.word_map['<unk>']
+
     def get_word_map(self) -> dict:
         return self.word_map
 
@@ -116,3 +136,4 @@ class WordMap(object):
         self.word_map['<start>'] = len(self.word_map) + 1
         self.word_map['<end>']   = len(self.word_map) + 1
         self.word_map['<pad>']   = 0
+        self.gen_map_word()

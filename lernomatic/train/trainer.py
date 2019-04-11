@@ -167,6 +167,9 @@ class Trainer(object):
         self.batch_size = batch_size
         self._init_dataloaders()
 
+    def get_batch_size(self) -> int:
+        return self.batch_size
+
     def set_num_epochs(self, num_epochs:int) -> None:
         if num_epochs > self.num_epochs:
             # resize history

@@ -6,21 +6,21 @@ Stefan Wong 2019
 """
 
 import argparse
-from lernomatic.train import cifar10_trainer
-from lernomatic.models import cifar10
+from lernomatic.train import cifar_trainer
+from lernomatic.models import cifar
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
 def main():
 
     # Get a model
-    model = cifar10.CIFAR10Net()
+    model = cifar.CIFAR10Net()
 
     # Get a trainer
-    trainer = cifar10_trainer.CIFAR10Trainer(
+    trainer = cifar_trainer.CIFAR10Trainer(
         model,
         # training parameters
         batch_size = GLOBAL_OPTS['batch_size'],
@@ -56,7 +56,7 @@ def get_parser():
                         )
     parser.add_argument('--save-every',
                         type=int,
-                        default=1000,
+                        default=-1,
                         help='Save model checkpoint every N epochs'
                         )
     parser.add_argument('--num-workers',
@@ -115,7 +115,7 @@ def get_parser():
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='cifar10',
+                        default='cifar',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',

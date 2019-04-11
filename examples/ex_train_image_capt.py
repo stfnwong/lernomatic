@@ -146,7 +146,7 @@ def get_dataset(fname:str,
                 verbose:bool=False,
                 shuffle:bool=False
                 ) -> coco_dataset.CaptionDataset:
-    # TODO : type hint
+    # TODO : type hint for transform
     dataset = coco_dataset.CaptionDataset(
         fname,
         transforms = transforms,
@@ -161,7 +161,7 @@ def overfit() -> None:
     # Try to overfit the classifier on some small amount of data
 
     overfit_dataset = get_dataset(
-        GLOBAL_OPTS['overfit_data_path'],
+        GLOBAL_OPTS['overfit_train_data'],
         get_transforms(),
         GLOBAL_OPTS['num_workers'],
         GLOBAL_OPTS['pin_memory'],
@@ -169,16 +169,31 @@ def overfit() -> None:
         shuffle=True
     )
 
+    if GLOBAL_OPTS['overfit_test_data'] is not None:
+        overfit_test_data = get_dataset(
+            GLOBAL_OPTS['overfit_test_data'],
+            get_transforms(),
+            GLOBAL_OPTS['num_workers'],
+            GLOBAL_OPTS['pin_memory'],
+            verbose = GLOBAL_OPTS['verbose'],
+            shuffle=True
+        )
+    else:
+        overfit_test_data = None
+
     wmap = get_word_map(GLOBAL_OPTS['wordmap'])
+    print('Loaded word map containing %d words' % len(wmap))
     encoder, decoder = get_models(wmap)
     trainer = get_trainer(
         encoder,
         decoder,
         wmap,
-        train_dataset = overfit_dataset
+        train_dataset = overfit_dataset,
+        test_dataset = overfit_test_data
     )
     trainer.checkpoint_name = 'nic_overfit_test'
     trainer.save_every = 0
+    trainer.enc_set_fine_tune()
     trainer.train()
 
 
@@ -258,6 +273,7 @@ def main() -> None:
         momentum        = GLOBAL_OPTS['momentum'],
         weight_decay    = GLOBAL_OPTS['weight_decay'],
         early_stop      = {'num_epochs' : 20, 'improv': 0.05},
+        grad_clip       = 5.0,
         # word map
         word_map        = wmap,
         # data
@@ -308,7 +324,9 @@ def main() -> None:
     trainer.enc_set_fine_tune()
     trainer.set_batch_size(GLOBAL_OPTS['fine_tune_batch_size'])
     trainer.set_num_epochs(60)
-    print('Added fine tuning, training until %d epochs' % trainer.get_num_epochs())
+    print('Added fine tuning, training until %d epochs with batch size %d' %\
+      (trainer.get_num_epochs(), trainer.get_batch_size())
+    )
     trainer.train()
 
 
@@ -520,10 +538,15 @@ def get_parser():
                         default=False,
                         help='Perform overfit test then exit'
                         )
-    parser.add_argument('--overfit-data-path',
+    parser.add_argument('--overfit-train-data',
                         type=str,
                         default=None,
-                        help='Path to dataset to overfit on'
+                        help='Path to train dataset to overfit on'
+                        )
+    parser.add_argument('--overfit-test-data',
+                        type=str,
+                        default=None,
+                        help='Path to test dataset to overfit on'
                         )
 
     return parser

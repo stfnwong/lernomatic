@@ -245,14 +245,14 @@ class COCODataSplit(object):
                 self.split_data.add_id(img['imgid'])
 
             if self.verbose:
-                print('\t Checking image [%d / %d] (%d captions found, %d images in split <%s>)' % \
-                      (n, len(self.data['images']), len(c['tokens']), len(self.split_data), self.split_data.split_name), \
-                      end='\r')
+                print('\t Split <%s> Checking image [%d / %d] (%d captions found) ' %\
+                      (self.split_data.split_name, n, len(self.data['images']), len(c['tokens'])), \
+                      end='\r'
+                )
 
             # Break early if we have enough items
-            if self.max_items > 0:
-                if len(self.split_data) >= self.max_items:
-                    break
+            if self.max_items > 0 and len(self.split_data) >= self.max_items:
+                break
 
         if self.verbose:
             print(' ')

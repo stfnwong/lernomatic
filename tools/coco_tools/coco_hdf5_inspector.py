@@ -227,7 +227,7 @@ if __name__ == '__main__':
         if len(vis_range) == 2:
             vis_start = int(vis_range[0])
             vis_end   = int(vis_range[1])
-            vis_step  = 0
+            vis_step  = 1
         elif len(vis_range) == 3:
             vis_start = int(vis_range[0])
             vis_end   = int(vis_range[1])

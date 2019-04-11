@@ -51,7 +51,7 @@ class ImageCaptTrainer(trainer.Trainer):
         self.enc_mom          : float = kwargs.pop('enc_mon', 0.0)
         self.enc_wd           : float = kwargs.pop('enc_wd', 0.0)
         self.alpha_c          : float = kwargs.pop('alpha_c', 1.0)
-        self.grad_clip        : float = kwargs.pop('grad_clip', None)
+        self.grad_clip        : float = kwargs.pop('grad_clip', 0.0)
         self.word_map         : dict  = kwargs.pop('word_map', None)
         self.dec_lr_scheduler         = kwargs.pop('dec_lr_scheduler', None)
         self.enc_lr_scheduler         = kwargs.pop('endec_lr_scheduler', None)
@@ -98,7 +98,7 @@ class ImageCaptTrainer(trainer.Trainer):
             self.encoder.send_to(self.device)
 
     def clip_gradient(self):
-        if self.grad_clip is None:
+        if self.grad_clip == 0.0:
             return
 
         for group in self.decoder_optim.param_groups:
@@ -197,7 +197,7 @@ class ImageCaptTrainer(trainer.Trainer):
 
         # TODO : can add batch time meters here later
 
-        for n, (imgs, caps, caplens) in enumerate(self.train_loader):
+        for batch_idx, (imgs, caps, caplens) in enumerate(self.train_loader):
             imgs = imgs.to(self.device)
             caps = caps.to(self.device)
             caplens = caplens.to(self.device)
@@ -230,10 +230,10 @@ class ImageCaptTrainer(trainer.Trainer):
                 self.encoder_optim.step()
 
             # Display
-            if (n % self.print_every) == 0:
+            if (batch_idx % self.print_every) == 0:
                 print('[TRAIN] :   Epoch       iteration         Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
 
             # do scheduling
             self.apply_lr_schedule()
@@ -242,7 +242,7 @@ class ImageCaptTrainer(trainer.Trainer):
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
             # save checkpoint
-            if self.save_every > 0 and n > 0 and (self.loss_iter % self.save_every == 0):
+            if self.save_every > 0 and batch_idx > 0 and (self.loss_iter % self.save_every == 0):
                 ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
                     '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
                 if self.verbose:
@@ -262,7 +262,9 @@ class ImageCaptTrainer(trainer.Trainer):
         hypotheses = list()     # predicted captions
         correct = 0
 
-        for n, (imgs, caps, caplens, allcaps) in enumerate(self.test_loader):
+        top5accs = util.AverageMeter()
+
+        for batch_idx, (imgs, caps, caplens, allcaps) in enumerate(self.test_loader):
             # move data to device
             imgs = imgs.to(self.device)
             caps = caps.to(self.device)
@@ -283,11 +285,16 @@ class ImageCaptTrainer(trainer.Trainer):
             test_loss = self.criterion(scores_packed[0], targets_packed[0])
             test_loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
 
+            # Get top-5 acc
+            top5 = ica_accuracy(scores_packed[0], targets_packed[0], 5)
+            top5accs.update(top5, sum(decode_lengths))
+
             # display
-            if (n % self.print_every) == 0:
-                print('[TEST]  :   Epoch       iteration         Test Loss')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), test_loss.item()))
+            if (batch_idx % self.print_every) == 0:
+                print('[TEST]  :   Epoch       iteration         Test Loss  Top5 Acc [val/avg]')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f       %.2f/%.2f' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.test_loader), test_loss.item(), top5accs.val, top5accs.avg)
+                )
 
             self.test_loss_history[self.test_loss_iter] = test_loss.item()
             self.test_loss_iter += 1
@@ -299,7 +306,8 @@ class ImageCaptTrainer(trainer.Trainer):
                 # remove <start> and <pad> tokens
                 img_captions = list(
                     map(lambda c: \
-                        [w for w in c if w not in {self.word_map.word_map['<start>'], self.word_map.word_map['<pad>']}], img_caps)
+                        [w for w in c if w not in {self.word_map.word_map['<start>'], self.word_map.word_map['<pad>']}],
+                        img_caps)
                 )
                 references.append(img_captions)
 
@@ -321,10 +329,10 @@ class ImageCaptTrainer(trainer.Trainer):
         if self.verbose:
             h_idx = np.random.randint(len(hypotheses))
             print('Provided caption  %d / %d' % (h_idx, len(references)))
-            ref_text = [self.word_map.lookup_word(w) for w in references[h_idx]]
+            ref_text = [self.word_map.tok2word(w) for w in references[h_idx][0]]
             print(str(ref_text))
             print('Generated caption %d / %d' % (h_idx, len(hypotheses)))
-            caption_text = [self.word_map.lookup_word(w) for w in hypotheses[h_idx]]
+            caption_text = [self.word_map.tok2word(w) for w in hypotheses[h_idx]]
             print(str(caption_text))
 
         # compute the BLEU-4 score
@@ -333,7 +341,7 @@ class ImageCaptTrainer(trainer.Trainer):
         self.acc_history[self.acc_iter] = bleu4
         self.acc_iter += 1
 
-        print('[TEST]  : Avg. Test Loss : %.4f, BLEU : (%.4f)' %\
+        print('[TEST]  : Avg. Test Loss : %.4f, Epoch BLEU : (%.4f)' %\
               (avg_test_loss, bleu4)
         )
 
@@ -348,6 +356,10 @@ class ImageCaptTrainer(trainer.Trainer):
 
 
     def eval(self, beam_size=3) -> None:
+        """
+        eval()
+        Evalute captions using beam search
+        """
         self.decoder.set_eval()
         if self.encoder is not None:
             self.encoder.set_eval()

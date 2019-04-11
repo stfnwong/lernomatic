@@ -15,7 +15,7 @@ from lernomatic.models import common
 from lernomatic.util import caption as caption_utils
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 
 # ======== LERNOMATIC MODELS ======== #
@@ -188,9 +188,9 @@ class AttentionNetModule(nn.Module):
         self.softmax  = nn.Softmax(dim=1)       # softmax to calculate weights
 
     def forward(self, enc_feature, dec_hidden) -> tuple:
-        att1 = self.enc_att(enc_feature)        # shape : (N, num_pixels, atten_dim)
-        att2 = self.dec_att(dec_hidden)         # shape : (N, atten_dim)
-        att  = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)
+        att1  = self.enc_att(enc_feature)        # shape : (N, num_pixels, atten_dim)
+        att2  = self.dec_att(dec_hidden)         # shape : (N, atten_dim)
+        att   = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)
         alpha = self.softmax(att)               # shape : (N, num_pixels)
         # compute the attention weighted encoding
         atten_w_enc = (enc_feature * alpha.unsqueeze(2)).sum(dim=1)     # shape : (N, enc_dim)
@@ -264,6 +264,7 @@ class DecoderAttenModule(nn.Module):
 
     def init_weights(self) -> None:
         """
+        INIT_WEIGHTS
         Initialize some parameters with values from the uniform distribution
         """
         self.embedding.weight.data.uniform_(-0.1, 0.1)
@@ -283,45 +284,10 @@ class DecoderAttenModule(nn.Module):
         # save a reference to the device
         self.device      = device
 
-    def get_params(self) -> dict:
-        params = dict()
-        params['enc_dim']    = self.enc_dim
-        params['dec_dim']    = self.dec_dim
-        params['embed_dim']  = self.embed_dim
-        params['atten_dim']  = self.atten_dim
-        params['vocab_size'] = self.vocab_size
-        params['dropout']    = self.dropout
-        params['verbose']    = self.verbose
-        params['atten_net_dict'] = self.atten_net.state_dict()
-        params['atten_net_params'] = self.atten_net.get_params()
-
-        return params
-
-    def set_params(self, params: dict) -> None:
-        self.enc_dim = params['enc_dim']
-        self.dec_dim = params['dec_dim']
-        self.embed_dim = params['embed_dim']
-        self.atten_dim = params['atten_dim']
-        self.vocab_size = params['vocab_size']
-        self.dropout = params['dropout']
-        self.verbose = params['verbose']
-        self._init_network()
-        # load the attention network parameters
-        self.atten_net.set_params(params['atten_net_params'])
-        self.atten_net.load_state_dict(params['atten_net_dict'])
-
     def load_pretrained_embeddings(self, embeddings) -> None:
-        """
-        INIT_WEIGHTS
-        Init some parameters with values from the uniform distribution.
-        This improves convergence
-        """
         self.embedding.weights = nn.Parameter(embeddings)
 
     def fine_tune_embeddings(self, tune=True) -> None:
-        """
-        FINE_TUNE_EMBEDDINGS
-        """
         for p in self.embedding.parameters():
             p.requires_grad = tune
 
@@ -350,8 +316,8 @@ class DecoderAttenModule(nn.Module):
             (scores for vocab, sorted encoded captions, decode lengths, weights, sort indices)
 
         """
-        N = enc_feature.size(0)             # batch size
-        enc_dim = enc_feature.size(-1)
+        N          = enc_feature.size(0)             # batch size
+        enc_dim    = enc_feature.size(-1)
         vocab_size = self.vocab_size
 
         # flatten image
@@ -362,7 +328,7 @@ class DecoderAttenModule(nn.Module):
         # shortest)
         capt_lengths, sort_ind = capt_lengths.squeeze(1).sort(dim=0, descending=True)
         enc_feature = enc_feature[sort_ind]
-        enc_capt = enc_capt[sort_ind]
+        enc_capt    = enc_capt[sort_ind]
 
         # Embeddings
         embeddings = self.embedding(enc_capt)       # shape = (N, dec_dim)
@@ -400,6 +366,33 @@ class DecoderAttenModule(nn.Module):
 
         return (predictions, enc_capt, decode_lengths, alphas, sort_ind)
 
+    def get_params(self) -> dict:
+        params = dict()
+        params['enc_dim']    = self.enc_dim
+        params['dec_dim']    = self.dec_dim
+        params['embed_dim']  = self.embed_dim
+        params['atten_dim']  = self.atten_dim
+        params['vocab_size'] = self.vocab_size
+        params['dropout']    = self.dropout
+        params['verbose']    = self.verbose
+        params['atten_net_dict'] = self.atten_net.state_dict()
+        params['atten_net_params'] = self.atten_net.get_params()
+
+        return params
+
+    def set_params(self, params: dict) -> None:
+        self.enc_dim = params['enc_dim']
+        self.dec_dim = params['dec_dim']
+        self.embed_dim = params['embed_dim']
+        self.atten_dim = params['atten_dim']
+        self.vocab_size = params['vocab_size']
+        self.dropout = params['dropout']
+        self.verbose = params['verbose']
+        self._init_network()
+        # load the attention network parameters
+        self.atten_net.set_params(params['atten_net_params'])
+        self.atten_net.load_state_dict(params['atten_net_dict'])
+
 
 class EncoderModule(nn.Module):
     """
@@ -420,7 +413,6 @@ class EncoderModule(nn.Module):
         self.net = nn.Sequential(*modules)
         # resize image to fixed size to allow input images of variable size
         self.adaptive_pool = nn.AdaptiveAvgPool2d((self.enc_img_size, self.enc_img_size))
-
         self.fine_tune(self.do_fine_tune)
 
     def send_to(self, device:torch.device) -> None:
