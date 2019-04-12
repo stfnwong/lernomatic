@@ -67,7 +67,7 @@ def main() -> None:
         print('Getting data for split <%s>' % str(k))
         v.create_split()
 
-    wmap = word_map.WordMap()
+    wmap = word_map.WordMap(min_word_freq = GLOBAL_OPTS['min_word_freq'])
     for k, v in split_objs.items():
         print('Updating word map with data from split <%s>' % str(k))
         split_captions = v.get_captions()
@@ -116,6 +116,11 @@ def get_parser():
                         type=int,
                         default=64,
                         help='Maximum length of caption vector'
+                        )
+    parser.add_argument('--min-word-freq',
+                        type=int,
+                        default=3,
+                        help='Do not include words with a frequency less than this (default: 3)'
                         )
     # output file options
     parser.add_argument('--split',

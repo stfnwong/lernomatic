@@ -81,6 +81,7 @@ def get_scheduler(lr_min:float,
 def get_word_map(fname:str) -> word_map.WordMap:
     wmap = word_map.WordMap()
     wmap.load(fname)
+    print('Loaded word map containing %d words' % len(wmap))
 
     return wmap
 
@@ -182,7 +183,6 @@ def overfit() -> None:
         overfit_test_data = None
 
     wmap = get_word_map(GLOBAL_OPTS['wordmap'])
-    print('Loaded word map containing %d words' % len(wmap))
     encoder, decoder = get_models(wmap)
     trainer = get_trainer(
         encoder,
@@ -272,8 +272,10 @@ def main() -> None:
         learning_rate   = GLOBAL_OPTS['learning_rate'],
         momentum        = GLOBAL_OPTS['momentum'],
         weight_decay    = GLOBAL_OPTS['weight_decay'],
-        early_stop      = {'num_epochs' : 20, 'improv': 0.05},
+        early_stop      = {'num_epochs' : 2, 'improv': 0.05},
         grad_clip       = 5.0,
+        dec_lr          = GLOBAL_OPTS['dec_lr'],
+        enc_lr          = GLOBAL_OPTS['enc_lr'],
         # word map
         word_map        = wmap,
         # data
@@ -434,7 +436,7 @@ def get_parser():
                         )
     parser.add_argument('--fine-tune-batch-size',
                         type=int,
-                        default=64,
+                        default=32,
                         help='Batch size to use during training'
                         )
     parser.add_argument('--weight-decay',

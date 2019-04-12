@@ -15,7 +15,7 @@ from lernomatic.models import common
 from lernomatic.util import caption as caption_utils
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 # ======== LERNOMATIC MODELS ======== #
@@ -362,7 +362,7 @@ class DecoderAttenModule(nn.Module):
 
             preds = self.fc(self.drop(h))
             predictions[:batch_size_t, t, :] = preds
-            alphas[:batch_size_t, t, ] = alpha
+            alphas[:batch_size_t, t, ]       = alpha
 
         return (predictions, enc_capt, decode_lengths, alphas, sort_ind)
 

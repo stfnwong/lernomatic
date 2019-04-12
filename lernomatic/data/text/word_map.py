@@ -18,7 +18,6 @@ class WordMap(object):
         self.verbose       = kwargs.pop('verbose', False)
         self.max_len       = kwargs.pop('max_len', 100)
         self.min_word_freq = kwargs.pop('min_word_freq', 5)
-        self.capt_per_img  = kwargs.pop('capt_per_img', 5)
         # init word map
         self.word_map      = None
         self.map_word      = None            # inverse of a word map
@@ -45,15 +44,6 @@ class WordMap(object):
         SAVE
         Commit the word map to disk in JSON format
         """
-        if self.word_map is None:
-            if self.verbose:
-                print('No word map data, exiting...')
-            return
-
-        #data = {
-        #    'word_map' : self.word_map,
-        #    #'map_word' : self.map_word
-        #}
         with open(fname, 'w') as fp:
             json.dump(self.word_map, fp)
 
@@ -63,11 +53,8 @@ class WordMap(object):
         Load a word map from a JSON on disk
         """
         with open(fname, 'r') as fp:
-            #data = json.load(fp)
-            #self.word_map = data['word_map']
             self.word_map = json.load(fp)
             self.gen_map_word()
-            #self.map_word = data['map_word']
 
     def get_vocab_size(self) -> int:
         return len(self.word_map)

@@ -54,7 +54,7 @@ class ImageCaptTrainer(trainer.Trainer):
         self.grad_clip        : float = kwargs.pop('grad_clip', 0.0)
         self.word_map         : dict  = kwargs.pop('word_map', None)
         self.dec_lr_scheduler         = kwargs.pop('dec_lr_scheduler', None)
-        self.enc_lr_scheduler         = kwargs.pop('endec_lr_scheduler', None)
+        self.enc_lr_scheduler         = kwargs.pop('enc_lr_scheduler', None)
         super(ImageCaptTrainer, self).__init__(None, **kwargs)
 
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -203,10 +203,11 @@ class ImageCaptTrainer(trainer.Trainer):
             caplens = caplens.to(self.device)
 
             # forward pass
-            imgs = self.encoder.forward(imgs)
+            if self.encoder is not None:
+                imgs = self.encoder.forward(imgs)
             scores, caps_sorted, decode_lengths, alphas,  sort_ind = self.decoder.forward(imgs, caps, caplens)
             # remove the <start> token from the output captions
-            targets = caps_sorted[:, 1:]
+            targets        = caps_sorted[:, 1:]
             scores_packed  = pack_padded_sequence(scores,  decode_lengths, batch_first=True)
             targets_packed = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
@@ -248,7 +249,6 @@ class ImageCaptTrainer(trainer.Trainer):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
-
 
     def test_epoch(self) -> None:
         """
@@ -306,7 +306,7 @@ class ImageCaptTrainer(trainer.Trainer):
                 # remove <start> and <pad> tokens
                 img_captions = list(
                     map(lambda c: \
-                        [w for w in c if w not in {self.word_map.word_map['<start>'], self.word_map.word_map['<pad>']}],
+                        [w for w in c if w not in {self.word_map.get_start(), self.word_map.get_pad()}],
                         img_caps)
                 )
                 references.append(img_captions)
@@ -328,7 +328,7 @@ class ImageCaptTrainer(trainer.Trainer):
         # print a random hypotheses
         if self.verbose:
             h_idx = np.random.randint(len(hypotheses))
-            print('Provided caption  %d / %d' % (h_idx, len(references)))
+            print('Provided caption  %d / %d [index 0]' % (h_idx, len(references)))
             ref_text = [self.word_map.tok2word(w) for w in references[h_idx][0]]
             print(str(ref_text))
             print('Generated caption %d / %d' % (h_idx, len(hypotheses)))
