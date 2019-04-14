@@ -16,7 +16,7 @@ from lernomatic.param import lr_common
 from lernomatic.vis import vis_loss_history
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -25,8 +25,8 @@ def main():
 
     # get a model
     ref_model = resnets.WideResnet(
-        58,
-        10
+        depth = 58,
+        num_classes = 10
     )
 
     # get a trainer

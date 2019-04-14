@@ -27,7 +27,9 @@ def main():
         print('Loading checkpoints is not yet implemented')
 
     # get a model
-    model = resnets.WideResnet(GLOBAL_OPTS['resnet_depth'], 10)
+    model = resnets.WideResnet(
+        depth=GLOBAL_OPTS['resnet_depth'],
+        num_classes=10)
     trainer = resnet_trainer.ResnetTrainer(
         model,
         # training time
@@ -140,7 +142,7 @@ def get_parser():
     # Network options
     parser.add_argument('--resnet-depth',
                          type=int,
-                         default=9,
+                         default=16,
                          help='Number of layers to use for Resnet'
                          )
     # Training options

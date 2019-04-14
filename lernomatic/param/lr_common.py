@@ -1,5 +1,5 @@
 """
-LEARNING_RATE
+LR_COMMON
 Tools for finding optimal learning rate
 
 Stefan Wong 2018
