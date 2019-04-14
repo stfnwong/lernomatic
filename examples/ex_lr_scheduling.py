@@ -8,7 +8,7 @@ Stefan Wong 2019
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-from lernomatic.param import learning_rate
+from lernomatic.param import lr_common
 from lernomatic.vis import vis_lr
 # we use CIFAR-10 for this example
 from lernomatic.models import common
@@ -43,11 +43,11 @@ def get_model() -> common.LernomaticModel:
 
 
 # Helper function for finder
-def get_lr_finder(trainer, find_type='LogFinder') -> learning_rate.LRFinder:
-    if not hasattr(learning_rate, find_type):
+def get_lr_finder(trainer, find_type='LogFinder') -> lr_common.LRFinder:
+    if not hasattr(lr_common, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
-    lr_find_obj = getattr(learning_rate, find_type)
+    lr_find_obj = getattr(lr_common, find_type)
     lr_finder = lr_find_obj(
         trainer,
         lr_min         = GLOBAL_OPTS['lr_min'],

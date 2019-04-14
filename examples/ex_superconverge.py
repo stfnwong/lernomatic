@@ -15,7 +15,7 @@ from lernomatic.models import resnets
 from lernomatic.train import trainer
 from lernomatic.train import cifar_trainer
 from lernomatic.train import schedule
-from lernomatic.param import learning_rate
+from lernomatic.param import lr_common
 from lernomatic.vis import vis_loss_history
 
 
@@ -50,11 +50,11 @@ def get_lr_finder(trainer:trainer.Trainer,
                   find_num_epochs:int=4,
                   explode_thresh:float=6.0,
                   print_every:int=100,
-                  find_type:str='LogFinder') -> learning_rate.LRFinder:
-    if not hasattr(learning_rate, find_type):
+                  find_type:str='LogFinder') -> lr_common.LRFinder:
+    if not hasattr(lr_common, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
-    lr_find_obj = getattr(learning_rate, find_type)
+    lr_find_obj = getattr(lr_common, find_type)
     lr_finder = lr_find_obj(
         trainer,
         lr_min           = lr_min,

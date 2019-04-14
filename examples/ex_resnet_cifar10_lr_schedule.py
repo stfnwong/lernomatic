@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from lernomatic.train import schedule
 from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
-from lernomatic.param import learning_rate
+from lernomatic.param import lr_common
 # vis stuff
 from lernomatic.vis import vis_loss_history
 
@@ -45,7 +45,7 @@ def main():
     )
 
     # prepare lr_finder
-    lr_finder = learning_rate.LogFinder(
+    lr_finder = lr_common.LogFinder(
         trainer,
         lr_min         = GLOBAL_OPTS['lr_min'],
         lr_max         = GLOBAL_OPTS['lr_max'],
