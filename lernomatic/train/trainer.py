@@ -188,7 +188,7 @@ class Trainer(object):
             # restore old history
             self.loss_history[:len(temp_loss_history)] = temp_loss_history
             if self.val_loss_history is not None:
-                self.val_loss_history[:len(temp_val_loss_history)] = temp_test_loss_history
+                self.val_loss_history[:len(temp_val_loss_history)] = temp_val_loss_history
             if self.acc_history is not None:
                 self.acc_history[:len(temp_acc_history)] = temp_acc_history
             self.loss_iter = temp_loss_iter
