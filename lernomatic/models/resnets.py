@@ -4,6 +4,8 @@ Modules for building resnets
 
 Stefan Wong 2019
 """
+
+import importlib
 import math
 import torch
 import torch.nn as nn
@@ -189,7 +191,6 @@ class WideResnetModule(nn.Module):
         return self.fc(out)
 
 
-
 class WideResnet(common.LernomaticModel):
     def __init__(self, **kwargs):
         self.depth          :int   = kwargs.pop('depth', 56)
@@ -212,3 +213,40 @@ class WideResnet(common.LernomaticModel):
 
     def __repr__(self) -> str:
         return 'WideResnet'
+
+    def get_params(self) -> dict:
+        params = super(WideResnet, self).get_params()
+        params['resnet_params'] = {
+            'depth'          : self.depth,
+            'num_classes'    : self.num_classes,
+            'input_channels' : self.input_channels,
+            'w_factor'       : self.w_factor,
+            'drop_rate'      : self.drop_rate
+        }
+
+        return params
+
+    def set_params(self, params : dict) -> None:
+        # load resnet params
+        self.depth          = params['resnet_params']['depth']
+        self.num_classes    = params['resnet_params']['num_classes']
+        self.input_channels = params['resnet_params']['input_channels']
+        self.w_factor       = params['resnet_params']['w_factor']
+        self.drop_rate      = params['resnet_params']['drop_rate']
+        # regular model stuff
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod(
+            self.depth,
+            self.num_classes,
+            self.input_channels,
+            self.w_factor,
+            self.drop_rate
+        )
+        self.net.load_state_dict(params['model_state_dict'])
+

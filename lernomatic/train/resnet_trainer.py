@@ -5,6 +5,7 @@ Trainer for Resnet models
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import torch.nn.functional as F
 import torchvision
@@ -138,3 +139,31 @@ class ResnetTrainer(trainer.Trainer):
         self.iter_per_epoch    = history['iter_per_epoch']
         if 'val_loss_history' in history:
             self.val_loss_history = history['val_loss_history']
+
+    # For resnets, we need to pass the correct depth parameter in first
+    def load_checkpoint(self, fname: str) -> None:
+        """
+        Load all data from a checkpoint
+        """
+        checkpoint_data = torch.load(fname)
+        self.set_trainer_params(checkpoint_data['trainer_params'])
+        # here we just load the object that derives from LernomaticModel. That
+        # object will in turn load the actual nn.Module data from the
+        # checkpoint data with the 'model' key
+        model_import_path = checkpoint_data['model']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['model']['model_name'])
+        self.model = mod(depth=28)
+        self.model.set_params(checkpoint_data['model'])
+
+        # Load optimizer
+        self._init_optimizer()
+        self.optimizer.load_state_dict(checkpoint_data['optim'])
+        # Transfer all the tensors to the current device
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        # restore trainer object info
+        self._send_to_device()
