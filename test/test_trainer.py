@@ -101,9 +101,9 @@ class TestTrainer(unittest.TestCase):
         print('\n ...done')
 
         # Test loss history
-        test_loss_history = 'test_save_load_history.pkl'
-        src_tr.save_history(test_loss_history)
-        dst_tr.load_history(test_loss_history)
+        val_loss_history = 'test_save_load_history.pkl'
+        src_tr.save_history(val_loss_history)
+        dst_tr.load_history(val_loss_history)
         print('\t Comparing loss history....')
         self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
         for n in range(src_tr.loss_iter):

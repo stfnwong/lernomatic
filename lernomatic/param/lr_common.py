@@ -72,9 +72,9 @@ class LRFinder(object):
             loss, self.best_loss, self.learning_rate)
         )
 
-    def _print_acc(self, avg_test_loss: float, correct: int, acc: float, dataset_size: int) -> None:
+    def _print_acc(self, avg_val_loss: float, correct: int, acc: float, dataset_size: int) -> None:
         print('[FIND_LR ACC]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-              (avg_test_loss, correct, dataset_size, 100.0 * acc)
+              (avg_val_loss, correct, dataset_size, 100.0 * acc)
         )
 
     def _init_history(self) -> None:
@@ -126,8 +126,8 @@ class LRFinder(object):
     def check_loaders(self) -> None:
         if self.trainer.train_loader is None:
             raise ValueError('No train_loader in trainer')
-        if self.trainer.test_loader is None:
-            raise ValueError('No test_loader in trainer')
+        if self.trainer.val_loader is None:
+            raise ValueError('No val_loader in trainer')
 
     def get_lr_history(self) -> list:
         if len(self.log_lr_history) < 1:
@@ -284,8 +284,8 @@ class LogFinder(LRFinder):
 
                 # accuracy test
                 if self.acc_test is True:
-                    if self.trainer.test_loader is not None:
-                        self.acc(self.trainer.test_loader, batch_idx)
+                    if self.trainer.val_loader is not None:
+                        self.acc(self.trainer.val_loader, batch_idx)
                     else:
                         self.acc(self.trainer.train_loader, batch_idx)
                     # keep a record of the best acc
@@ -326,7 +326,7 @@ class LogFinder(LRFinder):
         acc()
         Collect accuracy stats while finding learning rate
         """
-        test_loss = 0.0
+        val_loss = 0.0
         correct = 0
         self.trainer.model.set_eval()
         with torch.no_grad():
@@ -336,17 +336,17 @@ class LogFinder(LRFinder):
 
                 output = self.trainer.model.forward(data)
                 loss = self.trainer.criterion(output, labels)
-                test_loss += loss.item()
+                val_loss += loss.item()
 
                 # accuracy
                 pred = output.data.max(1, keepdim=True)[1]
                 correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
-        avg_test_loss = test_loss / len(data_loader)
+        avg_val_loss = val_loss / len(data_loader)
         acc = correct / len(data_loader.dataset)
         self.acc_history.append(acc)
         if batch_idx % self.print_every == 0:
             print('[FIND_LR ACC]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-                (avg_test_loss, correct, len(data_loader.dataset),
+                (avg_val_loss, correct, len(data_loader.dataset),
                 100.0 * acc)
             )

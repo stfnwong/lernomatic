@@ -283,7 +283,7 @@ def get_parser():
                         default=64,
                         help='Batch size to use during training'
                         )
-    parser.add_argument('--test-batch-size',
+    parser.add_argument('--val-batch-size',
                         type=int,
                         default=64,
                         help='Batch size to use during testing'
