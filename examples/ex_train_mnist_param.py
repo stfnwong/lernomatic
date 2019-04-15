@@ -12,7 +12,7 @@ from lernomatic.train import mnist_trainer
 from lernomatic.models import mnist
 # add learning rate scheduler
 from lernomatic.train import schedule
-from lernomatic.param import learning_rate
+from lernomatic.param import lr_common
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -52,18 +52,19 @@ def main():
     )
 
     # get an LRFinder object
-    find_num_epochs = 8
-    lr_finder = learning_rate.LogSearcher(
+    lr_finder = lr_common.LogFinder(
         trainer,
-        lr_min       = GLOBAL_OPTS['lr_min'],
-        lr_max       = GLOBAL_OPTS['lr_max'],
-        num_epochs   = find_num_epochs,
+        lr_min         = 1e-8,
+        lr_max         = 1.0,
+        num_epochs     = 3,
         explode_thresh = 10,
-        print_every  = 20
+        print_every    = 20
     )
     print(lr_finder)
 
-    lr_finder.find_lr()
+    lr_finder.find()
+    lr_min, lr_max = lr_finder.get_lr_range()
+    print('Found LR range as %.4f -> %.4f' % (lr_min, lr_max))
 
     dx_smooth_loss = differentiate(lr_finder.loss_grad_history)
     loss_fig, loss_ax = plt.subplots()

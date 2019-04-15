@@ -1,5 +1,5 @@
 """
-LEARNING_RATE
+LR_COMMON
 Tools for finding optimal learning rate
 
 Stefan Wong 2018
@@ -19,8 +19,8 @@ class LRFinder(object):
     Finds optimal learning rates
     """
     def __init__(self, trainer, **kwargs) -> None:
-        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range')
-        self.trainer        = trainer
+        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range', 'laplace', 'sobel')
+        self.trainer          = trainer
         # learning params
         self.num_epochs       = kwargs.pop('num_epochs', 8)
         # lr params
@@ -33,6 +33,7 @@ class LRFinder(object):
         self.lr_min_factor    :float = kwargs.pop('lr_min_factor', 2.0)
         self.lr_max_scale     :float = kwargs.pop('lr_max_scale', 1.0)
         self.lr_select_method :str   = kwargs.pop('lr_select_method', 'max_acc')
+        self.lr_trunc         :int   = kwargs.pop('lr_trunc', 10)
         # gradient params
         self.grad_thresh      :float = kwargs.pop('grad_thresh', 0.002)
         # other
@@ -88,6 +89,28 @@ class LRFinder(object):
 
         return smooth_loss
 
+    def _laplace_loss(self) -> tuple:
+        k = np.array([-1, 4, -1])
+        Xs = np.convolve(np.asarray(self.acc_history), k)
+        clip_point = Xs[self.lr_trunc : len(Xs) - self.lr_trunc].max() * 0.9
+        Xc = Xs[Xs < clip_point] = 0
+        idxs = np.argwhere(Xs > 0)
+        lr_max = self.log_lr_history[idxs[0][0]]
+        lr_min = self.log_lr_history[idxs[-2][0]]
+
+        return (lr_min, lr_max)
+
+    def _sobel_loss(self) -> tuple:
+        k = np.array([-1, 0, 1])
+        Xs = np.convolve(np.asarray(self.acc_history), k)
+        clip_point = Xs[self.lr_trunc : len(Xs) - self.lr_trunc].max() * 0.9
+        Xc = Xs[Xs < clip_point] = 0
+        idxs = np.argwhere(Xs > 0)
+        lr_max = self.log_lr_history[idxs[0][0]]
+        lr_min = self.log_lr_history[idxs[-2][0]]
+
+        return (lr_min, lr_max)
+
     def save_model_params(self, params: dict) -> None:
         self.model_params = copy.deepcopy(params)
 
@@ -126,10 +149,14 @@ class LRFinder(object):
             lr_min = lr_max * self.lr_min_factor
         elif self.lr_select_method == 'min_range':
             raise NotImplementedError('TODO : min_range method')
+        elif self.lr_select_method == 'laplace':
+            lr_min, lr_max = self._laplace_loss()
+        elif self.lr_select_method == 'sobel':
+            lr_min, lr_max = self._sobel_loss()
         else:
             raise ValueError('Invalid range selection method [%s]' % str(self.lr_select_method))
 
-        return (10 ** lr_min, 10**lr_max)
+        return (10**lr_min, 10**lr_max)
 
     # plotting
     def plot_lr_vs_acc(self, ax, title:str=None, log:bool=False) -> None:
@@ -212,7 +239,7 @@ class LogFinder(LRFinder):
         """
         self.check_loaders()
         # cache parameters for later
-        self.save_model_params(self.trainer.get_model_params())
+        self.save_model_params(self.trainer.model.get_net_state_dict())
         self.save_trainer_params(self.trainer.get_trainer_params())
         self.learning_rate = self.lr_min
         self.lr_mult = (self.lr_max / self.lr_min) ** (1.0 / len(self.trainer.train_loader))
@@ -293,7 +320,6 @@ class LogFinder(LRFinder):
         self.trainer.model.set_net_state_dict(self.load_model_params())
 
         return self.get_lr_range()
-
 
     def acc(self, data_loader, batch_idx) -> None:
         """

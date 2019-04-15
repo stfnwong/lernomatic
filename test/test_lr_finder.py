@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 # unit(s) under test
-from lernomatic.param import learning_rate
+from lernomatic.param import lr_common
 from lernomatic.train import cifar_trainer
 from lernomatic.models import cifar
 from lernomatic.vis import vis_loss_history
@@ -23,9 +23,11 @@ from lernomatic.vis import vis_loss_history
 GLOBAL_OPTS = dict()
 
 # helper function for plotting
-def plot_lr_find_results(ax, loss_history, smooth_loss_history, lr_history, **kwargs):
-    title = kwargs.pop('title', 'Learning rate finder output')
-
+def plot_lr_find_results(ax,
+                         loss_history:np.ndarray,
+                         smooth_loss_history:np.ndarray,
+                         lr_history:np.ndarray,
+                         title:str='Learning rate finder output') -> None:
     ax.plot(np.arange(len(loss_history)), loss_history)
     ax.plot(np.arange(len(smooth_loss_history)), smooth_loss_history)
     ax.plot(np.arange(len(lr_history)), lr_history)
@@ -35,7 +37,7 @@ def plot_lr_find_results(ax, loss_history, smooth_loss_history, lr_history, **kw
     ax.legend(['Loss', 'Smooth Loss', 'Learning rate'])
 
 
-def plot_lr_vs_loss(ax, lr_history, loss_history):
+def plot_lr_vs_loss(ax, lr_history:np.ndarray, loss_history:np.ndarray) -> None:
 
     ax.plot(lr_history, loss_history)
     ax.set_title('Learning rate vs Loss')
@@ -43,19 +45,19 @@ def plot_lr_vs_loss(ax, lr_history, loss_history):
     ax.set_ylabel('(smoothed) loss')
 
 
-def get_figure():
+def get_figure() -> tuple:
     fig, ax = plt.subplots()
-    return fig, ax
+    return (fig, ax)
 
 
 GLOBAL_TEST_PARAMS = {
         'test_batch_size'        : 32,
         'test_learning_rate'     : 0.001,
-        'test_lr_num_epochs'     : 8,            # number of epochs to run test for
+        'test_lr_num_epochs'     : 4,            # number of epochs to run test for
         'test_print_every'       : 20,
         # options for learning rate finder
         'test_lr_min'            : 1e-8,
-        'test_lr_max'            : 1e-1,
+        'test_lr_max'            : 1.0,
         'test_num_iter'          : 5000,
         'test_lr_explode_thresh' : 4.5,
         'train_num_epochs'       : 80,
@@ -63,7 +65,7 @@ GLOBAL_TEST_PARAMS = {
 
 
 # Helper function to generate a trainer object
-def get_trainer():
+def get_trainer() -> cifar_trainer.CIFAR10Trainer:
     # get a model to test on and its corresponding trainer
     model = cifar.CIFAR10Net()
     trainer = cifar_trainer.CIFAR10Trainer(
@@ -92,7 +94,7 @@ class TestLogFinder(unittest.TestCase):
 
         # get an LRFinder
         trainer = get_trainer()
-        lr_finder = learning_rate.LogFinder(
+        lr_finder = lr_common.LogFinder(
             trainer,
             lr_min         = GLOBAL_TEST_PARAMS['test_lr_min'],
             lr_max         = GLOBAL_TEST_PARAMS['test_lr_max'],
@@ -140,7 +142,7 @@ class TestLogFinder(unittest.TestCase):
         print('======== TestLogFinder.test_lr_range_find ')
 
         trainer = get_trainer()
-        lr_finder = learning_rate.LogFinder(
+        lr_finder = lr_common.LogFinder(
             trainer,
             lr_min     = GLOBAL_TEST_PARAMS['test_lr_min'],
             lr_max     = GLOBAL_TEST_PARAMS['test_lr_max'],
@@ -222,7 +224,7 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose']:
         print('-------- GLOBAL OPTS (%s) --------' % str(sys.argv[0]))
         for k, v in GLOBAL_OPTS.items():
-            print('[%s] : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     sys.argv[1:] = args.unittest_args
     unittest.main()

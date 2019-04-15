@@ -8,11 +8,13 @@ Stefan Wong 2019
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-from lernomatic.param import learning_rate
+from lernomatic.param import lr_common
 from lernomatic.vis import vis_lr
 # we use CIFAR-10 for this example
+from lernomatic.models import common
 from lernomatic.models import cifar
 from lernomatic.models import resnets
+from lernomatic.train import trainer
 from lernomatic.train import cifar_trainer
 from lernomatic.train import schedule
 # vis tools
@@ -25,7 +27,7 @@ GLOBAL_OPTS = dict()
 
 
 # Helper functions for models
-def get_model():
+def get_model() -> common.LernomaticModel:
     if GLOBAL_OPTS['model'] == 'resnet':
         model = resnets.WideResnet(
             depth=GLOBAL_OPTS['resnet_depth'],
@@ -41,15 +43,16 @@ def get_model():
 
 
 # Helper function for finder
-def get_lr_finder(trainer, find_type='LogFinder'):
-    if not hasattr(learning_rate, find_type):
+def get_lr_finder(trainer, find_type='LogFinder') -> lr_common.LRFinder:
+    if not hasattr(lr_common, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
-    lr_find_obj = getattr(learning_rate, find_type)
+    lr_find_obj = getattr(lr_common, find_type)
     lr_finder = lr_find_obj(
         trainer,
         lr_min         = GLOBAL_OPTS['lr_min'],
         lr_max         = GLOBAL_OPTS['lr_max'],
+        lr_select_method = GLOBAL_OPTS['lr_select_method'],
         num_epochs     = GLOBAL_OPTS['find_num_epochs'],
         explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
         print_every    = GLOBAL_OPTS['find_print_every']
@@ -59,7 +62,10 @@ def get_lr_finder(trainer, find_type='LogFinder'):
 
 
 # Helper function for scheduler
-def get_scheduler(lr_min, lr_max, sched_type='TriangularScheduler'):
+def get_scheduler(lr_min:float,
+                  lr_max:float,
+                  stepsize:int,
+                  sched_type:str='TriangularScheduler') -> schedule.LRScheduler:
     if sched_type is None:
         return None
 
@@ -68,9 +74,9 @@ def get_scheduler(lr_min, lr_max, sched_type='TriangularScheduler'):
 
     lr_sched_obj = getattr(schedule, sched_type)
     lr_scheduler = lr_sched_obj(
-        stepsize = GLOBAL_OPTS['sched_stepsize'],    # TODO : optimal stepsize selection?
         lr_min = lr_min,
-        lr_max = lr_max
+        lr_max = lr_max,
+        stepsize = stepsize
     )
 
     return lr_scheduler
@@ -120,10 +126,12 @@ def run_schedule(trainer, sched_type, checkpoint_name, lr_min=None, lr_max=None)
     if GLOBAL_OPTS['find_only'] is True:
         return lr_finder
 
+    stepsize = len(trainer.train_loader)
     # get scheduler
     lr_scheduler = get_scheduler(
         lr_min,
         lr_max,
+        stepsize,
         sched_type
     )
     print('Got scheduler [%s]' % repr(lr_scheduler))
@@ -131,7 +139,8 @@ def run_schedule(trainer, sched_type, checkpoint_name, lr_min=None, lr_max=None)
     trainer.set_lr_scheduler(lr_scheduler)
     trainer.train()
 
-    return trainer      # TODO : do we need to return anything (since we pass in trainer)?
+    # TODO : determine mutability of trainer object
+    return trainer
 
 
 # Find lr for a given trainer
@@ -234,6 +243,11 @@ def get_parser():
                         default=1e-1,
                         help='Maximum range to search for learning rate'
                         )
+    parser.add_argument('--lr-select-method',
+                        type=str,
+                        default='min_loss',
+                        help='Method to use for selecting LR range'
+                        )
     # Schedule options
     parser.add_argument('--exp-decay',
                         type=float,
@@ -318,7 +332,7 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     schedulers = [
         'TriangularScheduler',
@@ -327,28 +341,34 @@ if __name__ == '__main__':
         'WarmRestartScheduler',
         'TriangularExpScheduler',
         'Triangular2ExpScheduler',
+        'DecayWhenAcc',
+        'TriangularDecayWhenAcc',
         None
     ]
 
     checkpoint_names = [
-        str(GLOBAL_OPTS['model']) + '_triangular_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_triangular2_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_exp_decay_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_warm_restart_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_triangular_exp_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_triangular2_exp_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_no_sched_cifar10'
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular2_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_exp_decay_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_warm_restart_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_exp_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular2_exp_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_decay_when_acc_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_decay_when_acc_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_no_sched_cifar10'
     ]
 
     figure_dir = 'figures/'
     figure_names = [
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_triangular_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_triangular2_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_exp_decay_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_warm_restart_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_triangular_exp_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_triangular2_exp_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_' + 'ex_no_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular2_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_exp_decay_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_warm_restart_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_exp_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular2_exp_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_decay_when_acc_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_decay_when_acc_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_no_sched_cifar10.png',
     ]
 
     assert len(schedulers) == len(checkpoint_names)
@@ -368,16 +388,18 @@ if __name__ == '__main__':
         if idx == 0:
             lr_find_min, lr_find_max, lr_finder = find_lr(trainer, return_finder=True)
             # create plots
-            lr_acc_title = '[' + str(GLOBAL_OPTS['model']) + '] ' +\
+            lr_acc_title  = '[' + str(GLOBAL_OPTS['model']) + '[' + str(GLOBAL_OPTS['lr_select_method']) + '] ' +\
                 str(schedulers[idx]) + ' learning rate vs acc (log)'
-            lr_loss_title = '[' + str(GLOBAL_OPTS['model']) + '] ' +\
+            lr_loss_title = '[' + str(GLOBAL_OPTS['model']) + '[' + str(GLOBAL_OPTS['lr_select_method']) + '] ' +\
                 str(schedulers[idx]) + ' learning rate vs loss (log)'
             lr_fig, lr_ax = vis_loss_history.get_figure_subplots(2)
             lr_finder.plot_lr_vs_acc(lr_ax[0], lr_acc_title, log=True)
             lr_finder.plot_lr_vs_loss(lr_ax[1], lr_loss_title, log=True)
             # save
             lr_fig.tight_layout()
-            lr_fig.savefig('figures/[%s]_%s_lr_finder_output.png' % (str(GLOBAL_OPTS['model']), str(schedulers[idx])))
+            lr_fig.savefig('figures/[%s][%s]_%s_lr_finder_output.png' %\
+                           (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), str(schedulers[idx]))
+            )
 
         print('Found learning rates as %.4f -> %.4f' % (lr_find_min, lr_find_max))
         if GLOBAL_OPTS['find_only'] is True:
@@ -393,8 +415,8 @@ if __name__ == '__main__':
         # create plots
         trainers.append(trainer)
         acc_list.append(trainer.get_acc_history())
-        loss_title = str(schedulers[idx]) + ' Loss : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
-        acc_title = str(schedulers[idx]) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
+        loss_title = str(schedulers[idx]) + ' ' + str(GLOBAL_OPTS['lr_select_method']) + ' Loss : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
+        acc_title  = str(schedulers[idx]) + ' ' + str(GLOBAL_OPTS['lr_select_method']) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
         generate_plot(trainer, loss_title, acc_title, figure_names[idx])
 
 
@@ -406,10 +428,11 @@ if __name__ == '__main__':
         acc_ax.set_xlabel('Epoch')
         acc_ax.set_ylabel('Accuracy')
         acc_ax.legend(checkpoint_names)
-        acc_ax.set_title('[%s] Accuracy comparison for learning rate schedules (LR: %.4f -> %.4f)' %\
-                        (str(GLOBAL_OPTS['model']), lr_find_min, lr_find_max)
+        acc_ax.set_title('[%s] [%s] Accuracy comparison for learning rate schedules (LR: %.4f -> %.4f)' %\
+                        (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), lr_find_min, lr_find_max)
         )
         acc_fig.tight_layout()
-        acc_fig.savefig('figures/[%s]_ex_lr_scheduling_acc_compare_%.4f_%.4f.png' %\
-                        (str(GLOBAL_OPTS['model']), lr_find_min, lr_find_max)
+        acc_fig.set_size_inches(10, 10)
+        acc_fig.savefig('figures/[%s]_[%s]_ex_lr_scheduling_acc_compare_%.4f_%.4f.png' %\
+                        (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), lr_find_min, lr_find_max)
         )
