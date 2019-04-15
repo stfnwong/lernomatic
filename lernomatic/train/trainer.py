@@ -446,6 +446,7 @@ class Trainer(object):
         Load all data from a checkpoint
         """
         checkpoint_data = torch.load(fname)
+        self.set_trainer_params(checkpoint_data['trainer_params'])
         # here we just load the object that derives from LernomaticModel. That
         # object will in turn load the actual nn.Module data from the
         # checkpoint data with the 'model' key
@@ -465,7 +466,6 @@ class Trainer(object):
                     state[k] = v.to(self.device)
 
         # restore trainer object info
-        self.set_trainer_params(checkpoint_data['trainer_params'])
         self._send_to_device()
 
     def load_model_checkpoint(self, fname:str) -> None:
@@ -492,7 +492,6 @@ class Trainer(object):
         params['optim_function']  = self.optim_function
         params['cur_epoch']       = self.cur_epoch
         params['iter_per_epoch']  = self.iter_per_epoch
-        params['device_id']       = self.device_id
         # also get print, save params
         params['save_every']      = self.save_every
         params['print_every']     = self.print_every
@@ -514,7 +513,6 @@ class Trainer(object):
         self.iter_per_epoch  = params['iter_per_epoch']
         self.save_every      = params['save_every']
         self.print_every     = params['print_every']
-        self.device_id       = params['device_id']
         # dataloader params
         self.batch_size      = params['batch_size']
         self.test_batch_size = params['test_batch_size']
