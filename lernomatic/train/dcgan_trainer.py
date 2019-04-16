@@ -87,8 +87,10 @@ class DCGANTrainer(trainer.Trainer):
             )
 
     def _send_to_device(self) -> None:
-        self.generator.send_to(self.device)
-        self.discriminator.send_to(self.device)
+        if self.generator is not None:
+            self.generator.send_to(self.device)
+        if self.discriminator is not None:
+            self.discriminator.send_to(self.device)
 
     def _weight_init(self,  model:nn.Module) -> None:
         # The orignal paper suggests that the weights should be initialized
@@ -185,11 +187,12 @@ class DCGANTrainer(trainer.Trainer):
 
             # display
             if self.print_every > 0 and (self.loss_iter % self.print_every) == 0:
-                print('[TRAIN] :   Epoch      iteration       Loss (G)  Loss (D)  D(x)  D(G(z)) [1/2]')
-                print('            [%3d/%3d]  [%6d/%6d]  %.6f   %.6f   %.4f   %.4f /  %.4f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), err_d.item(), err_g.item(),
-                       d_x, dg_z2, dg_z1)
+                print('[TRAIN] :   Epoch      iteration      Loss (G)   Loss (D)')
+                print('          [%3d/%3d]  [%6d/%6d]  %.6f   %.6f  ' %\
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), err_d.item(), err_g.item())
                 )
+                print('[TRAIN] : D(x)     D(G(z)) [1/2]')
+                print('          %.4f   %.4f / %.4f' % (d_x, dg_z2, dg_z1))
 
             # save
             if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
@@ -230,7 +233,6 @@ class DCGANTrainer(trainer.Trainer):
     def get_test_loss_history(self) -> None:
         return None
 
-
     # Checkpointing
     def save_checkpoint(self, fname:str) -> None:
         checkpoint = {
@@ -251,14 +253,14 @@ class DCGANTrainer(trainer.Trainer):
         # load generator
         gen_import_path = checkpoint_data['generator']['model_import_path']
         gen_imp = importlib.import_module(gen_import_path)
-        gen = getattr(genimp, checkpoint_data['generator']['model_name'])
+        gen = getattr(gen_imp, checkpoint_data['generator']['model_name'])
         self.generator = gen()
         self.generator.set_params(checkpoint_data['generator'])
 
         # load discriminator
         dis_import_path = checkpoint_data['discriminator']['model_import_path']
         dis_imp = importlib.import_module(gen_import_path)
-        dis = getattr(genimp, checkpoint_data['discriminator']['model_name'])
+        dis = getattr(dis_imp, checkpoint_data['discriminator']['model_name'])
         self.discriminator = dis()
         self.discriminator.set_params(checkpoint_data['discriminator'])
 
@@ -266,17 +268,16 @@ class DCGANTrainer(trainer.Trainer):
         self._init_optimizers()  # TODO : should this name always be plural for consistency?
         self.optim_d.load_state_dict(checkpoint_data['optim_d'])
         self.optim_g.load_state_dict(checkpoint_data['optim_g'])
-        # set device
-        if self.device_map is not None:
-            if self.device_map < 0:
-                device = torch.device('cpu')
-            else:
-                device = torch.device('cuda:%d' % self.device_map)
-            # transfer optimizer
-            for state in self.optimizer.state.values():
-                for k, v in state.items():
-                    if isinstance(v, torch.Tensor):
-                        state[k] = v.to(device)
+        # transfer tensors to current device
+        for state in self.optim_d.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        for state in self.optim_g.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
 
         # restore trainer object info
         self.set_trainer_params(checkpoint_data['trainer_params'])
