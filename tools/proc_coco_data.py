@@ -26,7 +26,7 @@ def main() -> None:
     train_data = coco_data.COCODataSplit(
         GLOBAL_OPTS['coco_json'],
         GLOBAL_OPTS['data_root'],
-        split_name = 'train',
+        split_name = ('train', 'restval'),
         max_items = GLOBAL_OPTS['train_dataset_size'],
         max_capt_len = GLOBAL_OPTS['max_capt_len'],
         verbose = GLOBAL_OPTS['verbose']
@@ -87,7 +87,13 @@ def main() -> None:
         if GLOBAL_OPTS['split'] != 'all' and str(k) != GLOBAL_OPTS['split']:
             continue
         print('Processing data for split <%s>' % str(k))
-        coco_proc.process_coco_data_split(v, wmap.get_word_map(), split_names[k], split_name=str(k))
+        coco_proc.process_coco_data_split(
+            v,
+            wmap,
+            split_names[k],
+            split_name=str(k),
+            min_word_freq = wmap.min_word_freq,
+        )
         if GLOBAL_OPTS['verbose']:
             print('Generated split <%s> containing %d items'  % (str(k), len(v)))
 
@@ -119,7 +125,7 @@ def get_parser():
                         )
     parser.add_argument('--min-word-freq',
                         type=int,
-                        default=3,
+                        default=5,
                         help='Do not include words with a frequency less than this (default: 3)'
                         )
     # output file options

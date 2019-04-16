@@ -16,7 +16,6 @@ class WordMap(object):
         self.img_key       = kwargs.pop('img_key', 'images')
         # options
         self.verbose       = kwargs.pop('verbose', False)
-        self.max_len       = kwargs.pop('max_len', 100)
         self.min_word_freq = kwargs.pop('min_word_freq', 5)
         # init word map
         self.word_map      = None

@@ -15,7 +15,7 @@ from lernomatic.vis import vis_data
 
 GLOBAL_OPTS = dict()
 
-def inspect():
+def inspect() -> None:
     # get hdf5 wrapper
     hdf5_data = hdf5_util.HDF5Data(
         GLOBAL_OPTS['input'],
@@ -25,7 +25,7 @@ def inspect():
     print(hdf5_data)
 
 
-def load():
+def load() -> None:
     hdf5_data = hdf5_util.HDF5Data(
         GLOBAL_OPTS['input'],
         verbose=GLOBAL_OPTS['verbose']
@@ -33,7 +33,7 @@ def load():
     hdf5_data.read(GLOBAL_OPTS['input'])
 
 
-def show_pn():
+def show_pn() -> None:
     hdf5_data = hdf5_util.HDF5Data(
         GLOBAL_OPTS['input'],
         verbose=GLOBAL_OPTS['verbose']
@@ -59,11 +59,11 @@ def show_pn():
     print('Uncategorised examples  : %d ' % num_unk)
 
 
-def find():
+def find() -> None:
     pass
 
 
-def arg_parser():
+def arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('input',
                         type=str,

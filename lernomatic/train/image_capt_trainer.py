@@ -19,10 +19,10 @@ from lernomatic.models import image_caption
 from lernomatic.util import util
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
-def ica_accuracy(scores, targets, k):
+def ica_accuracy(scores, targets, k) -> float:
     """
     ACCURACY
     Computes top-k accuracy
@@ -40,7 +40,7 @@ class ImageCaptTrainer(trainer.Trainer):
     IMAGECAPTTRAINER
     Trainer object for image captioning experiments
     """
-    def __init__(self, encoder, decoder, **kwargs):
+    def __init__(self, encoder, decoder, **kwargs) -> None:
         self.encoder          :common.LernomaticModel = encoder
         self.decoder          :common.LernomaticModel = decoder
         # Deal with keyword args
@@ -92,10 +92,10 @@ class ImageCaptTrainer(trainer.Trainer):
             )
 
     def _send_to_device(self) -> None:
-        if self.decoder is not None:
-            self.decoder.send_to(self.device)
         if self.encoder is not None:
             self.encoder.send_to(self.device)
+        if self.decoder is not None:
+            self.decoder.send_to(self.device)
 
     def clip_gradient(self):
         if self.grad_clip == 0.0:
@@ -191,9 +191,10 @@ class ImageCaptTrainer(trainer.Trainer):
         """
         Train for one epoch
         """
+        if self.encoder is None:
+            raise ValueError('[%s] no encoder set, cannot train' % repr(self))
+        self.encoder.set_train()
         self.decoder.set_train()
-        if self.encoder is not None:
-            self.encoder.set_train()
 
         # TODO : can add batch time meters here later
 
@@ -203,8 +204,7 @@ class ImageCaptTrainer(trainer.Trainer):
             caplens = caplens.to(self.device)
 
             # forward pass
-            if self.encoder is not None:
-                imgs = self.encoder.forward(imgs)
+            imgs = self.encoder.forward(imgs)
             scores, caps_sorted, decode_lengths, alphas,  sort_ind = self.decoder.forward(imgs, caps, caplens)
             # remove the <start> token from the output captions
             targets        = caps_sorted[:, 1:]
@@ -255,8 +255,7 @@ class ImageCaptTrainer(trainer.Trainer):
         Find accuracy on test data
         """
         self.decoder.set_eval()
-        if self.encoder is not None:
-            self.encoder.set_eval()
+        self.encoder.set_eval()
 
         references = list()     # true captions for computing BLEU-4 score
         hypotheses = list()     # predicted captions
@@ -270,9 +269,7 @@ class ImageCaptTrainer(trainer.Trainer):
             caps = caps.to(self.device)
             caplens = caplens.to(self.device)
 
-            if self.encoder is not None:
-                imgs = self.encoder.forward(imgs)
-
+            imgs = self.encoder.forward(imgs)
             scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder.forward(imgs, caps, caplens)
             # get rid of the <start> token
             targets = caps_sorted[:, 1:]

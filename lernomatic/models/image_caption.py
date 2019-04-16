@@ -21,9 +21,9 @@ from lernomatic.util import caption as caption_utils
 # ======== LERNOMATIC MODELS ======== #
 class DecoderAtten(common.LernomaticModel):
     def __init__(self,
-                 atten_dim: int = 1,
-                 embed_dim: int = 1,
-                 dec_dim: int = 1,
+                 atten_dim: int = 512,
+                 embed_dim: int = 512,
+                 dec_dim: int = 512,
                  vocab_size: int = 1,
                  enc_dim: int = 2048,
                  dropout: float = 0.5,
@@ -31,13 +31,16 @@ class DecoderAtten(common.LernomaticModel):
         self.net = DecoderAttenModule(
             atten_dim, embed_dim, dec_dim, vocab_size,
             enc_dim, dropout, **kwargs)
-        self.model_name = 'DecoderAtten'
-        self.module_name = 'DecoderAttenModule'
-        self.import_path = 'lernomatic.models.image_caption'
+        self.model_name         = 'DecoderAtten'
+        self.module_name        = 'DecoderAttenModule'
+        self.import_path        = 'lernomatic.models.image_caption'
         self.module_import_path = 'lernomatic.models.image_caption'
 
     def __repr__(self) -> str:
         return 'DecoderAtten'
+
+    def __str__(self) -> str:
+        return 'DecoderAtten-%d' % self.net.vocab_size
 
     def send_to(self, device:torch.device) -> None:
         self.net.send_to_device(device)
@@ -153,6 +156,7 @@ class Encoder(common.LernomaticModel):
 
 
 # ======== MODULES ======== #
+# TODO : decoder without attention?
 class AttentionNetModule(nn.Module):
     def __init__(self, enc_dim=1, dec_dim=1, atten_dim=1) -> None:
         """
@@ -165,8 +169,8 @@ class AttentionNetModule(nn.Module):
         """
         super(AttentionNetModule, self).__init__()
         # save dims for __str__
-        self.enc_dim = enc_dim
-        self.dec_dim = dec_dim
+        self.enc_dim   = enc_dim
+        self.dec_dim   = dec_dim
         self.atten_dim = atten_dim
         self._init_network()
 
@@ -262,46 +266,6 @@ class DecoderAttenModule(nn.Module):
         # linear layer to find scores over vocab
         self.fc          = nn.Linear(self.dec_dim, self.vocab_size)
 
-    def init_weights(self) -> None:
-        """
-        INIT_WEIGHTS
-        Initialize some parameters with values from the uniform distribution
-        """
-        self.embedding.weight.data.uniform_(-0.1, 0.1)
-        self.fc.bias.data.fill_(0)
-        self.fc.weight.data.uniform_(-0.1, 0.1)
-
-    def send_to_device(self, device:torch.device) -> None:
-        self.atten_net   = self.atten_net.to(device)
-        self.embedded    = self.embedding.to(device)
-        self.drop        = self.drop.to(device)
-        self.decode_step = self.decode_step.to(device)
-        self.init_h      = self.init_h.to(device)
-        self.init_c      = self.init_c.to(device)
-        self.f_beta      = self.f_beta.to(device)
-        self.sigmoid     = self.sigmoid.to(device)
-        self.fc          = self.fc.to(device)
-        # save a reference to the device
-        self.device      = device
-
-    def load_pretrained_embeddings(self, embeddings) -> None:
-        self.embedding.weights = nn.Parameter(embeddings)
-
-    def fine_tune_embeddings(self, tune=True) -> None:
-        for p in self.embedding.parameters():
-            p.requires_grad = tune
-
-    def init_hidden_state(self, enc_feature) -> tuple:
-        """
-        INIT_HIDDEN_STATE
-        Initialize the decoders hidden state
-        """
-        mean_enc_out = enc_feature.mean(dim=1)
-        h = self.init_h(mean_enc_out)
-        c = self.init_c(mean_enc_out)
-
-        return (h, c)
-
     def forward(self, enc_feature, enc_capt, capt_lengths) -> None:
         """
         FOWARD PASS
@@ -331,7 +295,7 @@ class DecoderAttenModule(nn.Module):
         enc_capt    = enc_capt[sort_ind]
 
         # Embeddings
-        embeddings = self.embedding(enc_capt)       # shape = (N, dec_dim)
+        embeddings = self.embedding(enc_capt)       # shape = (N, max_capt_len, embed_dim)
         # init LSTM state
         h, c = self.init_hidden_state(enc_feature)  # shape = (N, dec_dim)
         # we won't decode the <end> position, since we've finished generating
@@ -393,6 +357,46 @@ class DecoderAttenModule(nn.Module):
         self.atten_net.set_params(params['atten_net_params'])
         self.atten_net.load_state_dict(params['atten_net_dict'])
 
+    def init_weights(self) -> None:
+        """
+        INIT_WEIGHTS
+        Initialize some parameters with values from the uniform distribution
+        """
+        self.embedding.weight.data.uniform_(-0.1, 0.1)
+        self.fc.bias.data.fill_(0)
+        self.fc.weight.data.uniform_(-0.1, 0.1)
+
+    def send_to_device(self, device:torch.device) -> None:
+        self.atten_net   = self.atten_net.to(device)
+        self.embedded    = self.embedding.to(device)
+        self.drop        = self.drop.to(device)
+        self.decode_step = self.decode_step.to(device)
+        self.init_h      = self.init_h.to(device)
+        self.init_c      = self.init_c.to(device)
+        self.f_beta      = self.f_beta.to(device)
+        self.sigmoid     = self.sigmoid.to(device)
+        self.fc          = self.fc.to(device)
+        # save a reference to the device
+        self.device      = device
+
+    def load_pretrained_embeddings(self, embeddings) -> None:
+        self.embedding.weights = nn.Parameter(embeddings)
+
+    def fine_tune_embeddings(self, tune=True) -> None:
+        for p in self.embedding.parameters():
+            p.requires_grad = tune
+
+    def init_hidden_state(self, enc_feature) -> tuple:
+        """
+        INIT_HIDDEN_STATE
+        Initialize the decoders hidden state
+        """
+        mean_enc_out = enc_feature.mean(dim=1)
+        h = self.init_h(mean_enc_out)
+        c = self.init_c(mean_enc_out)
+
+        return (h, c)
+
 
 class EncoderModule(nn.Module):
     """
@@ -430,6 +434,16 @@ class EncoderModule(nn.Module):
         self.do_fine_tune = params['do_fine_tune']
         self._init_network()
 
+    def forward(self, X) -> torch.Tensor:
+        """
+        Forward propagation
+        """
+        out = self.net(X)                   # (batch_size, 2048, X.size/32, X.size/32)
+        out = self.adaptive_pool(out)       # (batch_size, 2048, enc_img_size, enc_img_size)
+        out = out.permute(0, 2, 3, 1)       # (batch_size, enc_img_size, enc_img_size, 2048)_
+
+        return out
+
     def fine_tune(self, tune=True) -> None:
         """
         Allow or prevent the computation of gradients for
@@ -444,12 +458,4 @@ class EncoderModule(nn.Module):
                 for p in c.parameters():
                     p.requires_grad = True
 
-    def forward(self, X) -> torch.Tensor:
-        """
-        Forward propagation
-        """
-        out = self.net(X)                   # (batch_size, 2048, X.size/32, X.size/32)
-        out = self.adaptive_pool(out)       # (batch_size, 2048, enc_img_size, enc_img_size)
-        out = out.permute(0, 2, 3, 1)       # (batch_size, enc_img_size, enc_img_size, 2048)_
 
-        return out

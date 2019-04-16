@@ -91,12 +91,12 @@ def get_models(wmap:word_map.WordMap) -> tuple:
     )
 
     decoder = image_caption.DecoderAtten(
-        GLOBAL_OPTS['atten_dim'],
-        GLOBAL_OPTS['embed_dim'],
-        GLOBAL_OPTS['dec_dim'],
+        atten_dim  = GLOBAL_OPTS['atten_dim'],
+        embed_dim  = GLOBAL_OPTS['embed_dim'],
+        dec_dim    = GLOBAL_OPTS['dec_dim'],
         vocab_size = len(wmap),
-        dropout = GLOBAL_OPTS['dropout'],
-        verbose = GLOBAL_OPTS['verbose']
+        dropout    = GLOBAL_OPTS['dropout'],
+        verbose    = GLOBAL_OPTS['verbose']
     )
 
     return (encoder, decoder)
@@ -147,6 +147,7 @@ def get_dataset(fname:str,
                 verbose:bool=False,
                 shuffle:bool=False
                 ) -> coco_dataset.CaptionDataset:
+
     # TODO : type hint for transform
     dataset = coco_dataset.CaptionDataset(
         fname,
@@ -273,7 +274,7 @@ def main() -> None:
         momentum        = GLOBAL_OPTS['momentum'],
         weight_decay    = GLOBAL_OPTS['weight_decay'],
         early_stop      = {'num_epochs' : 2, 'improv': 0.05},
-        grad_clip       = 5.0,
+        grad_clip       = GLOBAL_OPTS['grad_clip'],
         dec_lr          = GLOBAL_OPTS['dec_lr'],
         enc_lr          = GLOBAL_OPTS['enc_lr'],
         # word map

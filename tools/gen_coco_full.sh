@@ -6,6 +6,7 @@ WORDMAP='coco_wordmap.json'
 OVERFIT_SIZE=500
 OVERFIT_NAME='overfit'
 MAX_CAPT_LEN=64
+MIN_WORD_FREQ=4
 OUTPUT_PREFIX="hdf5"
 COCO_JSON="/mnt/ml-data/datasets/COCO/dataset_coco.json"
 
@@ -17,6 +18,7 @@ time $PYTHON tools/proc_coco_data.py \
     --test-dataset-size=0 \
     --val-dataset-size=0 \
     --max-capt-len=$MAX_CAPT_LEN \
+    --min-word-freq=$MIN_WORD_FREQ \
     --wordmap-fname="$OUTPUT_PREFIX/$WORDMAP" \
     --coco-json=$COCO_JSON
 

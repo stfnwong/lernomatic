@@ -10,6 +10,9 @@ import random
 import numpy as np
 from tqdm import tqdm
 import cv2
+# imports for type hints
+from lernomatic.data.text import word_map
+from lernomatic.data import data_split
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -22,26 +25,34 @@ import cv2
 
 # TODO : type hints for split, also ensure that we are using COCOSplit and not
 # DataSplit (generic split)
-def save_coco_proc_params(fname:str, split_data, **kwargs) -> None:
+def save_coco_proc_params(fname:str,
+                          split_data:data_split.DataSplit,
+                          **kwargs) -> None:
     raise NotImplemented
 
 
-def process_coco_data_split(split_data, word_map, fname, **kwargs):
+def process_coco_data_split(split_data:data_split.DataSplit,
+                            wmap:word_map.WordMap,
+                            fname:str,
+                            **kwargs) -> None:
     """
     PROCESS_COCO_DATA_SPLIT
     Process the data in the COCOSplitData split into an HDF5 file
     """
 
     # deal with keyword args
-    seed       = kwargs.pop('seed', None)
-    pixel_max  = kwargs.pop('pixel_max', 255)
-    split_name = kwargs.pop('split_name', None)
+    seed          = kwargs.pop('seed', None)
+    pixel_max     = kwargs.pop('pixel_max', 255)
+    split_name    = kwargs.pop('split_name', None)
+    min_word_freq = kwargs.pop('min_word_freq', None)
 
     # Process data and store in hdf5 file
     with h5py.File(fname, 'w') as fp:
         # Save split attributes
         fp.attrs['capt_per_img'] = split_data.capt_per_img
         fp.attrs['max_capt_len'] = split_data.max_capt_len
+        if min_word_freq is not None:
+            fp.attrs['min_word_freq'] = min_word_freq
         if split_name is not None:
             fp.attrs['split_name'] = split_name
 
@@ -88,15 +99,24 @@ def process_coco_data_split(split_data, word_map, fname, **kwargs):
             enc_caplens = []
             for j, c in enumerate(captions):
                 # encode captions
-                enc_c = [word_map['<start>']] +\
-                    [word_map.get(word, word_map['<unk>']) for word in c] +\
-                    [word_map['<end>']]
+                #enc_c = [wmap['<start>']] +\
+                #    [wmap.get(word, wmap['<unk>']) for word in c] +\
+                #    [wmap['<end>']]
+                #if len(enc_c) > split_data.max_capt_len:
+                #    enc_c = enc_c[0 : split_data.max_capt_len]
+                #    enc_c[-1] = wmap['<end>']
+                #elif len(enc_c) < split_data.max_capt_len:
+                #    # pad out the rest of the caption
+                #    enc_c += [wmap['<pad>']] * (split_data.max_capt_len - len(c) - 2)
+
+                enc_c = [wmap.get_start()] +\
+                    [wmap.word2tok(word) for word in c] + [wmap.get_end()]
                 if len(enc_c) > split_data.max_capt_len:
                     enc_c = enc_c[0 : split_data.max_capt_len]
-                    enc_c[-1] = word_map['<end>']
+                    enc_c[-1] = wmap.get_end()
                 elif len(enc_c) < split_data.max_capt_len:
                     # pad out the rest of the caption
-                    enc_c += [word_map['<pad>']] * (split_data.max_capt_len - len(c) - 2)
+                    enc_c += [wmap.get_pad()] * (split_data.max_capt_len - len(c) - 2)
                 # find caption lengths
                 c_len = len(c) + 2
                 enc_captions.append(enc_c)
