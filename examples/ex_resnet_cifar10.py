@@ -5,6 +5,7 @@ Resnet trained on CIFAR-10 with LRFinder and Scheduling
 Stefan Wong 2019
 """
 
+import sys
 import argparse
 import matplotlib.pyplot as plt
 # library modules
@@ -52,8 +53,8 @@ def main():
 
     # get a model
     sched_model = resnets.WideResnet(
-        58,
-        10
+        depth = 58,
+        num_classes = 10
     )
 
     # get a trainer
@@ -243,8 +244,8 @@ if __name__ == '__main__':
         GLOBAL_OPTS[k] = v
 
     if GLOBAL_OPTS['verbose'] is True:
-        print(' ---- GLOBAL OPTIONS ---- ')
+        print(' ---- GLOBAL OPTIONS (%s) ---- ' % str(sys.argv[0]))
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()

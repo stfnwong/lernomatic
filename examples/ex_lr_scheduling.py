@@ -87,7 +87,7 @@ def get_trainer(model, checkpoint_name):
     trainer = cifar_trainer.CIFAR10Trainer(
         model,
         batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
+        val_batch_size  = GLOBAL_OPTS['val_batch_size'],
         num_epochs      = GLOBAL_OPTS['num_epochs'],
         learning_rate   = GLOBAL_OPTS['learning_rate'],
         #momentum = GLOBAL_OPTS['momentum'],
@@ -272,7 +272,7 @@ def get_parser():
                         default=64,
                         help='Batch size to use during training'
                         )
-    parser.add_argument('--test-batch-size',
+    parser.add_argument('--val-batch-size',
                         type=int,
                         default=64,
                         help='Batch size to use during testing'

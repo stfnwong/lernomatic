@@ -77,7 +77,7 @@ class TestInferrer(unittest.TestCase):
         print('\n ...done')
 
         # run the forward pass
-        test_img, _ = next(iter(trainer.test_loader))
+        test_img, _ = next(iter(trainer.val_loader))
         pred = infer.forward(test_img)
         print('Complete prediction vector (shape: %s)' % (str(pred.shape)))
         print(str(pred))

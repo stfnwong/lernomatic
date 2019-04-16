@@ -5,6 +5,7 @@ Trainer for Resnet models
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import torch.nn.functional as F
 import torchvision
@@ -75,11 +76,12 @@ class ResnetTrainer(trainer.Trainer):
                 normalize
             ])
 
-        test_transform = transforms.Compose([
+        val_transforms = transforms.Compose([
             transforms.ToTensor(),
             normalize
         ])
 
+        # init datasets- use CIFAR10 if we don't specify otherwise
         if self.train_dataset is None:
             self.train_dataset = torchvision.datasets.CIFAR10(
                 self.data_dir,
@@ -87,25 +89,26 @@ class ResnetTrainer(trainer.Trainer):
                 download=True,
                 transform=train_transform
             )
-        if self.test_dataset is None:
-            self.test_dataset = torchvision.datasets.CIFAR10(
+        if self.val_dataset is None:
+            self.val_dataset = torchvision.datasets.CIFAR10(
                 self.data_dir,
                 train=False,
                 download=True,
-                transform=test_transform
+                transform=val_transforms
             )
 
+        # init loaders
         self.train_loader = torch.utils.data.DataLoader(
             self.train_dataset,
-            batch_size = self.batch_size,
-            shuffle=self.shuffle,
+            batch_size  = self.batch_size,
+            shuffle     =self.shuffle,
             num_workers = self.num_workers
         )
 
-        self.test_loader = torch.utils.data.DataLoader(
-            self.test_dataset,
-            batch_size = self.batch_size,
-            shuffle = self.shuffle,
+        self.val_loader = torch.utils.data.DataLoader(
+            self.val_dataset,
+            batch_size  = self.val_batch_size,
+            shuffle     = self.shuffle,
             num_workers = self.num_workers
         )
 
@@ -113,14 +116,14 @@ class ResnetTrainer(trainer.Trainer):
         history = dict()
         history['loss_history']      = self.loss_history
         history['loss_iter']         = self.loss_iter
-        history['test_loss_history'] = self.test_loss_history
-        history['test_loss_iter']    = self.test_loss_iter
+        history['val_loss_history']  = self.val_loss_history
+        history['val_loss_iter']     = self.val_loss_iter
         history['acc_history']       = self.acc_history
         history['acc_iter']          = self.acc_iter
         history['cur_epoch']         = self.cur_epoch
         history['iter_per_epoch']    = self.iter_per_epoch
-        if self.test_loss_history is not None:
-            history['test_loss_history'] = self.test_loss_history
+        if self.val_loss_history is not None:
+            history['val_loss_history'] = self.val_loss_history
 
         torch.save(history, fname)
 
@@ -128,11 +131,39 @@ class ResnetTrainer(trainer.Trainer):
         history = torch.load(fname)
         self.loss_history      = history['loss_history']
         self.loss_iter         = history['loss_iter']
-        self.test_loss_history = history['test_loss_history']
-        self.test_loss_iter    = history['test_loss_iter']
+        self.val_loss_history  = history['val_loss_history']
+        self.val_loss_iter     = history['val_loss_iter']
         self.acc_history       = history['acc_history']
         self.acc_iter          = history['acc_iter']
         self.cur_epoch         = history['cur_epoch']
         self.iter_per_epoch    = history['iter_per_epoch']
-        if 'test_loss_history' in history:
-            self.test_loss_history = history['test_loss_history']
+        if 'val_loss_history' in history:
+            self.val_loss_history = history['val_loss_history']
+
+    # For resnets, we need to pass the correct depth parameter in first
+    def load_checkpoint(self, fname: str) -> None:
+        """
+        Load all data from a checkpoint
+        """
+        checkpoint_data = torch.load(fname)
+        self.set_trainer_params(checkpoint_data['trainer_params'])
+        # here we just load the object that derives from LernomaticModel. That
+        # object will in turn load the actual nn.Module data from the
+        # checkpoint data with the 'model' key
+        model_import_path = checkpoint_data['model']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['model']['model_name'])
+        self.model = mod(depth=28)
+        self.model.set_params(checkpoint_data['model'])
+
+        # Load optimizer
+        self._init_optimizer()
+        self.optimizer.load_state_dict(checkpoint_data['optim'])
+        # Transfer all the tensors to the current device
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        # restore trainer object info
+        self._send_to_device()

@@ -10,7 +10,7 @@ from lernomatic.train import mnist_trainer
 from lernomatic.models import mnist
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
