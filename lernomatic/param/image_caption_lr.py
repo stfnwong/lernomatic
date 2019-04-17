@@ -11,13 +11,13 @@ import numpy as np
 from torch.nn.utils.rnn import pack_padded_sequence
 from nltk.translate.bleu_score import corpus_bleu
 from lernomatic.train import trainer
-from lernomatic.param import learning_rate
+from lernomatic.param import lr_common
 
 # debug
 #from pudb import set_trace; set_trace()
 
 
-class CaptionLogFinder(learning_rate.LRFinder):
+class CaptionLogFinder(lr_common.LRFinder):
     def __init__(self, trainer: trainer.Trainer, **kwargs) -> None:
         super(CaptionLogFinder, self).__init__(trainer, **kwargs)
 
@@ -49,7 +49,7 @@ class CaptionLogFinder(learning_rate.LRFinder):
             self.save_encoder_params(self.trainer.encoder.get_net_state_dict())
         self.save_trainer_params(self.trainer.get_trainer_params())
         self.learning_rate = self.lr_min
-        self.lr_mult = (self.lr_max / self.lr_min) ** (1.0 / len(self.trainer.train_loader))
+        self.lr_mult = (self.lr_max / self.lr_min) ** (1.0 / len(self.train_loader))
 
         self.prev_smooth_loss = 0.0
 
@@ -60,7 +60,7 @@ class CaptionLogFinder(learning_rate.LRFinder):
         # train the network while varying the learning rate
         explode = False
         for epoch in range(self.num_epochs):
-            for batch_idx, (imgs, caps, caplens) in enumerate(self.trainer.train_loader):
+            for batch_idx, (imgs, caps, caplens) in enumerate(self.train_loader):
                 self.trainer.decoder.set_train()
                 if self.trainer.encoder is not None:
                     self.trainer.encoder.set_train()
@@ -99,15 +99,15 @@ class CaptionLogFinder(learning_rate.LRFinder):
                     self.best_loss_idx = len(self.log_lr_history)
 
                 # display
-                if batch_idx % self.print_every == 0:
-                    self._print_find(epoch, batch_idx, loss.item())
+                #if batch_idx % self.print_every == 0:
+                self._print_find(epoch, batch_idx, loss.item())
 
                 # accuracy test
                 if self.acc_test is True:
-                    if self.trainer.lr_test_loader is not None:
-                        self.acc(self.trainer.lr_test_loader, batch_idx)
+                    if self.val_loader is not None:
+                        self.acc(self.val_loader, batch_idx)
                     else:
-                        self.acc(self.trainer.train_loader, batch_idx)
+                        self.acc(self.train_loader, batch_idx)
                     # keep a record of the best acc
                     if self.acc_history[-1] > self.best_acc:
                         self.best_acc = self.acc_history[-1]
@@ -155,9 +155,8 @@ class CaptionLogFinder(learning_rate.LRFinder):
         """
         test_loss = 0.0
         correct = 0
+        self.trainer.encoder.set_eval()
         self.trainer.decoder.set_eval()
-        if self.trainer.encoder is not None:
-            self.trainer.encoder.set_eval()
 
         references = list()     # true captions for computing BLEU-4 score
         hypotheses = list()     # predicted captions
@@ -180,6 +179,12 @@ class CaptionLogFinder(learning_rate.LRFinder):
             loss = self.trainer.criterion(scores_packed[0], targets_packed[0])
             # add attention regularization
             loss += self.trainer.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
+
+            if (n % self.print_every) == 0:
+                print('[FIND_LR] : iteration        Test Loss   Train batch')
+                print('            [%6d/%6d]  %.6f   %d' %\
+                      (n, len(data_loader), loss.item(), batch_idx)
+                )
 
             # accuracy
             # references

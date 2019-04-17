@@ -7,6 +7,7 @@ Stefan Wong 2019
 
 import sys
 import argparse
+import torch
 from torchvision import transforms
 from lernomatic.param import image_caption_lr
 from lernomatic.train import schedule
@@ -42,7 +43,7 @@ def get_lr_finder(trainer:image_capt_trainer.ImageCaptTrainer,
     lr_select_method = kwargs.pop('lr_select_method', 'max_acc')
     num_epochs       = kwargs.pop('num_epochs', 4)
     explode_thresh   = kwargs.pop('explode_thresh', 6.0)
-    print_every      = kwargs.pop('print_every', 50)
+    print_every      = kwargs.pop('print_every', 100)
 
     lr_find_obj = getattr(image_caption_lr, find_type)
     lr_finder = lr_find_obj(
@@ -71,12 +72,13 @@ def get_scheduler(lr_min:float,
 
     lr_sched_obj = getattr(schedule, sched_type)
     lr_scheduler = lr_sched_obj(
-        stepsize = stepsize,    # TODO : optimal stepsize selection?
+        stepsize = stepsize,
         lr_min = lr_min,
         lr_max = lr_max
     )
 
     return lr_scheduler
+
 
 def get_word_map(fname:str) -> word_map.WordMap:
     wmap = word_map.WordMap()
@@ -84,6 +86,7 @@ def get_word_map(fname:str) -> word_map.WordMap:
     print('Loaded word map containing %d words' % len(wmap))
 
     return wmap
+
 
 def get_models(wmap:word_map.WordMap) -> tuple:
     encoder = image_caption.Encoder(
@@ -101,7 +104,7 @@ def get_models(wmap:word_map.WordMap) -> tuple:
 
     return (encoder, decoder)
 
-# TODO : fix args?
+
 def get_trainer(encoder:common.LernomaticModel,
                 decoder:common.LernomaticModel,
                 wmap:word_map.WordMap,
@@ -158,6 +161,7 @@ def get_dataset(fname:str,
     )
 
     return dataset
+
 
 def overfit() -> None:
     # Try to overfit the classifier on some small amount of data
@@ -297,10 +301,26 @@ def main() -> None:
     # and then run the learning rate finder on the resulting trained network
     # get lr finder
     if GLOBAL_OPTS['find_lr'] is True:
+        lr_find_train_dataset = get_dataset(
+            GLOBAL_OPTS['overfit_train_data'],
+            None,
+            1,
+            False
+        )
+        lr_find_val_dataset  = get_dataset(
+            GLOBAL_OPTS['overfit_val_data'],
+            None,
+            1,
+            False
+        )
+
+        # get actual LRFinder object
         lr_finder = get_lr_finder(trainer)
+        lr_finder.set_train_dataloader(torch.utils.data.DataLoader(lr_find_train_dataset))
+        lr_finder.set_val_dataloader(torch.utils.data.DataLoader(lr_find_val_dataset))
         lr_min, lr_max = lr_finder.find()
         print('Found LR range as %.4f -> %.4f' % (lr_min, lr_max))
-        scheduler = get_scheduler(lr_min, lr_max, GLOBAL_OPTS['sched_type'])
+        scheduler = get_scheduler(lr_min, lr_max, GLOBAL_OPTS['sched_type'], stepsize = len(trainer.train_dataset) / 2)
         if GLOBAL_OPTS['verbose']:
             print('Created scheduler [%s]\n %s' % (repr(scheduler), str(scheduler)))
         trainer.set_lr_scheduler(scheduler)
@@ -458,7 +478,7 @@ def get_parser():
     # scheduling options
     parser.add_argument('--sched-type',
                         type=str,
-                        default=None,
+                        default='DecayWhenAcc',
                         help='Scheduler to use during training (default: None)'
                         )
     # finder options
@@ -546,10 +566,10 @@ def get_parser():
                         default=None,
                         help='Path to train dataset to overfit on'
                         )
-    parser.add_argument('--overfit-test-data',
+    parser.add_argument('--overfit-val-data',
                         type=str,
                         default=None,
-                        help='Path to test dataset to overfit on'
+                        help='Path to val dataset to overfit on'
                         )
 
     return parser

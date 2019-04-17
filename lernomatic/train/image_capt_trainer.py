@@ -250,7 +250,7 @@ class ImageCaptTrainer(trainer.Trainer):
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
-    def test_epoch(self) -> None:
+    def val_epoch(self) -> None:
         """
         Find accuracy on test data
         """
@@ -263,7 +263,7 @@ class ImageCaptTrainer(trainer.Trainer):
 
         top5accs = util.AverageMeter()
 
-        for batch_idx, (imgs, caps, caplens, allcaps) in enumerate(self.test_loader):
+        for batch_idx, (imgs, caps, caplens, allcaps) in enumerate(self.val_loader):
             # move data to device
             imgs = imgs.to(self.device)
             caps = caps.to(self.device)
@@ -279,8 +279,8 @@ class ImageCaptTrainer(trainer.Trainer):
             targets_packed = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
             # compute loss, add attention regularization
-            test_loss = self.criterion(scores_packed[0], targets_packed[0])
-            test_loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
+            val_loss = self.criterion(scores_packed[0], targets_packed[0])
+            val_loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
 
             # Get top-5 acc
             top5 = ica_accuracy(scores_packed[0], targets_packed[0], 5)
@@ -290,11 +290,11 @@ class ImageCaptTrainer(trainer.Trainer):
             if (batch_idx % self.print_every) == 0:
                 print('[TEST]  :   Epoch       iteration         Test Loss  Top5 Acc [val/avg]')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f       %.2f/%.2f' %\
-                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.test_loader), test_loss.item(), top5accs.val, top5accs.avg)
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), val_loss.item(), top5accs.val, top5accs.avg)
                 )
 
-            self.test_loss_history[self.test_loss_iter] = test_loss.item()
-            self.test_loss_iter += 1
+            self.val_loss_history[self.val_loss_iter] = val_loss.item()
+            self.val_loss_iter += 1
 
             # references
             allcaps = allcaps[sort_ind]     # decoder sorts images, we re-order here to match
@@ -334,12 +334,12 @@ class ImageCaptTrainer(trainer.Trainer):
 
         # compute the BLEU-4 score
         bleu4 = corpus_bleu(references, hypotheses)
-        avg_test_loss = test_loss / len(self.test_loader)
+        avg_val_loss = val_loss / len(self.val_loader)
         self.acc_history[self.acc_iter] = bleu4
         self.acc_iter += 1
 
         print('[TEST]  : Avg. Test Loss : %.4f, Epoch BLEU : (%.4f)' %\
-              (avg_test_loss, bleu4)
+              (avg_val_loss, bleu4)
         )
 
         # save the best weights
@@ -364,7 +364,7 @@ class ImageCaptTrainer(trainer.Trainer):
         references = list()
         hypotheses = list()
 
-        for n, (image, caps, caplens, allcaps) in enumerate(self.test_loader):
+        for n, (image, caps, caplens, allcaps) in enumerate(self.val_loader):
             k = beam_size
             image = image.to(self.device)       # (1, 3, 256, 256)
             # do encoding pass
@@ -533,9 +533,9 @@ class ImageCaptTrainer(trainer.Trainer):
         history['loss_iter']      = self.loss_iter
         history['cur_epoch']      = self.cur_epoch
         history['iter_per_epoch'] = self.iter_per_epoch
-        if self.test_loss_history is not None:
-            history['test_loss_history'] = self.test_loss_history
-            history['test_loss_iter']    = self.test_loss_iter
+        if self.val_loss_history is not None:
+            history['val_loss_history'] = self.val_loss_history
+            history['val_loss_iter']    = self.val_loss_iter
         if self.acc_history is not None:
             history['acc_history'] = self.acc_history
             history['acc_iter']    = self.acc_iter
@@ -548,8 +548,8 @@ class ImageCaptTrainer(trainer.Trainer):
         self.loss_iter      = history['loss_iter']
         self.cur_epoch      = history['cur_epoch']
         self.iter_per_epoch = history['iter_per_epoch']
-        if 'test_loss_history' in history:
-            self.test_loss_history = history['test_loss_history']
+        if 'val_loss_history' in history:
+            self.val_loss_history = history['val_loss_history']
         if 'acc_history' in history:
             self.acc_history       = history['acc_history']
             self.acc_iter          = history['acc_iter']
@@ -572,7 +572,7 @@ class ImageCaptTrainer(trainer.Trainer):
             # training params
             'num_epochs'      : self.num_epochs,
             'batch_size'      : self.batch_size,
-            'test_batch_size' : self.test_batch_size,
+            'val_batch_size'  : self.val_batch_size,
             # data params
             'shuffle'         : self.shuffle,
             'num_workers'     : self.num_workers,
@@ -599,7 +599,7 @@ class ImageCaptTrainer(trainer.Trainer):
         self.word_map        = params['word_map']
         self.num_epochs      = params['num_epochs']
         self.batch_size      = params['batch_size']
-        self.test_batch_size = params['test_batch_size']
+        self.val_batch_size  = params['val_batch_size']
         self.shuffle         = params['shuffle']
         self.num_workers     = params['num_workers']
         self.checkpoint_name = params['checkpoint_name']

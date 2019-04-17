@@ -406,7 +406,6 @@ class EncoderModule(nn.Module):
         super(EncoderModule, self).__init__()
         self.enc_img_size = kwargs.pop('enc_img_size', 14)
         self.do_fine_tune = kwargs.pop('do_fine_tune', True)
-        self.device_id    = kwargs.pop('device_id', -1)
         #  get network
         self._init_network()
 
@@ -422,6 +421,7 @@ class EncoderModule(nn.Module):
     def send_to(self, device:torch.device) -> None:
         self.net = self.net.to(device)
         self.adaptive_pool = self.adaptive_pool.to(device)
+        self.device = device
 
     def get_params(self) -> dict:
         params = dict()
