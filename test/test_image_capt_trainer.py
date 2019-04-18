@@ -19,21 +19,23 @@ from lernomatic.models import image_caption
 from lernomatic.data.coco import coco_dataset
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
+
 
 def get_model(vocab_size) -> tuple:
 
     encoder = image_caption.Encoder()
     decoder = image_caption.DecoderAtten(
-        512,
-        512,
-        512,
+        atten_dim  = 512,
+        embed_dim  = 512,
+        dec_dim    = 512,
         vocab_size = vocab_size
     )
 
     return (encoder, decoder)
+
 
 def get_trainer(encoder:image_caption.Encoder,
                 decoder:image_caption.DecoderAtten,
@@ -81,6 +83,7 @@ def get_trainer(encoder:image_caption.Encoder,
     )
 
     return trainer
+
 
 class TestImageCaptTrainer(unittest.TestCase):
 

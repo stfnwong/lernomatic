@@ -18,7 +18,7 @@ from lernomatic.data.text import word_map
 from lernomatic.data.coco import coco_dataset
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -122,7 +122,7 @@ def get_trainer(encoder:common.LernomaticModel,
         learning_rate   = GLOBAL_OPTS['learning_rate'],
         momentum        = GLOBAL_OPTS['momentum'],
         weight_decay    = GLOBAL_OPTS['weight_decay'],
-        early_stop      = {'num_epochs' : 20, 'improv': 0.05},
+        early_stop      = {'num_epochs' : 20, 'improv': 0.005},
         # word map
         word_map        = wmap,
         # data
@@ -277,7 +277,7 @@ def main() -> None:
         learning_rate   = GLOBAL_OPTS['learning_rate'],
         momentum        = GLOBAL_OPTS['momentum'],
         weight_decay    = GLOBAL_OPTS['weight_decay'],
-        early_stop      = {'num_epochs' : 2, 'improv': 0.05},
+        early_stop      = {'num_epochs' : 10, 'improv': 0.05},
         grad_clip       = GLOBAL_OPTS['grad_clip'],
         dec_lr          = GLOBAL_OPTS['dec_lr'],
         enc_lr          = GLOBAL_OPTS['enc_lr'],
@@ -326,8 +326,8 @@ def main() -> None:
         trainer.set_lr_scheduler(scheduler)
     else:
         lr_finder = None
-        enc_scheduler = get_scheduler(1e-6, GLOBAL_OPTS['enc_lr'], 'DecayWhenAcc')
-        dec_scheduler = get_scheduler(1e-6, GLOBAL_OPTS['dec_lr'], 'DecayWhenAcc')
+        enc_scheduler = get_scheduler(1e-6, GLOBAL_OPTS['enc_lr'], GLOBAL_OPTS['sched_type'])
+        dec_scheduler = get_scheduler(1e-6, GLOBAL_OPTS['dec_lr'], GLOBAL_OPTS['sched_type'])
         if GLOBAL_OPTS['verbose']:
             print('Created scheduler (decoder) [%s]\n %s' % (repr(enc_scheduler), str(enc_scheduler)))
             print('Created scheduler (encoder) [%s]\n %s' % (repr(dec_scheduler), str(dec_scheduler)))
@@ -478,7 +478,8 @@ def get_parser():
     # scheduling options
     parser.add_argument('--sched-type',
                         type=str,
-                        default='DecayWhenAcc',
+                        default=None,
+                        #default='DecayWhenAcc',
                         help='Scheduler to use during training (default: None)'
                         )
     # finder options

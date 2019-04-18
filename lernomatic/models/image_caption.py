@@ -90,7 +90,7 @@ class DecoderAtten(common.LernomaticModel):
         mod = getattr(imp, self.module_name)
         self.net = mod()
         self.net.set_params(params['atten_params'])
-        #self.net.load_state_dict(params['model_state_dict'])
+        self.net.load_state_dict(params['model_state_dict'])
 
 
 class AttentionNet(common.LernomaticModel):

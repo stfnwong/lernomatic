@@ -212,6 +212,13 @@ class Trainer(object):
             return None
         return self.model.get_net_state_dict()
 
+    def get_batch_size(self) -> int:
+        return self.batch_size
+
+    def set_batch_size(self, size:int) -> None:
+        self.batch_size = size
+        self._init_dataloaders()
+
     # common getters/setters
     def get_learning_rate(self) -> float:
         return self.optimizer.param_groups[0]['lr']

@@ -485,14 +485,14 @@ class DecayWhenEpoch(LRScheduler):
     DecayWhenEpoch
     Decay the learning rate every num_epochs by lr_decay
     """
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs) -> none:
         self.num_epochs : int   = kwargs.pop('num_epochs', 8)
         self.lr_decay   : float = kwargs.pop('lr_decay', 0.9)
         super(DecayWhenEpoch, self).__init__(**kwargs)
         self.learning_rate : float = self.lr_max
 
     def __repr__(self) -> str:
-        return 'DecayWhenEpoch'
+        return 'decaywhenepoch'
 
     def __str__(self) -> str:
         s = []
@@ -506,6 +506,40 @@ class DecayWhenEpoch(LRScheduler):
             self.learning_rate = self.learning_rate * self.lr_decay
 
         return self.learning_rate
+
+
+class DecayWhenAccEpoch(LRScheduler):
+    """
+    DecayWhenAccEpoch
+    Decay the learning rate when the accuracy changes by less than a certain
+    amount within a specified number of epochs.
+    """
+    def __init__(self, **kwargs) -> none:
+        self.num_epochs : int   = kwargs.pop('num_epochs', 8)
+        self.lr_decay   : float = kwargs.pop('lr_decay', 0.9)
+        super(DecayWhenAccEpoch, self).__init__(**kwargs)
+        self.learning_rate : float = self.lr_max
+
+    def __repr__(self) -> str:
+        return 'DecayWhenAccEpoch'
+
+    def __str__(self) -> str:
+        s = []
+        s.append('DecayWhenAccEpoch learning rate scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+        s.append('epoch : %.4f, lr decay : %.4f\n' % (self.num_epochs, self.lr_decay))
+        s.append('\n')
+
+    def get_lr(self, cur_epoch: int, cur_acc:float) -> float:
+        if cur_acc > self.best_acc:
+            self.best_acc = cur_acc
+        if (cur_epoch % self.num_epochs) == 0:
+            if cur_acc < (self.best_acc * (1.0 - self.acc_thresh)):
+                self.learning_rate = self.learning_rate * self.lr_decay
+        self._update_lr_history(self.learning_rate)
+
+        return self.learning_rate
+
 
 
 # ---- Momentum ----- #
