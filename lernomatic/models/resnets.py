@@ -193,7 +193,7 @@ class WideResnetModule(nn.Module):
 
 class WideResnet(common.LernomaticModel):
     def __init__(self, **kwargs):
-        self.depth          :int   = kwargs.pop('depth', 56)
+        self.depth          :int   = kwargs.pop('depth', 58)
         self.num_classes    :int   = kwargs.pop('num_classes', 10)
         self.input_channels :int   = kwargs.pop('input_channels', 3)
         self.w_factor       :int   = kwargs.pop('w_factor', 1)

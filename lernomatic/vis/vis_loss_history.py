@@ -130,3 +130,50 @@ def plot_train_history_2subplots(ax, loss_history: np.ndarray, **kwargs) -> None
         ax[2].set_xlabel('Iteration')
         ax[2].set_ylabel('Accuracy')
         ax[2].set_title(test_loss_title)
+
+
+def plot_train_history_dcgan(ax, g_loss_history, d_loss_history, **kwargs):
+    iter_per_epoch    = kwargs.pop('iter_per_epoch', 0)
+    cur_epoch         = kwargs.pop('cur_epoch', 0)
+    max_ticks         = kwargs.pop('max_ticks', 6)
+    loss_title        = kwargs.pop('loss_title', None)
+    acc_title         = kwargs.pop('acc_title', None)
+
+    if type(ax) is not list:
+        ax = [ax]
+
+    if len(ax) == 1:
+        legend_list = ['G loss', 'D loss']
+        ax[0].plot(np.arange(len(g_loss_history)), g_loss_history)
+        ax[0].plot(np.arange(len(d_loss_history)), d_loss_history)
+        ax[0].set_xlabel('Iterations')      # TODO : add epoch axis...
+        ax[0].set_ylabel('Loss')
+
+        if loss_title is not None:
+            ax[0].set_title(loss_title)
+        else:
+            ax[0].set_title('DCGAN Loss History')
+
+        gen_epoch_ticks = (cur_epoch > 0) and (iter_per_epoch != 0)
+        if gen_epoch_ticks:
+            # Try to add top axis (to show units in epochs rather than
+            # iterations)
+            epoch_ticks = np.linspace(0, cur_epoch, max_ticks, endpoint=True)
+            epoch_axis = ax[0].twiny()
+            epoch_axis.set_xlim([0, cur_epoch])
+            epoch_axis.set_xticks(epoch_ticks)
+            epoch_axis.set_xlabel('Epochs')
+
+    # If we have 2 or more axis, plot into the first two and ignore any others
+    elif len(ax) >= 2:
+        # generator
+        ax[0].plot(np.arange(len(g_loss_history)), g_loss_history, 'g')
+        ax[0].set_xlabel('Iterations')      # TODO : add epoch axis...
+        ax[0].set_ylabel('Loss')
+        ax[0].set_title('Generator Loss History')
+
+        # discriminator
+        ax[1].plot(np.arange(len(d_loss_history)), d_loss_history, 'b')
+        ax[1].set_xlabel('Iterations')      # TODO : add epoch axis...
+        ax[1].set_ylabel('Loss')
+        ax[1].set_title('Discriminator Loss History')

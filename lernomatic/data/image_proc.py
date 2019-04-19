@@ -39,21 +39,16 @@ class ImageDataProc(object):
                 (len(data_split),) + self.image_dataset_size,
                 dtype=np.uint8
             )
-            # It isn't a given that datasets will have labels or ids, so only
-            # create those if required
-            if data_split.has_ids:
-                ids = fp.create_dataset(
-                    self.id_dataset_name,
-                    #(len(data_split), self.label_dataset_size),
-                    (len(data_split), ),
-                    dtype=self.id_dtype
-                )
-            if data_split.has_labels:
-                labels = fp.create_dataset(
-                    self.label_dataset_name,
-                    (len(data_split), self.label_dataset_size),
-                    dtype=int
-                )
+            ids = fp.create_dataset(
+                self.id_dataset_name,
+                (len(data_split), self.label_dataset_size),
+                dtype=int
+            )
+            labels = fp.create_dataset(
+                self.label_dataset_name,
+                (len(data_split), self.label_dataset_size),
+                dtype=int
+            )
 
             invalid_file_list = []
             for n, (img_path, img_id, label) in enumerate(tqdm(data_split, unit='images')):
@@ -74,14 +69,10 @@ class ImageDataProc(object):
                     img = img.transpose(2,0,1)
 
                 images[n] = img
-                if data_split.has_labels:
-                    labels[n] = label
-                if data_split.has_ids:
-                    ids[n] = img_id
+                ids[n]    = img_id
+                labels[n] = label
 
         if self.verbose:
             print('%d invalid files found out of %d total (%.3f %%)' %\
                   (len(invalid_file_list), len(data_split), 100 * (len(invalid_file_list) + 1e-8) / len(data_split))
             )
-            for f in invalid_file_list:
-                print(f)

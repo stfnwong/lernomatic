@@ -68,6 +68,7 @@ class Trainer(object):
         self.best_acc = 0.0
         if self.save_every > 0:
             self.save_best = True
+        self.start_epoch = 0
 
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()

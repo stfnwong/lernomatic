@@ -153,7 +153,13 @@ class ResnetTrainer(trainer.Trainer):
         model_import_path = checkpoint_data['model']['model_import_path']
         imp = importlib.import_module(model_import_path)
         mod = getattr(imp, checkpoint_data['model']['model_name'])
-        self.model = mod(depth=28)
+        self.model = mod(
+            depth          = checkpoint_data['model']['resnet_params']['depth'],
+            num_classes    = checkpoint_data['model']['resnet_params']['num_classes'],
+            input_channels = checkpoint_data['model']['resnet_params']['input_channels'],
+            w_factor       = checkpoint_data['model']['resnet_params']['w_factor'],
+            drop_rate      = checkpoint_data['model']['resnet_params']['drop_rate']
+        )
         self.model.set_params(checkpoint_data['model'])
 
         # Load optimizer

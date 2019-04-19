@@ -73,17 +73,13 @@ class DataSplit(object):
     def add_path(self, p) -> None:
         self.data_paths.append(p)
 
-    def add_label(self, l):
-        self.has_labels = True
+    def add_label(self, l) -> None:
         self.data_labels.append(l)
 
-    def add_id(self, i):
-        self.has_ids = True
+    def add_id(self, i) -> None:
         self.elem_ids.append(i)
 
-    def add_elem(self, p, i, l):
-        self.has_labels = True
-        self.has_ids = True
+    def add_elem(self, p, i, l) -> None:
         self.data_paths.append(p)
         self.elem_ids.append(i)
         self.data_labels.append(l)
