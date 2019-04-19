@@ -65,7 +65,8 @@ class TestDCGANTrainer(unittest.TestCase):
             train_dataset = train_dataset,
             num_epochs    = self.test_num_epochs,
             learning_rate = self.test_learning_rate,
-            verbose       = self.verbose
+            verbose       = self.verbose,
+            save_every    = 0,
         )
         src_trainer.train()
         src_trainer.save_checkpoint(test_checkpoint)
