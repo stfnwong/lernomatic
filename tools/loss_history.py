@@ -16,26 +16,35 @@ from lernomatic.vis import vis_loss_history
 GLOBAL_OPTS = dict()
 
 def main():
-
-    fig, ax = plt.subplots()
-
     history = torch.load(GLOBAL_OPTS['input'])
-
     loss_history = history['loss_history'][0 : history['loss_iter']]
+    if GLOBAL_OPTS['verbose']:
+        print('%d training iterations ' % history['loss_iter'])
+
     if 'acc_history' in history:
-        acc_history = history['acc_history'][0 : history['loss_iter']]
+        acc_history = history['acc_history'][0 : history['acc_iter']]
+        if GLOBAL_OPTS['verbose']:
+            print('%d accuracy iterations ' % history['acc_iter'])
+            print('Max accuracy : %.3f ' % max(history['acc_history'][0: history['acc_iter']]))
     else:
         acc_history = None
+    if 'test_loss_history' in history:
+        test_loss_history = history['test_loss_history'][0 : history['test_loss_iter']]
+        if GLOBAL_OPTS['verbose']:
+            print('%d test loss iterations' % history['test_loss_iter'])
+    else:
+        test_loss_history = None
 
-    #if GLOBAL_OPTS['verbose']:
-    #    print('Checkpoint [%s] current epoch : %d' % (str(GLOBAL_OPTS['input']), t.cur_epoch))
-    if GLOBAL_OPTS['verbose']:
-        print('%d training iterations in loss history file [%s]' %\
-              (int(history['loss_iter']), str(GLOBAL_OPTS['input'])))
+    if acc_history is not None:
+        fig, ax = vis_loss_history.get_figure_subplots(2)
+    else:
+        fig, ax = vis_loss_history.get_figure_subplots(1)
 
-    vis_loss_history.plot_loss_history(
+    # plot the visualization
+    vis_loss_history.plot_train_history_2subplots(
         ax,
         loss_history,
+        test_loss_curve = test_loss_history,
         acc_curve = acc_history,
         title = GLOBAL_OPTS['title'],
         iter_per_epoch = history['iter_per_epoch'],
@@ -48,7 +57,10 @@ def main():
     if GLOBAL_OPTS['print_acc']:
         print(str(acc_history))
 
-    plt.show()
+    if GLOBAL_OPTS['plot_filename'] is not None:
+        fig.savefig(GLOBAL_OPTS['plot_filename'])
+    else:
+        plt.show()
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -68,10 +80,10 @@ def get_parser():
                         default=None,
                         help='Title for plot output'
                         )
-    parser.add_argument('--title',
+    parser.add_argument('--plot-filename',
                         type=str,
                         default=None,
-                        help='Type of network to load checkpoint for'
+                        help='If specified, write the plot to this file rather than display'
                         )
     # other opts
     parser.add_argument('--print-loss',
