@@ -7,10 +7,25 @@ Stefan Wong 2019
 
 import torch.nn as nn
 import torch.nn.functional as F
+from lernomatic.models import common
 
-class MNISTNet(nn.Module):
+
+
+class MNISTNet(common.LernomaticModel):
+    def __init__(self, **kwargs) -> None:
+        self.net = MNISTModule()        # Put **kwargs here if required
+        self.import_path = 'lernomatic.models.mnist'
+        self.model_name = 'MNISTNet'
+        self.module_name = 'MNISTModule'
+        self.module_import_path = 'lernomatic.models.mnist'
+
+    def __repr__(self) -> str:
+        return 'MNISTNet'
+
+
+class MNISTModule(nn.Module):
     def __init__(self):
-        super(MNISTNet, self).__init__()
+        super(MNISTModule, self).__init__()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
         self.conv2_drop = nn.Dropout2d()
