@@ -106,6 +106,7 @@ class TestImageCaptTrainer(unittest.TestCase):
             self.train_num_epochs,
             GLOBAL_OPTS['batch_size']
         )
+        src_trainer.enc_unset_fine_tune()
         print('Created new trainer object')
         src_trainer.train()
         src_trainer.save_checkpoint(test_checkpoint)
@@ -139,12 +140,12 @@ class TestImageCaptTrainer(unittest.TestCase):
 
         src_encoder_net_params = src_trainer.encoder.get_net_state_dict()
         dst_encoder_net_params = dst_trainer.encoder.get_net_state_dict()
-        print('Comparing encoder module parameters...')
+        print('Comparing encoder [%s] module parameters...' % repr(dst_trainer.encoder))
         num_pos = 0
         num_neg = 0
         for n, (p1, p2) in enumerate(zip(src_encoder_net_params.items(), dst_encoder_net_params.items())):
             self.assertEqual(p1[0], p2[0])
-            print('Checking parameter %s [%d/%d] \t' % (str(p1[0]), n+1, len(src_encoder_net_params.items())), end='')
+            print('Checking %32s [%d/%d] \t' % (str(p1[0]), n+1, len(src_encoder_net_params.items())), end='')
             if torch.equal(p1[1], p2[1]):
                 num_pos += 1
                 print(' [MATCH]')
@@ -155,6 +156,8 @@ class TestImageCaptTrainer(unittest.TestCase):
         print('\n ...done')
         print('%d items correct' % num_pos)
         print('%d items incorrect' % num_neg)
+        print('Total : %d/%d' % (num_pos, num_pos + num_neg))
+        self.assertEqual(0, num_neg)
 
         # now check the decoder
         print('Checking decoders....')
@@ -170,12 +173,12 @@ class TestImageCaptTrainer(unittest.TestCase):
 
         src_decoder_net_params = src_trainer.decoder.get_net_state_dict()
         dst_decoder_net_params = dst_trainer.decoder.get_net_state_dict()
-        print('Comparing decoder module parameters...')
+        print('Comparing decoder [%s] module parameters...' % repr(dst_trainer.decoder))
         num_pos = 0
         num_neg = 0
         for n, (p1, p2) in enumerate(zip(src_decoder_net_params.items(), dst_decoder_net_params.items())):
             self.assertEqual(p1[0], p2[0])
-            print('Checking parameter %s [%d/%d] \t' % (str(p1[0]), n+1, len(src_decoder_net_params.items())), end='')
+            print('Checking %32s [%d/%d] \t' % (str(p1[0]), n+1, len(src_decoder_net_params.items())), end='')
             if torch.equal(p1[1], p2[1]):
                 num_pos += 1
                 print(' [MATCH]')
@@ -186,6 +189,7 @@ class TestImageCaptTrainer(unittest.TestCase):
         print('\n ...done')
         print('%d items correct' % num_pos)
         print('%d items incorrect' % num_neg)
+        print('Total : %d/%d' % (num_pos, num_pos + num_neg))
 
         print('======== TestImageCaptTrainer.test_save_load <END>')
 

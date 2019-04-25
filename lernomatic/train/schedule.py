@@ -485,7 +485,7 @@ class DecayWhenEpoch(LRScheduler):
     DecayWhenEpoch
     Decay the learning rate every num_epochs by lr_decay
     """
-    def __init__(self, **kwargs) -> none:
+    def __init__(self, **kwargs) -> None:
         self.num_epochs : int   = kwargs.pop('num_epochs', 8)
         self.lr_decay   : float = kwargs.pop('lr_decay', 0.9)
         super(DecayWhenEpoch, self).__init__(**kwargs)
@@ -514,7 +514,7 @@ class DecayWhenAccEpoch(LRScheduler):
     Decay the learning rate when the accuracy changes by less than a certain
     amount within a specified number of epochs.
     """
-    def __init__(self, **kwargs) -> none:
+    def __init__(self, **kwargs) -> None:
         self.num_epochs : int   = kwargs.pop('num_epochs', 8)
         self.lr_decay   : float = kwargs.pop('lr_decay', 0.9)
         super(DecayWhenAccEpoch, self).__init__(**kwargs)

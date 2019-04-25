@@ -288,7 +288,7 @@ class ImageCaptTrainer(trainer.Trainer):
 
             # display
             if (batch_idx % self.print_every) == 0:
-                print('[TEST]  :   Epoch       iteration         Test Loss  Top5 Acc [val/avg]')
+                print('[TEST]  :   Epoch       iteration         Test Loss  Top5 Acc (val/avg)')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f       %.2f/%.2f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), val_loss.item(), top5accs.val, top5accs.avg)
                 )
@@ -473,17 +473,15 @@ class ImageCaptTrainer(trainer.Trainer):
         return bleu4
 
     # CHECKPOINTING AND HISTORY
-    # TODO : update this for new model arch
     def save_checkpoint(self, fname: str) -> None:
         trainer_params = self.get_trainer_params()
         checkpoint_data = {
             # networks
-            'encoder' : self.encoder.get_params() if self.encoder is not None else None,
-            'decoder' : self.decoder.get_params() if self.decoder is not None else None,
+            'encoder' : self.encoder.get_params(),
+            'decoder' : self.decoder.get_params(),
             # solvers
             'encoder_optim' : self.encoder_optim.state_dict() if self.encoder_optim is not None else None,
-            'decoder_optim' : self.decoder_optim.state_dict() if self.decoder_optim is not None else None,
-            # loaders?
+            'decoder_optim' : self.decoder_optim.state_dict(),
             # object params
             'trainer_state' : trainer_params,
         }
@@ -507,8 +505,10 @@ class ImageCaptTrainer(trainer.Trainer):
         self.decoder.set_params(checkpoint['decoder'])
         # load weights from checkpoint
         self._init_optimizer()
-        self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
-        self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
+        if self.decoder_optim is not None:
+            self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
+        if self.encoder_optim is not None:
+            self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
 
         # transfer decoder optimizer
         if self.decoder_optim is not None:

@@ -18,6 +18,7 @@ from lernomatic.util import caption as caption_utils
 #from pudb import set_trace; set_trace()
 
 
+# TODO : decoder without attention
 # ======== LERNOMATIC MODELS ======== #
 class DecoderAtten(common.LernomaticModel):
     def __init__(self,
@@ -70,15 +71,14 @@ class DecoderAtten(common.LernomaticModel):
         return self.net.decode_step(X)
 
     def get_params(self) -> dict:
-        params = {
+        return {
             'model_state_dict'   : self.net.state_dict(),
             'model_name'         : self.get_model_name(),
             'model_import_path'  : self.get_model_path(),
             'module_name'        : self.get_module_name(),
             'module_import_path' : self.get_module_import_path(),
-            'atten_params'       : self.net.get_params()
+            'atten_params'       : self.net.get_params(),
         }
-        return params
 
     def set_params(self, params : dict) -> None:
         self.import_path = params['model_import_path']
@@ -131,6 +131,8 @@ class Encoder(common.LernomaticModel):
     def unset_fine_tune(self) -> None:
         self.net.fine_tune(False)
 
+    # TODO: issue here seems to be reading the resnet params from the
+    # checkpoint file
     def get_params(self) -> dict:
         params = {
             'model_state_dict'   : self.net.state_dict(),
@@ -150,7 +152,10 @@ class Encoder(common.LernomaticModel):
         # Import the actual network module
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
-        self.net = mod()
+        self.net = mod(
+            enc_img_size = params['enc_params']['enc_img_size'],
+            do_fine_tune = params['enc_params']['do_fine_tune']
+        )
         self.net.load_state_dict(params['model_state_dict'])
         self.net.set_params(params['enc_params'])
 
@@ -240,7 +245,6 @@ class DecoderAttenModule(nn.Module):
         self.embed_dim  = embed_dim
         self.vocab_size = vocab_size
         self.dropout    = dropout
-        self.verbose    = kwargs.pop('verbose', False)
         self.device     = None      # archive the device for some internal forward pass stuff
         # create the actual network
         self._init_network()
@@ -338,7 +342,6 @@ class DecoderAttenModule(nn.Module):
         params['atten_dim']  = self.atten_dim
         params['vocab_size'] = self.vocab_size
         params['dropout']    = self.dropout
-        params['verbose']    = self.verbose
         params['atten_net_dict'] = self.atten_net.state_dict()
         params['atten_net_params'] = self.atten_net.get_params()
 
@@ -351,7 +354,6 @@ class DecoderAttenModule(nn.Module):
         self.atten_dim = params['atten_dim']
         self.vocab_size = params['vocab_size']
         self.dropout = params['dropout']
-        self.verbose = params['verbose']
         self._init_network()
         # load the attention network parameters
         self.atten_net.set_params(params['atten_net_params'])
@@ -368,7 +370,7 @@ class DecoderAttenModule(nn.Module):
 
     def send_to_device(self, device:torch.device) -> None:
         self.atten_net   = self.atten_net.to(device)
-        self.embedded    = self.embedding.to(device)
+        self.embedding   = self.embedding.to(device)
         self.drop        = self.drop.to(device)
         self.decode_step = self.decode_step.to(device)
         self.init_h      = self.init_h.to(device)
@@ -400,7 +402,7 @@ class DecoderAttenModule(nn.Module):
 
 class EncoderModule(nn.Module):
     """
-    CNN Encoder
+    CNN Encoder for image captioning
     """
     def __init__(self, **kwargs) -> None: #feature_size=14, do_fine_tune=True):
         super(EncoderModule, self).__init__()
