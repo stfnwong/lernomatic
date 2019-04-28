@@ -505,10 +505,14 @@ class ImageCaptTrainer(trainer.Trainer):
         self.decoder.set_params(checkpoint['decoder'])
         # load weights from checkpoint
         self._init_optimizer()
-        if self.decoder_optim is not None:
+        if checkpoint['decoder_optim'] is not None:
             self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
-        if self.encoder_optim is not None:
+        if checkpoint['encoder_optim'] is not None:
             self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
+        #if self.decoder_optim is not None:
+        #    self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
+        #if self.encoder_optim is not None:
+        #    self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
 
         # transfer decoder optimizer
         if self.decoder_optim is not None:

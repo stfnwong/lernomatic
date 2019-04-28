@@ -131,8 +131,6 @@ class Encoder(common.LernomaticModel):
     def unset_fine_tune(self) -> None:
         self.net.fine_tune(False)
 
-    # TODO: issue here seems to be reading the resnet params from the
-    # checkpoint file
     def get_params(self) -> dict:
         params = {
             'model_state_dict'   : self.net.state_dict(),
@@ -152,12 +150,9 @@ class Encoder(common.LernomaticModel):
         # Import the actual network module
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
-        self.net = mod(
-            enc_img_size = params['enc_params']['enc_img_size'],
-            do_fine_tune = params['enc_params']['do_fine_tune']
-        )
-        self.net.load_state_dict(params['model_state_dict'])
+        self.net = mod()
         self.net.set_params(params['enc_params'])
+        self.net.load_state_dict(params['model_state_dict'])
 
 
 # ======== MODULES ======== #
