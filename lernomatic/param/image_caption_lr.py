@@ -74,6 +74,8 @@ class CaptionLogFinder(lr_common.LRFinder):
                 if self.trainer.encoder_optim is not None:
                     self.trainer.encoder_optim.zero_grad()
 
+                # TODO: structure forward pass so that we don't have all this
+                # stuff repeated everywhere...
                 # do forward pass
                 enc_imgs = self.trainer.encoder.forward(imgs)
                 scores, caps_sorted, decode_lengths, alphas, sort_ind = self.trainer.decoder.forward(enc_imgs, caps, caplens)

@@ -297,9 +297,9 @@ def main() -> None:
         save_every      = GLOBAL_OPTS['save_every'],
         verbose         = GLOBAL_OPTS['verbose']
     )
-    # TODO : I wonder if its better to just pre-train with a fixed schedule
-    # and then run the learning rate finder on the resulting trained network
-    # get lr finder
+
+    # TODO : adjust default schedule to be triangular with default stepsize to
+    # be half the total number of epochs (ie: the canonical form)
     if GLOBAL_OPTS['find_lr'] is True:
         lr_find_train_dataset = get_dataset(
             GLOBAL_OPTS['overfit_train_data'],
@@ -511,17 +511,17 @@ def get_parser():
     # Data options
     parser.add_argument('--train-data-path',
                         type=str,
-                        default=None,
+                        default='hdf5/coco-train.h5',
                         help='Path to train data (HDF5 file)'
                         )
     parser.add_argument('--test-data-path',
                         type=str,
-                        default=None,
+                        default='hdf5/coco-test.h5',
                         help='Path to test data (HDF5 file)'
                         )
     parser.add_argument('--val-data-path',
                         type=str,
-                        default=None,
+                        default='hdf5/coco-val.h5',
                         help='Path to validation data (HDF5 file)'
                         )
     parser.add_argument('--lr-find-test-path',
@@ -564,12 +564,12 @@ def get_parser():
                         )
     parser.add_argument('--overfit-train-data',
                         type=str,
-                        default=None,
+                        default='hdf5/coco-overfit-train.h5',
                         help='Path to train dataset to overfit on'
                         )
     parser.add_argument('--overfit-val-data',
                         type=str,
-                        default=None,
+                        default='hdf5/coco-overfit-val.h5',
                         help='Path to val dataset to overfit on'
                         )
 
