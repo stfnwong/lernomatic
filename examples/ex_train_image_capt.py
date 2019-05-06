@@ -16,6 +16,8 @@ from lernomatic.models import image_caption
 from lernomatic.models import common
 from lernomatic.data.text import word_map
 from lernomatic.data.coco import coco_dataset
+# vis stuff
+from lernomatic.vis import vis_loss_history
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -320,7 +322,19 @@ def main() -> None:
         lr_finder.set_val_dataloader(torch.utils.data.DataLoader(lr_find_val_dataset))
         lr_min, lr_max = lr_finder.find()
         print('Found LR range as %.4f -> %.4f' % (lr_min, lr_max))
-        scheduler = get_scheduler(lr_min, lr_max, GLOBAL_OPTS['sched_type'], stepsize = len(trainer.train_dataset) / 2)
+
+        # save a graph of the finder output
+        lr_acc_title = 'NIC (Attention) Acc'
+        lr_loss_title = 'NIC (Attention) Loss'
+        lr_fig, lr_ax = vis_loss_history.get_figure_subplots(2)
+        lr_finder.plot_lr_vs_acc(lr_ax[0], lr_acc_title, log=True)
+        lr_finder.plot_lr_vs_loss(lr_ax[1], lr_loss_title, log=True)
+        # save
+        lr_fig.tight_layout()
+        lr_fig.savefig('figures/nica_[%s]_lr_finder_output.png' % (str(lr_finder.lr_select_method)))
+
+        # set scheduler params
+        scheduler = get_scheduler(1e-4, 2e-1, GLOBAL_OPTS['sched_type'], stepsize = len(trainer.train_dataset) / 2)
         if GLOBAL_OPTS['verbose']:
             print('Created scheduler [%s]\n %s' % (repr(scheduler), str(scheduler)))
         trainer.set_lr_scheduler(scheduler)

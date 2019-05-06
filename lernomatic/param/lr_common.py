@@ -182,9 +182,9 @@ class LRFinder(object):
             raise RuntimeError('[%s] no accuracy history' % repr(self))
 
         if log is True:
-            ax.plot(np.asarray(self.log_lr_history), np.asarray(self.acc_history))
+            ax.plot(np.asarray(self.log_lr_history[:-10]), np.asarray(self.acc_history[:-10]))
         else:
-            ax.plot(10 ** np.asarray(self.log_lr_history), np.asarray(self.acc_history))
+            ax.plot(10 ** np.asarray(self.log_lr_history[:-10]), np.asarray(self.acc_history[:-10]))
 
         # Add vertical bars showing learning rate ranges
         lr_min, lr_max = self.get_lr_range()
@@ -210,9 +210,9 @@ class LRFinder(object):
             raise ValueError('[%s] no accuracy history' % repr(self))
 
         if log is True:
-            ax.plot(np.asarray(self.log_lr_history), np.asarray(self.smooth_loss_history))
+            ax.plot(np.asarray(self.log_lr_history[:-10]), np.asarray(self.smooth_loss_history[:-10]))
         else:
-            ax.plot(10 ** np.asarray(self.log_lr_history), np.asarray(self.smooth_loss_history))
+            ax.plot(10 ** np.asarray(self.log_lr_history[:-10]), np.asarray(self.smooth_loss_history[:-10]))
 
         # Add vertical bars showing learning rate ranges
         lr_min, lr_max = self.get_lr_range()
