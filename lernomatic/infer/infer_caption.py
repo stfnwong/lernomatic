@@ -40,8 +40,9 @@ class CaptionInferrer(inferrer.Inferrer):
         if self.encoder is not None:
             self.encoder.send_to(self.device)
         if self.decoder is not None:
-            self.decoder.sned_to(self.device)
+            self.decoder.send_to(self.device)
 
+    # TODO : this needs to go
     def gen_caption(self, image:torch.Tensor) -> list:
 
         image = image.to(self.device)
@@ -135,6 +136,18 @@ class CaptionInferrer(inferrer.Inferrer):
         decoder_key = kwargs.pop('decoder_key', 'decoder')
 
         checkpoint_data = torch.load(fname)
+
+        if self.encoder is None:
+            enc_model_path = checkpoint['encoder']['model_import_path']
+            imp = importlib.import_module(enc_model_path)
+            mod = getattr(imp, checkpoint['encoder']['model_name'])
+            self.encoder = mod()
+
+        if self.decoder is None:
+            dec_model_path = checkpoint['decoder']['model_import_path']
+            imp = importlib.import_module(dec_model_path)
+            mod = getattr(imp, checkpoint['decoder']['model_name'])
+            self.decoder = mod()
 
         encoder_params = dict()
         encoder_params.update({'model_name' : checkpoint_data[encoder_key]['model_name']})

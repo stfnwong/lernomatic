@@ -5,9 +5,13 @@ Utilities for generating captions
 Stefan Wong 2019
 """
 
-# TODO : the entire codebase ought to be re-implemented with type hints
 import torch
 import heapq
+from lernomatic.models import common
+
+# TODO : for now just massively simplify this, then incrementally add extra
+# stuf back in.
+
 
 # Top-N elements of an incrementally provided set
 class CaptionTopN(object):
@@ -81,41 +85,39 @@ class CaptionGen(object):
     """
     Finds captions using beam search
     """
-    def __init__(self, embedder, rnn, classifier, **kwargs) -> None:
+    def __init__(self,
+                 embedder:common.LernomaticModel,
+                 rnn:common.LernomaticModel,
+                 classifier:common.LernomaticModel,
+                 **kwargs) -> None:
         self.beam_size   : int = kwargs.pop('beam_size', 3)
         self.eos_id      : str = kwargs.pop('eos_id', '<EOS>')
         self.max_cap_len : int = kwargs.pop('max_cap_len', 40)
 
-        # Models
-        # TODO : I am more or less copying this from a Tensorflow example, but
-        # I don't like the way that its structured. Need to re-organise this
-        # object before merging into master. Specifically, I'm on the fence
-        # about having model references here
+        # references to models
         self.embedder   = embedder
         self.rnn        = rnn
         self.classifier = classifier
 
     def get_topk_words(self, embeddings, state):
         output, new_states = self.rnn(embeddings, state)
-        output = self.classifier(output.squeeze(0))
-        logprobs = torch.nn.functional.log_softmax(output)
-        logprobs, words = logprobs.topk(self.beam_size, 1)
+        output             = self.classifier(output.squeeze(0))
+        logprobs           = torch.nn.functional.log_softmax(output)
+        logprobs, words    = logprobs.topk(self.beam_size, 1)
 
         return (words.item(), logprobs.item(), new_states)
 
     def beam_search(self, X, initial_state=None):
-
-
-        partial_captions = CaptionTopN(self.beam_size)
+        partial_captions  = CaptionTopN(self.beam_size)
         complete_captions = CaptionTopN(self.beam_size)
 
         words, logprobs, new_state = self.get_topk_words(X, initial_state)
         for k in range(self.beam_size):
             cap = Caption(
                 sentence = [words[0, k]],
-                state = new_state,
-                logprob = logprobs[0, k],
-                score = logprobs[0, k]
+                state    = new_state,
+                logprob  = logprobs[0, k],
+                score    = logprobs[0, k]
             )
             partial_captions.push(cap)
 

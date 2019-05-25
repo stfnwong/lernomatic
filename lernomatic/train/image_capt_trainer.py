@@ -91,6 +91,19 @@ class ImageCaptTrainer(trainer.Trainer):
                 lr = self.enc_lr,
             )
 
+    def _init_history(self) -> None:
+        self.loss_iter = 0
+        self.val_loss_iter = 0
+        self.acc_iter = 0
+        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
+        self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+        if self.val_loader is not None:
+            self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)
+            self.acc_history = np.zeros((4, len(self.val_loader) * self.num_epochs))
+        else:
+            self.val_loss_history = None
+            self.acc_history = None
+
     def _send_to_device(self) -> None:
         if self.encoder is not None:
             self.encoder.send_to(self.device)
@@ -332,25 +345,34 @@ class ImageCaptTrainer(trainer.Trainer):
             caption_text = [self.word_map.tok2word(w) for w in hypotheses[h_idx]]
             print(str(caption_text))
 
-        # compute the BLEU-4 score
-        bleu4 = corpus_bleu(references, hypotheses)
-        avg_val_loss = val_loss / len(self.val_loader)
-        self.acc_history[self.acc_iter] = bleu4
-        self.acc_iter += 1
+        # Compute each of N-gram BLEU scores from 1-4
+        bleu_weights = [(1, 0, 0, 0), (0.5, 0.5, 0, 0), (0.33, 0.33, 0.33, 0), (0.25, 0.25, 0.25, 0.25)]
+        for n in range(len(bleu_weights)):
+            bleu = corpus_bleu(references, hypotheses, weights=bleu_weights[n])
+            self.acc_history[n, self.acc_iter] = bleu
 
-        print('[TEST]  : Avg. Test Loss : %.4f, Epoch BLEU : (%.4f)' %\
-              (avg_val_loss, bleu4)
+        avg_val_loss = val_loss / len(self.val_loader)
+
+        print('[TEST]  : Avg. Test Loss,  BLEU-1  BLEU-2  BLEU-3  BLEU-4')
+        print('               %.4f      %.4f %.4f %.4f %.4f' %\
+              (avg_val_loss,
+               self.acc_history[0, self.acc_iter],
+               self.acc_history[1, self.acc_iter],
+               self.acc_history[2, self.acc_iter],
+               self.acc_history[3, self.acc_iter]
+               )
         )
 
         # save the best weights
-        if bleu4 > self.best_acc:
-            self.best_acc = bleu4
+        if self.acc_history[0, self.acc_iter] > self.best_acc:
+            self.best_acc = self.acc_history[0, self.acc_iter]
             if self.save_every > 0:
                 ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name + '.pkl'
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+        self.acc_iter += 1
 
     def eval(self, beam_size=3) -> None:
         """
@@ -363,12 +385,37 @@ class ImageCaptTrainer(trainer.Trainer):
 
         references = list()
         hypotheses = list()
+        """
+            imgs = imgs.to(self.device)
+            caps = caps.to(self.device)
+            caplens = caplens.to(self.device)
+
+            imgs = self.encoder.forward(imgs)
+            scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder.forward(imgs, caps, caplens)
+            # get rid of the <start> token
+            targets = caps_sorted[:, 1:]
+            # prune out extra timesteps
+            scores_copy    = scores.clone()
+            scores_packed  = pack_padded_sequence(scores,  decode_lengths, batch_first=True)
+            targets_packed = pack_padded_sequence(targets, decode_lengths, batch_first=True)
+
+            # compute loss, add attention regularization
+            val_loss = self.criterion(scores_packed[0], targets_packed[0])
+            val_loss += self.alpha_c * ((1.0 - alphas.sum(dim=1)) ** 2).mean()
+        """
+
+        # TODO : I don't like this. Re-do so that the internals of the
+        # forward pass are fully encapsulated in the decoder object
 
         for n, (image, caps, caplens, allcaps) in enumerate(self.val_loader):
             k = beam_size
             image = image.to(self.device)       # (1, 3, 256, 256)
-            # do encoding pass
+            caps = caps.to(self.device)
+            caplens = caplens.to(self.device)
+
             enc_out = self.encoder.forward(image)
+            preds, enc_capt, dec_lengths, alphas, sort_ind = self.decoder.forward(enc_out, cap, caplens)
+
             enc_img_size = enc_out.size(1)
             enc_dim      = enc_out.size(3)
 
@@ -509,6 +556,7 @@ class ImageCaptTrainer(trainer.Trainer):
             self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
         if checkpoint['encoder_optim'] is not None:
             self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
+        # TODO : get rid of this?
         #if self.decoder_optim is not None:
         #    self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
         #if self.encoder_optim is not None:

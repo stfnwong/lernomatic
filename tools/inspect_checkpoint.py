@@ -27,6 +27,11 @@ def dump_items(data:dict, level:int = 0, max_level:int=5,) -> None:
 
 
 def main() -> None:
+    if GLOBAL_OPTS['device_id'] < 0:
+        device = torch.device('cpu')
+    else:
+        device = torch.device('cuda:%d' % int(GLOBAL_OPTS['device_id']))
+
     checkpoint_data = torch.load(GLOBAL_OPTS['input'])
     dump_items(
         checkpoint_data,
@@ -40,12 +45,11 @@ def arg_parser() -> argparse.ArgumentParser:
                         type=str,
                         help='Input file'
                         )
-    # TODO : there might be modes later, but for now we just dump the keys
-    #parser.add_argument('--mode',
-    #                    choices=['inspect',  'load', 'find'],
-    #                    default='inspect',
-    #                    help='Select the tool mode from one of inspect, load, find'
-    #                    )
+    parser.add_argument('--device-id',
+                        type=int,
+                        default=-1,
+                        help='Device id to map checkpoint tensors to. -1 indicates CPU (default: -1)'
+                        )
     parser.add_argument('--max-level',
                         type=int,
                         default=3,
