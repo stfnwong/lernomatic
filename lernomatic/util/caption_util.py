@@ -16,11 +16,11 @@ from lernomatic.models import common
 # Top-N elements of an incrementally provided set
 class CaptionTopN(object):
     def __init__(self, n) -> None:
-        self.n = n
-        self.data = []
+        self.n:int     = n
+        self.data:list = []
 
     def reset(self):
-        self.data = []
+        self.data:list = []
 
     def size(self) -> int:
         if self.data is not None:
@@ -46,8 +46,11 @@ class CaptionTopN(object):
         Outputs:
             A list containing the top-N elements provided to the object
         """
-        if self.data is None:
-            return []
+        data_out = self.data
+        if sort:
+            data.sort(reverse=True)
+        return data
+
 
 
 # a partial or complete caption

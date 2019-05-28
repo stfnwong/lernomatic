@@ -14,8 +14,8 @@ from torchvision import transforms
 
 # units under test
 from lernomatic.data.text import word_map
-from lernomatic.train import image_capt_trainer
-from lernomatic.models import image_caption
+from lernomatic.train.image_caption import image_capt_trainer
+from lernomatic.models.image_caption import image_caption
 from lernomatic.data.coco import coco_dataset
 
 # debug
