@@ -9,6 +9,7 @@ Stefan Wong 2019
 import argparse
 
 from lernomatic.data.text import cornell_movie
+from lernomatic.data.text import vocab
 
 
 GLOBAL_OPTS = dict()

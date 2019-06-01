@@ -7,6 +7,30 @@ Preprocessing for the Cornell Movie Dialogs Corpus
 import json
 
 
+class QRPair(object):
+    def __init__(self, query:str='', resp:str='') -> None:
+        """
+        Query/Reponse pair
+        """
+        self.query   = query
+        self.reponse = resp
+
+    def __repr__(self) -> str:
+        return 'QRPair'
+
+    def __str__(self) -> str:
+        return 'QRPair [%s : %s]' % (str(self.query), str(self.response))
+
+    def __eq__(self, other:'QRPair') -> bool:
+        if self.query != other.query:
+            return False
+        if self.response != other.response:
+            return False
+        return True
+
+
+
+
 class CornellMovieCorpus(object):
     def __init__(self, **kwargs) -> None:
         self.lines:dict         = dict()
