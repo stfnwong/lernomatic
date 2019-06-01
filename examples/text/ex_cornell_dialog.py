@@ -28,12 +28,17 @@ def main() ->None:
 
     corpus_lines_filename = '/mnt/ml-data/datasets/cornell_movie_dialogs_corpus/movie_lines.txt'
     corpus_conversations_filename = '/mnt/ml-data/datasets/cornell_movie_dialogs_corpus/movie_conversations.txt'
+    corpus_csv_outfile = 'data/cornell_corpus_out.csv'
     print_lines(corpus_lines_filename, 10)
 
     mcorpus = cornell_movie.CornellMovieCorpus(verbose=True)
     mcorpus.load_lines(corpus_lines_filename)
     mcorpus.load_conversations(corpus_conversations_filename)
     mcorpus.extract_sent_pairs()
+    mcorpus.write_csv(corpus_csv_outfile)
+
+
+
 
     print('OK')
 

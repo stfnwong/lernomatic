@@ -4,6 +4,8 @@ Preprocessing for the Cornell Movie Dialogs Corpus
 
 """
 
+import codecs
+import csv
 import json
 
 
@@ -34,17 +36,22 @@ class QRPair(object):
 class CornellMovieCorpus(object):
     def __init__(self, **kwargs) -> None:
         self.lines:dict         = dict()
-        self.conversations:list = list()      # TODO : required?
-
-        # keyword args
-        self.verbose : bool    = kwargs.pop('verbose', False)
-        self.target_offset:int = kwargs.pop('target_offset', 1)
+        self.conversations:list = list()
+        self.qa_pairs:list      = list()    # question/answer pairs
 
         # internal constants
         self.sep_string = ' +++$+++ '
         # Field ids for the various fields in the corpus
         self.movie_lines_fields = ['lineID', 'characterID', 'movieID', 'character', 'text']
         self.movie_conversation_fields = ['character1ID', 'character2ID',  'movieID', 'utteranceIDs']
+
+        # keyword args
+        self.verbose : bool    = kwargs.pop('verbose', False)
+        self.target_offset:int = kwargs.pop('target_offset', 1)
+        self.delimiter:str     = kwargs.pop('delimiter', '\t')
+
+        # un-escape the output delimiter
+        self.delimiter = str(codecs.decode(self.delimiter, 'unicode_escape'))
 
     def __repr__(self) -> str:
         return 'CornellMovieCorpus'
@@ -72,6 +79,27 @@ class CornellMovieCorpus(object):
     def load(self, filename:str) -> None:
         params = json.loads(filename)
         self.set_param_dict(params)
+
+    def write_csv(self, filename:str, encoding:str='utf-8') -> None:
+        if len(self.qa_pairs) == 0:
+            if len(self.conversations) != 0:
+                self.extract_sent_pairs()
+            else:
+                if self.verbose:
+                    print('No qa_pairs in object, run extract_sent_pairs() first')
+                return
+
+        with open(filename, 'w', encoding=encoding) as fp:
+            writer = csv.writer(fp, delimiter=self.delimiter, lineterminator='\n')
+            for n, pair in enumerate(self.qa_pairs):
+                if self.verbose:
+                    print('Writing pair [%d/%d] to file [%s]' % \
+                          (n+1, len(self.qa_pairs), str(filename)), end='\r'
+                    )
+                writer.writerow(pair)
+
+            if self.verbose:
+                print('\n done. Wrote %d pairs to disk' % len(self.qa_pairs))
 
     def load_lines(self, filename:str, encoding:str='iso-8859-1') -> None:
         self.lines = dict()

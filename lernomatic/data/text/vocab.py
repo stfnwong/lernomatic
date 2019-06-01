@@ -5,6 +5,7 @@ A new Vocabulary object. Based on the one from (https://pytorch.org/tutorials/be
 Stefan Wong 2019
 """
 
+import codecs
 import re
 
 # TODO : move this into something that can manage pair lifetime
