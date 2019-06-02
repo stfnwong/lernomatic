@@ -7,23 +7,13 @@ Stefan Wong 2019
 
 import codecs
 import re
+import unicodedata
 
 # TODO : move this into something that can manage pair lifetime
 
 MAX_LENGTH = 10
 
-def unicode_to_ascii(s:str) -> str:
-    return ''.join(
-        c for c in unicodedata.normalize('NFD', s)
-        if unicodedata.category(c) != 'Mn'
-    )
 
-def normalize_string(s:str) -> str:
-    s = unicode_to_ascii(s.lower().strip())
-    s = re.sub(r"([.!?])", r" \1", s)
-    s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
-    s = re.sub(r"\s+", r" ", s).strip()
-    return s
 
 def read_vocs(filename:str, corpus_name:str) -> tuple:
     lines =  open(filename, encoding='utf-8').read().strip().split('\n')
@@ -46,14 +36,14 @@ def filter_pairs(pairs:list) -> list:
 # TODO: do we ever want to compare vocabularies?
 class Vocabulary(object):
     def __init__(self, name:str) -> None:
-        self.name = name
+        self.name:str = name
         self.init()
 
     def __repr__(self) -> str:
-        return 'Vocabulary'
+        return 'Vocabulary [%s]' % str(self.name)
 
     def __str__(self) -> str:
-        return 'Vocabulary (%d words)' % len(self.idx2word)
+        return 'Vocabulary [%s] (%d words)' % (str(self.name), len(self.idx2word))
 
     def __len__(self) -> int:
         return len(self.idx2word)
@@ -81,6 +71,7 @@ class Vocabulary(object):
             self.word2idx[word]           = self.num_words
             self.word2count[word]         = 1
             self.idx2word[self.num_words] = word
+            self.num_words += 1
         else:
             self.word2count[word] += 1
 
@@ -94,7 +85,6 @@ class Vocabulary(object):
 
         Remove words from the vocabulary that occur fewer than min_word_count times
         """
-
         min_freq_words = []
         for k, v in self.word2count.items():
             if v >= min_word_count:

@@ -29,13 +29,35 @@ def main() ->None:
     corpus_lines_filename = '/mnt/ml-data/datasets/cornell_movie_dialogs_corpus/movie_lines.txt'
     corpus_conversations_filename = '/mnt/ml-data/datasets/cornell_movie_dialogs_corpus/movie_conversations.txt'
     corpus_csv_outfile = 'data/cornell_corpus_out.csv'
+    print('Some sample lines from corpus...')
     print_lines(corpus_lines_filename, 10)
 
-    mcorpus = cornell_movie.CornellMovieCorpus(verbose=True)
-    mcorpus.load_lines(corpus_lines_filename)
-    mcorpus.load_conversations(corpus_conversations_filename)
+    mcorpus = cornell_movie.CornellMovieCorpus(
+        corpus_lines_filename,
+        corpus_conversations_filename,
+        verbose=True
+    )
     mcorpus.extract_sent_pairs()
     mcorpus.write_csv(corpus_csv_outfile)
+
+    # get a list of query/response pairs
+    print('Generating Query/Response pairs from file [%s]' % str(corpus_csv_outfile))
+    qr_pairs = cornell_movie.qr_pair_proc(
+        corpus_csv_outfile,
+        max_length = GLOBAL_OPTS['max_qr_len'],
+        verbose = True
+    )
+
+    mvocab = vocab.Vocabulary('test_vocab')
+    for n, pair in enumerate(qr_pairs):
+        print('Adding pair [%d/%d] to vocab' % (n+1, len(qr_pairs)), end='\r')
+        mvocab.add_sentence(pair.query)
+        mvocab.add_sentence(pair.response)
+    print('\n Created new vocabulary of %d words' % len(mvocab))
+    print('Pruning words that appear fewer than %d times' % GLOBAL_OPTS['min_word_freq'])
+    mvocab.trim_freq(GLOBAL_OPTS['min_word_freq'])
+    print('Created new vocabulary:')
+    print(mvocab)
 
 
 
@@ -50,6 +72,17 @@ def get_parser():
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
+                        )
+
+    parser.add_argument('--min-word-freq',
+                        type=int,
+                        default=5,
+                        help='Minimum number of times a word can occur before it is pruned from the vocabulary (default: 5)'
+                        )
+    parser.add_argument('--max-qr-len',
+                        type=int,
+                        default=20,
+                        help='Maximum length in words that a query or response may be (default: 10)'
                         )
 
     return parser
