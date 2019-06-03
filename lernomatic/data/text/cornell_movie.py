@@ -34,7 +34,8 @@ class QRPair(object):
         """
         self.query     = query
         self.response  = response
-        self.seperator = ' '   # on the off chance that the sentence has some unusual seperator
+        # can adjust seperator for odd sentences
+        self.seperator = ' '
 
     def __repr__(self) -> str:
         return 'QRPair'
@@ -120,36 +121,6 @@ def qr_pairs_to_csv(filename:str,
 
 
 
-#def qr_pair_proc_from_list(input_pairs:list, **kwargs) -> list:
-#    verbose:bool  = kwargs.pop('verbose', False)
-#    encoding:str  = kwargs.pop('encoding', 'utf-8')
-#    seperator:str = kwargs.pop('seperator', '\t')
-#    max_length:int = kwargs.pop('max_length', 10)
-#
-#    output_pairs = list()
-#    for n, pair in enumerate(input_pairs):
-#        if verbose:
-#            print('Processing line [%d/%d]' % (n+1, len(input_pairs)), end='\r')
-#
-#        split_line = [normalize_string(s) for s in pair.split(seperator)]
-#        pair = QRPair(
-#            query=split_line[0],
-#            response=split_line[1]
-#        )
-#        # filter out pairs that are too long
-#        if (pair.query_len() > max_length) or (pair.response_len() > max_length):
-#            num_filtered += 1
-#        else:
-#            output_pairs.append(pair)
-#
-#    if verbose:
-#        print('\n Processed %d Query/Response pairs' % len(output_pairs))
-#        print('Filtered %d pairs for being longer than %d words' % (num_filtered, max_length))
-#
-#    return output_pairs
-#
-
-
 
 class CornellMovieCorpus(object):
     """
@@ -158,7 +129,6 @@ class CornellMovieCorpus(object):
     def __init__(self, movie_lines_file:str, movie_conv_file:str, **kwargs) -> None:
         self.lines:dict         = dict()
         self.conversations:list = list()
-        #self.qr_pairs:list      = list()    # query / response pairs
 
         # internal constants
         self.seperator = ' +++$+++ '
@@ -224,9 +194,6 @@ class CornellMovieCorpus(object):
     def get_num_lines(self) -> int:
         return len(self.lines)
 
-    #def get_num_qa_pairs(self) -> int:
-    #    return len(self.qr_pairs)
-
     def get_param_dict(self) -> dict:
         return {
             'lines' : self.lines,
@@ -245,12 +212,11 @@ class CornellMovieCorpus(object):
         params = json.loads(filename)
         self.set_param_dict(params)
 
-    # TODO : return a list of pairs rather than set and internal set of pairs
     def extract_sent_pairs(self, max_length:int=0) -> list:
         qr_pairs = []
         for n, conv in enumerate(self.conversations):
             if self.verbose:
-                print('Extracting sentence pair from conversation [%d/%d]' %\
+                print('Extracting Q/R pair from conversation [%d/%d]' %\
                       (n+1, len(self.conversations)), end='\r'
                 )
 
@@ -275,24 +241,3 @@ class CornellMovieCorpus(object):
             print('\n  done. Extracted  %d sentence pairs total' % len(qr_pairs))
 
         return qr_pairs
-
-    #def write_csv(self, filename:str, encoding:str='utf-8') -> None:
-    #    if len(self.qr_pairs) == 0:
-    #        if len(self.conversations) != 0:
-    #            self.extract_sent_pairs()
-    #        else:
-    #            if self.verbose:
-    #                print('No qa_pairs in object, run extract_sent_pairs() first')
-    #            return
-
-    #    with open(filename, 'w', encoding=encoding) as fp:
-    #        writer = csv.writer(fp, delimiter=self.delimiter, lineterminator='\n')
-    #        for n, pair in enumerate(self.qr_pairs):
-    #            if self.verbose:
-    #                print('Writing pair [%d/%d] to file [%s]' % \
-    #                      (n+1, len(self.qr_pairs), str(filename)), end='\r'
-    #                )
-    #            writer.writerow(pair)
-
-    #        if self.verbose:
-    #            print('\n done. Wrote %d pairs to disk' % len(self.qr_pairs))

@@ -9,11 +9,6 @@ import codecs
 import re
 import unicodedata
 
-# TODO : move this into something that can manage pair lifetime
-
-MAX_LENGTH = 10
-
-
 
 def read_vocs(filename:str, corpus_name:str) -> tuple:
     lines =  open(filename, encoding='utf-8').read().strip().split('\n')
@@ -66,6 +61,24 @@ class Vocabulary(object):
         self.idx2word[self.eos_tok] = 2
         self.num_words = len(self.idx2word)
 
+    def get_eos(self) -> int:
+        return self.idx2word[self.eos_tok]
+
+    def get_eos_str(self) -> str:
+        return self.eos_tok
+
+    def get_sos(self) -> int:
+        return self.idx2word[self.sos_tok]
+
+    def get_sos_str(self) -> str:
+        return self.sos_tok
+
+    def get_pad(self) -> int:
+        return self.idx2word[self.pad_tok]
+
+    def get_pad_str(self) -> str:
+        return self.pad_tok
+
     def add_word(self, word:str) -> None:
         if word not in self.word2idx:
             self.word2idx[word]           = self.num_words
@@ -75,8 +88,8 @@ class Vocabulary(object):
         else:
             self.word2count[word] += 1
 
-    def add_sentence(self, sentence:list) -> None:
-        for word in sentence.split(' '):
+    def add_sentence(self, sentence:list, delimiter:str=' ') -> None:
+        for word in sentence.split(delimiter):
             self.add_word(word)
 
     def trim_freq(self, min_word_count:int) -> None:

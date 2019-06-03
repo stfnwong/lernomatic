@@ -9,9 +9,14 @@ Stefan Wong 2019
 import sys
 import argparse
 import unittest
+import numpy as np
 # modules under test
 from lernomatic.data.text import batch
 from lernomatic.data.text import cornell_movie
+from lernomatic.data.text import vocab
+
+
+GLOBAL_OPTS = dict()
 
 
 def print_lines(filename:str, n:int=10) -> None:
@@ -32,7 +37,7 @@ class TestCornellMovieCorpus(unittest.TestCase):
         #self.verbose = GLOBAL_OPTS['verbose']
 
     def test_create_corpus(self):
-        print('======== TestCornellMovieCorpus.test_create_corpus ')
+        print('\n======== TestCornellMovieCorpus.test_create_corpus ')
 
         mcorpus = cornell_movie.CornellMovieCorpus(
             self.corpus_lines_filename,
@@ -48,9 +53,8 @@ class TestCornellMovieCorpus(unittest.TestCase):
 
         print('======== TestCornellMovieCorpus.test_create_corpus <END>')
 
-
     def test_qa_pair_gen(self):
-        print('======== TestCornellMovieCorpus.test_qr_pair_gen')
+        print('\n======== TestCornellMovieCorpus.test_qr_pair_gen')
 
         # create a new corpus
         mcorpus = cornell_movie.CornellMovieCorpus(
@@ -58,7 +62,6 @@ class TestCornellMovieCorpus(unittest.TestCase):
             self.corpus_conversations_filename,
             verbose=True
         )
-        mcorpus.extract_sent_pairs()
 
         print('Extracting sentence pairs....')
         qr_pairs = mcorpus.extract_sent_pairs(max_length=0)
@@ -81,40 +84,80 @@ class TestCornellMovieCorpus(unittest.TestCase):
         print('%d Q/R pairs read from file [%s]' % (len(csv_qr_pairs), str(self.qr_pair_csv_file)))
         self.assertEqual(len(qr_pairs), len(csv_qr_pairs))
 
-        # print the first 10 of each set of pairs
-        print('Q/R pairs from Corpus')
-        for n in range(10):
-            print(qr_pairs[n])
-
-        print('Q/R pairs from *.csv')
-        for n in range(10):
-            print(csv_qr_pairs[n])
-
         for n, (p1, p2) in enumerate(zip(qr_pairs, csv_qr_pairs)):
             print('Checking Q/R pair [%d / %d]' % (n+1, len(qr_pairs)), end='\r')
             self.assertEqual(p1, p2)
 
         print('\n OK')
 
-
         print('======== TestCornellMovieCorpus.test_qr_pair_gen <END>')
 
 
 
+class TestCornellMovieVocab(unittest.TestCase):
+    def setUp(self):
+        self.corpus_lines_filename         = GLOBAL_OPTS['data_root'] + 'cornell_movie_dialogs_corpus/movie_lines.txt'
+        self.corpus_conversations_filename = GLOBAL_OPTS['data_root'] + 'cornell_movie_dialogs_corpus/movie_conversations.txt'
+        self.test_max_length = 20
+        self.test_batch_size = 16
 
-#class TestBatch(unittest.TestCase):
-#
-#    def setUp(self):
-#        self.batch_size = 5
-#
-#    def test_create_batch(self):
-#        print('======== TestBatch.test_create_batch <END>')
+    def test_gen_cornell_vocab(self):
+        print('\n======== TestCornellMovieVocab.test_gen_cornell_vocab ')
+
+        mcorpus = cornell_movie.CornellMovieCorpus(
+            self.corpus_lines_filename,
+            self.corpus_conversations_filename,
+            verbose=True
+        )
+        qr_pairs = mcorpus.extract_sent_pairs(max_length=self.test_max_length)
+
+        # get a new vocab object
+        mvocab = vocab.Vocabulary('Cornell Movie Vocab')
+        for n, pair in enumerate(qr_pairs):
+            print('Adding pair [%d / %d] to vocab' % (n+1, len(qr_pairs)), end='\r')
+            mvocab.add_sentence(pair.query)
+            mvocab.add_sentence(pair.response)
+
+        print('\n OK')
+        print(mvocab)
+        # TODO: what to assert on?
+
+        print('======== TestCornellMovieVocab.test_gen_cornell_vocab <END>')
+
+
+    def test_vocab_batch(self):
+        print('\n======== TestCornellMovieVocab.test_vocab_batch ')
+
+        mcorpus = cornell_movie.CornellMovieCorpus(
+            self.corpus_lines_filename,
+            self.corpus_conversations_filename,
+            verbose=True
+        )
+        qr_pairs = mcorpus.extract_sent_pairs(max_length=self.test_max_length)
+
+        # get a new vocab object
+        mvocab = vocab.Vocabulary('Cornell Movie Vocab')
+        for n, pair in enumerate(qr_pairs):
+            print('Adding pair [%d / %d] to vocab' % (n+1, len(qr_pairs)), end='\r')
+            mvocab.add_sentence(pair.query)
+            mvocab.add_sentence(pair.response)
+
+        inp_batch_data, inp_lengths, out_batch_data, mask, max_target_len = batch.batch_convert(
+            mvocab,
+            qr_pairs[0 : self.test_batch_size],
+        )
+
+        print('in batch shape :', inp_batch_data.shape)
+        print('out batch shape :', out_batch_data.shape)
+        print('input lengths :', inp_lengths)
+        print('mask :', mask)
+        print('max_target_len :', max_target_len)
+
+
+        print('======== TestCornellMovieVocab.test_vocab_batch <END>')
 
 
 
-GLOBAL_OPTS = dict()
-
-# modules under test
 # Entry point
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -38,25 +38,10 @@ def main() ->None:
         corpus_conversations_filename,
         verbose=True
     )
-    qr_pairs = mcorpus.extract_sent_pairs()
-
-    # TODO: why not do this in memory? Note that that answer might be that in
-    # some cases the corpus is too large to fit in memory
-    #mcorpus.write_csv(qr_pairs_csv_file)
-    cornell_movie.qr_pairs_to_csv(
-        qr_pair_csv_file,
-        qr_pairs,
-        verbose = True
-    )
+    qr_pairs = mcorpus.extract_sent_pairs(max_length=GLOBAL_OPTS['max_qr_len'])
 
 
-    # get a list of query/response pairs
-    print('Generating Query/Response pairs from file [%s]' % str(qr_pairs_csv_file))
-    qr_pairs = cornell_movie.qr_pair_proc_from_csv(
-        qr_pairs_csv_file,
-        max_length = GLOBAL_OPTS['max_qr_len'],
-        verbose = True
-    )
+
 
     mvocab = vocab.Vocabulary('test_vocab')
     for n, pair in enumerate(qr_pairs):
