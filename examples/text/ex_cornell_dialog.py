@@ -11,10 +11,14 @@ import argparse
 from lernomatic.data.text import cornell_movie
 from lernomatic.data.text import vocab
 from lernomatic.data.text import batch
+# models and trainer
+from lernomatic.models.text import seq2seq
+from lernomatic.trainer.text import seq2seq_trainer
 
 
 GLOBAL_OPTS = dict()
 
+# TODO : make a batched text dataloader?
 
 
 def print_lines(filename:str, n:int=10) -> None:
@@ -40,10 +44,7 @@ def main() ->None:
     )
     qr_pairs = mcorpus.extract_sent_pairs(max_length=GLOBAL_OPTS['max_qr_len'])
 
-
-
-
-    mvocab = vocab.Vocabulary('test_vocab')
+    mvocab = vocab.Vocabulary('Cornell Movie Vocabulary')
     for n, pair in enumerate(qr_pairs):
         print('Adding pair [%d/%d] to vocab' % (n+1, len(qr_pairs)), end='\r')
         mvocab.add_sentence(pair.query)
@@ -54,6 +55,7 @@ def main() ->None:
     print('Created new vocabulary:')
     print(mvocab)
 
+    # TODO: batch all the data
 
 
 

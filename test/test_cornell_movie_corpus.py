@@ -98,7 +98,7 @@ class TestCornellMovieVocab(unittest.TestCase):
     def setUp(self):
         self.corpus_lines_filename         = GLOBAL_OPTS['data_root'] + 'cornell_movie_dialogs_corpus/movie_lines.txt'
         self.corpus_conversations_filename = GLOBAL_OPTS['data_root'] + 'cornell_movie_dialogs_corpus/movie_conversations.txt'
-        self.test_max_length = 20
+        self.test_max_length = 10
         self.test_batch_size = 16
 
     def test_gen_cornell_vocab(self):
@@ -120,7 +120,9 @@ class TestCornellMovieVocab(unittest.TestCase):
 
         print('\n OK')
         print(mvocab)
-        # TODO: what to assert on?
+        # if test_max_length = 20, then we expect there to be 33021 words in
+        # vocab
+        self.assertEqual(17993, len(mvocab))
 
         print('======== TestCornellMovieVocab.test_gen_cornell_vocab <END>')
 
@@ -153,6 +155,15 @@ class TestCornellMovieVocab(unittest.TestCase):
         print('mask :', mask)
         print('max_target_len :', max_target_len)
 
+        # Note that for larger values of self.test_max_length  its not
+        # guaranteed that the tensors will have dimensions as large as
+        # self.test_max_length, owing to the fact that many of the sentences
+        # in the corpus may not be long enough
+        self.assertEqual(self.test_batch_size, inp_batch_data.shape[1])
+        self.assertEqual(self.test_max_length, out_batch_data.shape[0])
+        self.assertEqual(self.test_batch_size, out_batch_data.shape[1])
+        self.assertEqual(self.test_max_length, max_target_len)
+        self.assertEqual(self.test_batch_size, inp_lengths.shape[0])
 
         print('======== TestCornellMovieVocab.test_vocab_batch <END>')
 

@@ -8,23 +8,7 @@ Stefan Wong 2019
 import codecs
 import csv
 import json
-import re
-import unicodedata
-
-
-def unicode_to_ascii(s:str) -> str:
-    return ''.join(
-        c for c in unicodedata.normalize('NFD', s)
-        if unicodedata.category(c) != 'Mn'
-    )
-
-def normalize_string(s:str) -> str:
-    s = unicode_to_ascii(s.lower().strip())
-    s = re.sub(r"([.!?])", r" \1", s)
-    s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
-    s = re.sub(r"\s+", r" ", s).strip()
-    return s
-
+from lernomatic.util import text_util
 
 
 class QRPair(object):
@@ -63,6 +47,9 @@ class QRPair(object):
     def to_list(self) -> list:
         return [self.query, self.response]
 
+    def to_tuple(self) -> tuple:
+        return (self.query, self.response)
+
 
 def qr_pair_proc_from_csv(filename:str,
                           encoding:str='utf-8',
@@ -77,14 +64,14 @@ def qr_pair_proc_from_csv(filename:str,
     for n, line in enumerate(lines):
         if verbose:
             print('Processing line [%d/%d] from file [%s]' % (n+1, len(lines), str(filename)), end='\r')
-        split_line = [normalize_string(s) for s in line.split(delimiter)]
+        split_line = [text_util.normalize_string(s) for s in line.split(delimiter)]
         pair = QRPair(
             query=split_line[0],
             response=split_line[1]
         )
         # filter out pairs that are too long
         if max_length > 0:
-            if (pair.query_len() > max_length) or (pair.response_len() > max_length):
+            if (pair.query_len() >= max_length) or (pair.response_len() >= max_length):
                 num_filtered += 1
                 continue
 
@@ -113,12 +100,10 @@ def qr_pairs_to_csv(filename:str,
                 print('Writing pair [%d/%d] to file [%s]' % \
                         (n+1, len(qr_pairs), str(filename)), end='\r'
                 )
-            writer.writerow(pair.to_list())
+            writer.writerow(pair.to_tuple())
 
         if verbose:
             print('\n done. Wrote %d pairs to disk' % len(qr_pairs))
-
-
 
 
 
@@ -228,12 +213,12 @@ class CornellMovieCorpus(object):
                 # filter out samples where the list is empty
                 if input_line and target_line:
                     pair = QRPair(
-                        query=normalize_string(input_line),
-                        response=normalize_string(target_line)
+                        query=text_util.normalize_string(input_line),
+                        response=text_util.normalize_string(target_line)
                     )
                     # filter if required
                     if max_length > 0:
-                        if (pair.query_len() > max_length) or (pair.response_len() > max_length):
+                        if (pair.query_len() >= max_length) or (pair.response_len() >= max_length):
                             continue
                     qr_pairs.append(pair)
 
