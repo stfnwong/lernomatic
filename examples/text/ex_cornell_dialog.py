@@ -10,6 +10,7 @@ import argparse
 
 from lernomatic.data.text import cornell_movie
 from lernomatic.data.text import vocab
+from lernomatic.data.text import batch
 
 
 GLOBAL_OPTS = dict()
@@ -26,9 +27,9 @@ def print_lines(filename:str, n:int=10) -> None:
 def main() ->None:
 
 
-    corpus_lines_filename = '/mnt/ml-data/datasets/cornell_movie_dialogs_corpus/movie_lines.txt'
-    corpus_conversations_filename = '/mnt/ml-data/datasets/cornell_movie_dialogs_corpus/movie_conversations.txt'
-    corpus_csv_outfile = 'data/cornell_corpus_out.csv'
+    corpus_lines_filename = GLOBAL_OPTS['data_root'] + 'cornell_movie_dialogs_corpus/movie_lines.txt'
+    corpus_conversations_filename = GLOBAL_OPTS['data_root'] + 'cornell_movie_dialogs_corpus/movie_conversations.txt'
+    qr_pairs_csv_file = 'data/cornell_corpus_out.csv'
     print('Some sample lines from corpus...')
     print_lines(corpus_lines_filename, 10)
 
@@ -37,13 +38,22 @@ def main() ->None:
         corpus_conversations_filename,
         verbose=True
     )
-    mcorpus.extract_sent_pairs()
-    mcorpus.write_csv(corpus_csv_outfile)
+    qr_pairs = mcorpus.extract_sent_pairs()
+
+    # TODO: why not do this in memory? Note that that answer might be that in
+    # some cases the corpus is too large to fit in memory
+    #mcorpus.write_csv(qr_pairs_csv_file)
+    cornell_movie.qr_pairs_to_csv(
+        qr_pair_csv_file,
+        qr_pairs,
+        verbose = True
+    )
+
 
     # get a list of query/response pairs
-    print('Generating Query/Response pairs from file [%s]' % str(corpus_csv_outfile))
-    qr_pairs = cornell_movie.qr_pair_proc(
-        corpus_csv_outfile,
+    print('Generating Query/Response pairs from file [%s]' % str(qr_pairs_csv_file))
+    qr_pairs = cornell_movie.qr_pair_proc_from_csv(
+        qr_pairs_csv_file,
         max_length = GLOBAL_OPTS['max_qr_len'],
         verbose = True
     )
@@ -72,6 +82,13 @@ def get_parser():
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
+                        )
+
+
+    parser.add_argument('--data-root',
+                        type=str,
+                        default='/mnt/ml-data/datasets/',
+                        help='Path to root of dataset'
                         )
 
     parser.add_argument('--min-word-freq',
