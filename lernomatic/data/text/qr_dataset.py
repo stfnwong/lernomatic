@@ -40,4 +40,3 @@ class QRDataset(Dataset):
         response_length = torch.LongTensor(self.fp[self.response_length_name][idx][:])
 
         return (query, query_length, response, response_length)
-        #return feature, label

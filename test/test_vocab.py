@@ -44,9 +44,16 @@ class TestVocabulary(unittest.TestCase):
             src_vocab.add_sentence(pair.query)
             src_vocab.add_sentence(pair.response)
 
-        # Lookup the builtin tokens
+        # check the builtin tokens
         self.assertEqual(0, src_vocab.lookup_word('<pad>'))
-
+        self.assertEqual(1, src_vocab.lookup_word('<sos>'))
+        self.assertEqual(2, src_vocab.lookup_word('<eos>'))
+        self.assertEqual(3, src_vocab.lookup_word('<unk>'))
+        # check the builtin indicies
+        self.assertEqual('<pad>', src_vocab.lookup_idx(0))
+        self.assertEqual('<sos>', src_vocab.lookup_idx(1))
+        self.assertEqual('<eos>', src_vocab.lookup_idx(2))
+        self.assertEqual('<unk>', src_vocab.lookup_idx(3))
 
         # save the vocab to file
         src_vocab.save(self.test_vocab_file)
@@ -55,10 +62,42 @@ class TestVocabulary(unittest.TestCase):
         dst_vocab.load(self.test_vocab_file)
 
         self.assertEqual(len(src_vocab), len(dst_vocab))
-        # check each word, mapping in turn
+        self.assertEqual(src_vocab.num_words, dst_vocab.num_words)
+        self.assertEqual(src_vocab.get_pad(), dst_vocab.get_pad())
+        self.assertEqual(src_vocab.get_sos(), dst_vocab.get_sos())
+        self.assertEqual(src_vocab.get_eos(), dst_vocab.get_eos())
+        self.assertEqual(src_vocab.get_unk(), dst_vocab.get_unk())
+
+        self.assertEqual(src_vocab.get_pad_str(), dst_vocab.get_pad_str())
+        self.assertEqual(src_vocab.get_sos_str(), dst_vocab.get_sos_str())
+        self.assertEqual(src_vocab.get_eos_str(), dst_vocab.get_eos_str())
+        self.assertEqual(src_vocab.get_unk_str(), dst_vocab.get_unk_str())
+
+        # check each word, mapping, and count in turn
+        print('Checking word indicies...')
+
+
+        # check indicies
+        for n, (k, v) in enumerate(src_vocab.word2idx.items()):
+            print('Checking word <%s> [%d / %d' % (str(k), n+1, len(src_vocab)), end='\r')
+            self.assertIn(k, dst_vocab.word2idx)
+            self.assertEqual(src_vocab.word2idx[k], dst_vocab.word2idx[k])
+
+        # check words
+        for n, (k, v) in enumerate(src_vocab.idx2word.items()):
+            print('Checking index <%d> [%d / %d' % (int(k), n+1, len(src_vocab)), end='\r')
+            self.assertIn(k, dst_vocab.idx2word)
+            self.assertEqual(src_vocab.idx2word[k], dst_vocab.idx2word[k])
+
+        #for n in range(len(src_vocab)):
+        #    print('Checking index [%d / %d' % (n+1, len(src_vocab)), end='\r')
+        #    self.assertEqual(src_vocab.lookup_idx(n), dst_vocab.lookup_idx(n))
+
+        print('\n OK')
 
 
         print('======== TestVocabulary.test_all <END>')
+
 
 
 if __name__ == '__main__':

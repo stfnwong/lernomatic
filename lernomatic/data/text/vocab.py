@@ -98,13 +98,13 @@ class Vocabulary(object):
         try:
             return self.idx2word[idx]
         except:
-            return self.idx2word[self.word2idx[self.unk_tok]]
+            return self.unk_tok
 
     def add_word(self, word:str) -> None:
         if word not in self.word2idx:
             self.word2idx[word]           = self.num_words
             self.word2count[word]         = 1
-            self.idx2word[self.num_words] = word
+            self.idx2word[int(self.num_words)] = word
             self.num_words += 1
         else:
             self.word2count[word] += 1
@@ -148,13 +148,19 @@ class Vocabulary(object):
             voc_data = json.load(fp)
 
         self.word2idx   = voc_data['word2idx']
-        self.idx2word   = voc_data['idx2word']
         self.word2count = voc_data['word2count']
         self.num_words  = voc_data['num_words']
         self.pad_tok    = voc_data['pad_tok']
         self.sos_tok    = voc_data['sos_tok']
         self.eos_tok    = voc_data['eos_tok']
         self.unk_tok    = voc_data['unk_tok']
+
+        # Convert all keys to integers before loading into objectc
+        idx2word_str   = voc_data['idx2word']
+        self.idx2word = dict()
+        for k, v in idx2word_str.items():
+            self.idx2word[int(k)] = v
+
 
 
 # Turn a tensor into a list of printable tokens

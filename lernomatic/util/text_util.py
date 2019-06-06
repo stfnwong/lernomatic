@@ -6,6 +6,7 @@ Stefan Wong 2019
 import re
 import unicodedata
 
+
 def unicode_to_ascii(s:str) -> str:
     return ''.join(
         c for c in unicodedata.normalize('NFD', s)
