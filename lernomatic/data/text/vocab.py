@@ -28,7 +28,6 @@ def filter_pairs(pairs:list) -> list:
 
 
 
-# TODO: do we ever want to compare vocabularies?
 class Vocabulary(object):
     def __init__(self, name:str) -> None:
         self.name:str = name
@@ -55,29 +54,49 @@ class Vocabulary(object):
         self.pad_tok = '<pad>'
         self.sos_tok = '<sos>'
         self.eos_tok = '<eos>'
+        self.unk_tok = '<unk>'
         # placed the reserved words into the index
-        self.idx2word[self.pad_tok] = 0
-        self.idx2word[self.sos_tok] = 1
-        self.idx2word[self.eos_tok] = 2
-        self.num_words = len(self.idx2word)
+        self.word2idx[self.pad_tok] = 0
+        self.word2idx[self.sos_tok] = 1
+        self.word2idx[self.eos_tok] = 2
+        self.word2idx[self.unk_tok] = 3
+        self.num_words = len(self.word2idx)
 
     def get_eos(self) -> int:
-        return self.idx2word[self.eos_tok]
+        return self.word2idx[self.eos_tok]
 
     def get_eos_str(self) -> str:
         return self.eos_tok
 
     def get_sos(self) -> int:
-        return self.idx2word[self.sos_tok]
+        return self.word2idx[self.sos_tok]
 
     def get_sos_str(self) -> str:
         return self.sos_tok
 
     def get_pad(self) -> int:
-        return self.idx2word[self.pad_tok]
+        return self.word2idx[self.pad_tok]
 
     def get_pad_str(self) -> str:
         return self.pad_tok
+
+    def get_unk(self) -> int:
+        return self.word2idx[self.unk_tok]
+
+    def get_unk_str(self) -> str:
+        return self.unk_tok
+
+    def lookup_word(self, word:str) -> int:
+        try:
+            return self.word2idx[word]
+        except:
+            return self.word2idx[self.unk_tok]
+
+    def lookup_idx(self, idx:int) -> str:
+        try:
+            return self.idx2word[idx]
+        except:
+            return self.idx2word[self.word2idx[self.unk_tok]]
 
     def add_word(self, word:str) -> None:
         if word not in self.word2idx:

@@ -145,6 +145,7 @@ class DataSplitter(object):
 
 # TODO : csv splitter
 
+
 class ListSplitter(DataSplitter):
     """
     Generate splits from a list of filenames
@@ -178,7 +179,6 @@ class ListSplitter(DataSplitter):
             raise ValueError('Unknown split method [%s]' % str(self.split_method))
 
         split_lens, split_offsets = self.gen_split_idx_offset(len(data_list))
-
         # create split objects
         splits = [DataSplit(split_name=self.split_names[n]) for n in range(len(self.split_names))]
 

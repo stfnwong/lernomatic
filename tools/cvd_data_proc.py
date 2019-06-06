@@ -185,7 +185,7 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('[%s] : %s' % (str(k), str(v)))
 
     GLOBAL_OPTS['split_names'] = GLOBAL_OPTS['split_names'].split(',')
     split_ratios = GLOBAL_OPTS['split_ratios'].split(',')

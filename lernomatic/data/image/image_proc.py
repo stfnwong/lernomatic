@@ -14,23 +14,23 @@ from tqdm import tqdm
 #from pudb import set_trace; set_trace()
 
 class ImageDataProc(object):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         self.verbose = kwargs.pop('verbose', False)
         # dataset options
         #self.dataset_size       = kwargs.pop('dataset_size', 1000)
-        self.image_dataset_name = kwargs.pop('image_dataset_name', 'images')
-        self.image_dataset_size = kwargs.pop('image_dataset_size', (3, 224, 224))
-        self.label_dataset_name = kwargs.pop('label_dataset_name', 'labels')
-        self.label_dataset_size = kwargs.pop('label_dataset_size', 1)
-        self.id_dataset_name    = kwargs.pop('id_dataset_name', 'ids')
+        self.image_dataset_name :str   = kwargs.pop('image_dataset_name', 'images')
+        self.image_dataset_size :tuple = kwargs.pop('image_dataset_size', (3, 224, 224))
+        self.label_dataset_name :str   = kwargs.pop('label_dataset_name', 'labels')
+        self.label_dataset_size :int   = kwargs.pop('label_dataset_size', 1)
+        self.id_dataset_name    :str   = kwargs.pop('id_dataset_name', 'ids')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'ImageDataProc'
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.dataset_size
 
-    def proc(self, data_split, outfile):
+    def proc(self, data_split, outfile) -> None:
         with h5py.File(outfile, 'w') as fp:
             images = fp.create_dataset(
                 self.image_dataset_name,

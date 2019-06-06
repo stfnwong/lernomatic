@@ -14,6 +14,7 @@ import numpy as np
 from lernomatic.data.text import batch
 from lernomatic.data.text import cornell_movie
 from lernomatic.data.text import vocab
+from lernomatic.data.text import qr_pair
 
 
 GLOBAL_OPTS = dict()
@@ -68,13 +69,13 @@ class TestCornellMovieCorpus(unittest.TestCase):
         self.assertEqual(221282, len(qr_pairs))
 
         # Write pairs to csv and check that reading them back they are equal
-        cornell_movie.qr_pairs_to_csv(
+        qr_pair.qr_pairs_to_csv(
             self.qr_pair_csv_file,
             qr_pairs,
             verbose = True
         )
 
-        csv_qr_pairs = cornell_movie.qr_pair_proc_from_csv(
+        csv_qr_pairs = qr_pair.qr_pair_proc_from_csv(
             self.qr_pair_csv_file,
             max_length =  0,
             verbose = True
@@ -167,6 +168,42 @@ class TestCornellMovieVocab(unittest.TestCase):
 
         print('======== TestCornellMovieVocab.test_vocab_batch <END>')
 
+    def test_batch_size(self):
+        print('======== TestCornellMovieVocab.test_batch_size ')
+
+        test_batch_sizes = [1, 2, 4, 8, 16, 32]
+
+        print('Creating test corpus and vocabulary')
+        mcorpus = cornell_movie.CornellMovieCorpus(
+            self.corpus_lines_filename,
+            self.corpus_conversations_filename,
+            verbose=True
+        )
+        qr_pairs = mcorpus.extract_sent_pairs(max_length=self.test_max_length)
+
+        # get a new vocab object
+        mvocab = vocab.Vocabulary('Cornell Movie Vocab')
+        for n, pair in enumerate(qr_pairs):
+            print('Adding pair [%d / %d] to vocab' % (n+1, len(qr_pairs)), end='\r')
+            mvocab.add_sentence(pair.query)
+            mvocab.add_sentence(pair.response)
+
+
+        for batch_size in test_batch_sizes:
+            inp_batch_data, inp_lengths, out_batch_data, mask, max_target_len = batch.batch_convert(
+                mvocab,
+                qr_pairs[0 : batch_size]
+            )
+            print('\t batch size %d' % batch_size)
+            print('in batch shape :', inp_batch_data.shape)
+            print('out batch shape :', out_batch_data.shape)
+            print('input lengths :', inp_lengths)
+            print('mask :', mask)
+            print('mask shape : ', mask.shape)
+            print('max_target_len :', max_target_len)
+
+
+        print('======== TestCornellMovieVocab.test_batch_size <END>')
 
 
 # Entry point
