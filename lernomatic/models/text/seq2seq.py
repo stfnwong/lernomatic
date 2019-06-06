@@ -44,7 +44,7 @@ class EncoderRNNModule(nn.Module):
             self.hidden_size,
             self.num_layers,
             self.dropout,
-            bidrectional=True
+            bidirectional=True
         )
 
     def forward(self,
@@ -63,7 +63,7 @@ class EncoderRNNModule(nn.Module):
 
 
 # Calculates attention weightings over all encoder hidden states
-class GlobalAttentionNet(common.lernomaticModel):
+class GlobalAttentionNet(common.LernomaticModel):
     def __init__(self, hidden_size:int, **kwargs) -> None:
         self.net = GlobalAttentionNetModule(hidden_size, **kwargs)
         self.import_path        = 'lernomatic.models.text.seq2seq'
@@ -82,20 +82,20 @@ class GlobalAttentionNetModule(nn.Module):
 
         # check score_method
         valid_score_methods = ['dot', 'general', 'concat']
-        if self.score_method not in valid_methods:
+        if self.score_method not in valid_score_methods:
             raise ValueError('Invalid score_method [%s], must be one of %s' %\
-                             (str(self.score_method), str(valid_methods))
+                             (str(self.score_method), str(valid_score_methods))
             )
         super(GlobalAttentionNetModule, self).__init__()
 
-        if self.score_score_method == 'general':
+        if self.score_method == 'general':
             self.atten = nn.Linear(self.hidden_size, self.hidden_size)
-        elif self.score_score_method == 'concat':
+        elif self.score_method == 'concat':
             self.atten = nn.Linear(2 * self.hidden_size, self.hidden_size)
             self.v = nn.Parameter(torch.FloatTensor(hidden_size))
 
     def dot_score(self,
-                  hidden:torch.Tensor, '
+                  hidden:torch.Tensor,
                   enc_output:torch.Tensor) -> torch.Tensor:
         return torch.sum(hidden * enc_output, dim=2)
 
@@ -174,18 +174,17 @@ class LuongAttenDecoderRNNModule(nn.Module):
                  **kwargs) -> None:
         self.hidden_size = hidden_size
         self.output_size = output_size
-        self.atten_model = atten_model
         # keyword args
         self.embedding    :nn.Module = kwargs.pop('embedding', None)
         self.num_layers   :int       = kwargs.pop('num_layers', 1)
         self.dropout      :float     = kwargs.pop('dropout', 0.0)
-        self.num_words    :int       = kwargs.pop('num_words', 1000)
+        #self.num_words    :int       = kwargs.pop('num_words', 1000)
         self.score_method :str       = kwargs.pop('score_method', 'dot')
 
         super(LuongAttenDecoderRNNModule, self).__init__()
 
         if self.embedding is None:
-            self.embedding = nn.Embedding(self.num_words, self.hidden_size)
+            self.embedding = nn.Embedding(self.output_size, self.hidden_size)
 
         # setup network
         if self.num_layers == 1:

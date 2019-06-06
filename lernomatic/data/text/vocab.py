@@ -7,6 +7,8 @@ Stefan Wong 2019
 
 import codecs
 import re
+import json
+import torch            # only needed for type hint
 import unicodedata
 
 
@@ -56,10 +58,10 @@ class Vocabulary(object):
         self.eos_tok = '<eos>'
         self.unk_tok = '<unk>'
         # placed the reserved words into the index
-        self.word2idx[self.pad_tok] = 0
-        self.word2idx[self.sos_tok] = 1
-        self.word2idx[self.eos_tok] = 2
-        self.word2idx[self.unk_tok] = 3
+        for n, tok in enumerate((self.pad_tok, self.sos_tok, self.eos_tok, self.unk_tok)):
+            self.word2idx[tok] = n
+            self.idx2word[n] = tok
+            self.word2count[tok] = 1
         self.num_words = len(self.word2idx)
 
     def get_eos(self) -> int:
@@ -125,3 +127,36 @@ class Vocabulary(object):
         self.init()
         for w in min_freq_words:
             self.add_word(w)
+
+    def save(self, filename:str) -> None:
+        voc_data = {
+            'word2idx'   : self.word2idx,
+            'idx2word'   : self.idx2word,
+            'word2count' : self.word2count,
+            'num_words'  : self.num_words,
+            # tokens
+            'pad_tok'    : self.pad_tok,
+            'sos_tok'    : self.sos_tok,
+            'eos_tok'    : self.eos_tok,
+            'unk_tok'    : self.unk_tok
+        }
+        with open(filename, 'w') as fp:
+            json.dump(voc_data, fp)
+
+    def load(self, filename:str) -> None:
+        with open(filename, 'r') as fp:
+            voc_data = json.load(fp)
+
+        self.word2idx   = voc_data['word2idx']
+        self.idx2word   = voc_data['idx2word']
+        self.word2count = voc_data['word2count']
+        self.num_words  = voc_data['num_words']
+        self.pad_tok    = voc_data['pad_tok']
+        self.sos_tok    = voc_data['sos_tok']
+        self.eos_tok    = voc_data['eos_tok']
+        self.unk_tok    = voc_data['unk_tok']
+
+
+# Turn a tensor into a list of printable tokens
+def vec2sentence(vec:torch.Tensor, voc:Vocabulary) -> list:
+    return [voc.lookup_idx(v) for v in vec]

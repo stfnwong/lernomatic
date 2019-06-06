@@ -8,17 +8,23 @@ import importlib
 import torch
 from lernomatic.train import trainer
 from lernomatic.models import common
+from lernomatic.data.text import vocab
 
 
+# debug
+from pudb import set_trace; set_trace()
 
 
 class Seq2SeqTrainer(trainer.Trainer):
     def __init__(self,
+                 voc:vocab.Vocabulary,
                  encoder:common.LernomaticModel=None,
                  decoder:common.LernomaticModel=None,
                  **kwargs) -> None:
         self.encoder = encoder
         self.decoder = decoder
+        self.voc     = voc
+        self.use_teacher_forcing:bool = kwargs.pop('use_teacher_forcing', True)
         super(Seq2SeqTrainer, self).__init__(None, **kwargs)
 
     def __repr__(self) -> str:
@@ -30,6 +36,27 @@ class Seq2SeqTrainer(trainer.Trainer):
         if self.decoder is not None:
             self.decoder.send_to(self.device)
 
+    def _init_optimizer(self) -> None:
+        if self.encoder is not None:
+            if hasattr(torch.optim, self.optim_function):
+                self.enc_optim = getattr(torch.optim, self.optim_function)(
+                    self.encoder.get_model_parameters(),
+                    lr = self.learning_rate,
+                    weight_decay = self.weight_decay
+                )
+            else:
+                self.enc_optim = None
+
+        if self.decoder is not None:
+            if hasattr(torch.optim, self.optim_function):
+                self.dec_optim = getattr(torch.optim, self.optim_function)(
+                    self.decoder.get_model_parameters(),
+                    lr = self.learning_rate,
+                    weight_decay = self.weight_decay
+                )
+            else:
+                self.dec_optim = None
+
     def maskNLLLoss(self,
                     inp:torch.Tensor,
                     target:torch.Tensor,
@@ -39,10 +66,31 @@ class Seq2SeqTrainer(trainer.Trainer):
         loss = cross_entropy.masked_select(mask).mean()
         loss = loss.to(self.device)
 
-    return (loss, n_total.item())
+        return (loss, n_total.item())
 
     def train_epoch(self) -> None:
-        pass
+
+        for batch_idx, (query, qlen, response, rlen) in enumerate(self.train_loader):
+            query = query.to(self.device)
+            response = response.to(self.device)
+
+            # sort data
+            query = query.sort(dim=1, descending=True)
+            response = response.sort(dim=1, descending=True)
+
+
+            print('Query vectors as strings...')
+            for q in query:
+                print(vocab.vec2sentence(q, self.voc))
+
+            print('Response vectors as strings...')
+            for r in response:
+                print(vocab.vec2sentence(r, self.voc))
+
+            # create mask for response sequence
+            #r_mask = response > torch.LongTensor([self.voc.get_pad()])
+
+
 
     def val_epoch(self) -> None:
         pass
@@ -107,3 +155,31 @@ class Seq2SeqTrainer(trainer.Trainer):
         self._init_device()
         self._init_dataloaders()
         self._send_to_device()
+
+    def save_history(self, fname: str) -> None:
+        history = dict()
+        history['loss_history']      = self.loss_history
+        history['loss_iter']         = self.loss_iter
+        history['test_loss_history'] = self.test_loss_history
+        history['test_loss_iter']    = self.test_loss_iter
+        history['acc_history']       = self.acc_history
+        history['acc_iter']          = self.acc_iter
+        history['cur_epoch']         = self.cur_epoch
+        history['iter_per_epoch']    = self.iter_per_epoch
+        if self.test_loss_history is not None:
+            history['test_loss_history'] = self.test_loss_history
+
+        torch.save(history, fname)
+
+    def load_history(self, fname: str) -> None:
+        history = torch.load(fname)
+        self.loss_history      = history['loss_history']
+        self.loss_iter         = history['loss_iter']
+        self.test_loss_history = history['test_loss_history']
+        self.test_loss_iter    = history['test_loss_iter']
+        self.acc_history       = history['acc_history']
+        self.acc_iter          = history['acc_iter']
+        self.cur_epoch         = history['cur_epoch']
+        self.iter_per_epoch    = history['iter_per_epoch']
+        if 'test_loss_history' in history:
+            self.test_loss_history = history['test_loss_history']

@@ -57,16 +57,10 @@ def main() -> None:
 
     for n, split in enumerate(splits):
         print('Processing split <%s> [%d / %d]' % (split.split_name, n+1, len(splits)))
-        split_filename = 'hdf5/cornell-move-%s.h5' % (str(split.split_name))
+        split_filename = 'hdf5/cornell-movie-%s.h5' % (str(split.split_name))
         processor.proc(mvocab, split, split_filename)
 
     print('\n DONE')
-
-    # TODO: transform all words to vocab tokens, then store into HDF5
-    #inp_batch_data, inp_lengths, out_batch_data, mask, max_target_len = batch.batch_convert(
-    #    mvocab,
-    #    qr_pairs[0 : self.test_batch_size],
-    #)
 
 
 def get_parser() -> argparse.ArgumentParser:

@@ -81,14 +81,18 @@ class QRDataProc(object):
                 dtype=int
             )
 
+            # TODO : regarding the use of <sos>, in some examples we just set
+            # the initial hidden state of the decoder to be all <sos>, in which
+            # case I don't think we need to insert that token  during
+            # pre-processing (ie: here).
             for elem_idx, pair in enumerate(tqdm(data_split, unit='Q/R pairs')):
                 q_lengths[elem_idx] = pair.query_len()
                 r_lengths[elem_idx] = pair.response_len()
 
                 # convery query
                 enc_query = []
-                enc_query = [voc.get_sos()] +\
-                            [voc.lookup_word(w) for w in pair.query] +\
+                #enc_query = [voc.get_sos()] +\
+                enc_query = [voc.lookup_word(w) for w in pair.query] +\
                             [voc.get_eos()]
                 if len(enc_query) < self.vec_len:
                     enc_query.extend([voc.get_pad()] * (self.vec_len-len(enc_query)))
@@ -100,8 +104,8 @@ class QRDataProc(object):
 
                 # convert response
                 enc_response = []
-                enc_response = [voc.get_sos()] +\
-                            [voc.lookup_word(w) for w in pair.response] +\
+                #enc_response = [voc.get_sos()] +\
+                enc_response = [voc.lookup_word(w) for w in pair.response] +\
                             [voc.get_eos()]
                 if len(enc_response) < self.vec_len:
                     enc_response.extend([voc.get_pad()] * (self.vec_len-len(enc_response)))

@@ -11,11 +11,13 @@ import argparse
 import unittest
 import numpy as np
 # modules under test
-from lernomatic.data.text import batch
+from lernomatic.data.text import qr_batch
 from lernomatic.data.text import cornell_movie
 from lernomatic.data.text import vocab
 from lernomatic.data.text import qr_pair
 
+# debug
+from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -145,7 +147,7 @@ class TestCornellMovieVocab(unittest.TestCase):
             mvocab.add_sentence(pair.query)
             mvocab.add_sentence(pair.response)
 
-        inp_batch_data, inp_lengths, out_batch_data, mask, max_target_len = batch.batch_convert(
+        inp_batch_data, inp_lengths, out_batch_data, mask, max_target_len = qr_batch.batch_convert(
             mvocab,
             qr_pairs[0 : self.test_batch_size],
         )
@@ -190,7 +192,7 @@ class TestCornellMovieVocab(unittest.TestCase):
 
 
         for batch_size in test_batch_sizes:
-            inp_batch_data, inp_lengths, out_batch_data, mask, max_target_len = batch.batch_convert(
+            inp_batch_data, inp_lengths, out_batch_data, mask, max_target_len = qr_batch.batch_convert(
                 mvocab,
                 qr_pairs[0 : batch_size]
             )
@@ -204,6 +206,7 @@ class TestCornellMovieVocab(unittest.TestCase):
 
 
         print('======== TestCornellMovieVocab.test_batch_size <END>')
+
 
 
 # Entry point
