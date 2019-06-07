@@ -70,26 +70,42 @@ class Seq2SeqTrainer(trainer.Trainer):
 
     def train_epoch(self) -> None:
 
+        decoder_initial_state = [self.voc.get_sos() for _ in range(self.batch_size)]
         for batch_idx, (query, qlen, response, rlen) in enumerate(self.train_loader):
             query = query.to(self.device)
             response = response.to(self.device)
 
             # sort data
-            query = query.sort(dim=1, descending=True)
-            response = response.sort(dim=1, descending=True)
+            #query, _    = query.sort(dim=1, descending=True)
+            #response, _ = response.sort(dim=1, descending=True)
 
+            # flip batch and time dimensions
+            query = query.transpose(0, 1)
+            response = response.transpose(0, 1)
 
-            print('Query vectors as strings...')
-            for q in query:
-                print(vocab.vec2sentence(q, self.voc))
+            # TODO: debug, remove
+            if self.verbose:
+                print('Query vectors as strings...')
+                for q in range(query.shape[0]):
+                    print(q, vocab.vec2sentence(query[q], self.voc))
 
-            print('Response vectors as strings...')
-            for r in response:
-                print(vocab.vec2sentence(r, self.voc))
+                print('Response vectors as strings...')
+                for r in range(response.shape[0]):
+                    print(r, vocab.vec2sentence(response[r], self.voc))
 
             # create mask for response sequence
             #r_mask = response > torch.LongTensor([self.voc.get_pad()])
 
+            enc_output, enc_hidden = self.encoder.forward(query, qlen)
+            dec_input = torch.LongTensor(decoder_initial_state).to(self.device)
+            dec_hidden = enc_hidden[0 : self.decoder.get_num_layers()]
+            #loss   = self.criterion(output, target)
+
+
+
+            #self.optimizer.zero_grad()
+            #loss.backward()
+            #self.optimizer.step()
 
 
     def val_epoch(self) -> None:

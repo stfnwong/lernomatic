@@ -76,7 +76,6 @@ class TestVocabulary(unittest.TestCase):
         # check each word, mapping, and count in turn
         print('Checking word indicies...')
 
-
         # check indicies
         for n, (k, v) in enumerate(src_vocab.word2idx.items()):
             print('Checking word <%s> [%d / %d' % (str(k), n+1, len(src_vocab)), end='\r')

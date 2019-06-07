@@ -192,7 +192,7 @@ class WideResnetModule(nn.Module):
 
 class WideResnet(common.LernomaticModel):
     def __init__(self, **kwargs):
-        self.depth          :int   = kwargs.pop('depth', 56)
+        self.depth          :int   = kwargs.pop('depth', 58)
         self.num_classes    :int   = kwargs.pop('num_classes', 10)
         self.input_channels :int   = kwargs.pop('input_channels', 3)
         self.w_factor       :int   = kwargs.pop('w_factor', 1)
@@ -212,3 +212,18 @@ class WideResnet(common.LernomaticModel):
 
     def __repr__(self) -> str:
         return 'WideResnet'
+
+    def set_params(self, params:dict) -> None:
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        self.net = WideResnetModule(
+            self.depth,
+            self.num_classes,
+            self.input_channels,
+            self.w_factor,
+            self.drop_rate
+        )
+        self.net.load_state_dict(params['model_state_dict'])

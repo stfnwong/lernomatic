@@ -39,11 +39,10 @@ class QRDataProc(object):
             Name to use for dataset containing true response lengths (default: rlength)
 
     """
-    #def __init__(self, voc:vocab.Vocabulary, **kwargs) -> None:
     def __init__(self, **kwargs) -> None:
-        #self.voc = voc
         self.verbose:bool              = kwargs.pop('verbose', False)
         self.vec_len:int               = kwargs.pop('vec_len', 20)
+        self.delimiter:str             = kwargs.pop('delimiter', ' ')
         self.query_dataset_name:str    = kwargs.pop('query_dataset_name', 'query')
         self.response_dataset_name:str = kwargs.pop('response_dataset_name', 'response')
         self.q_length_dataset_name:str = kwargs.pop('q_length_dataset_name', 'qlength')
@@ -72,13 +71,13 @@ class QRDataProc(object):
             # True lengths of each vector
             r_lengths = fp.create_dataset(
                 self.r_length_dataset_name,
-                (len(data_split), 1),
-                dtype=int
+                (len(data_split),),
+                dtype=np.int32
             )
             q_lengths = fp.create_dataset(
                 self.q_length_dataset_name,
-                (len(data_split), 1),
-                dtype=int
+                (len(data_split),),
+                dtype=np.int32
             )
 
             # TODO : regarding the use of <sos>, in some examples we just set
@@ -92,12 +91,12 @@ class QRDataProc(object):
                 # convery query
                 enc_query = []
                 #enc_query = [voc.get_sos()] +\
-                enc_query = [voc.lookup_word(w) for w in pair.query] +\
+                enc_query = [voc.lookup_word(w) for w in pair.query_to_list()] +\
                             [voc.get_eos()]
                 if len(enc_query) < self.vec_len:
                     enc_query.extend([voc.get_pad()] * (self.vec_len-len(enc_query)))
-                    enc_query[-1] = voc.get_eos()
                 elif len(enc_query) > self.vec_len:
+                    q_lenghts[elem_idx] = vec_len
                     enc_query = enc_query[0 : self.vec_len-1]
                     enc_query.extend([voc.get_eos()])
                 queries[elem_idx] = enc_query
@@ -105,12 +104,12 @@ class QRDataProc(object):
                 # convert response
                 enc_response = []
                 #enc_response = [voc.get_sos()] +\
-                enc_response = [voc.lookup_word(w) for w in pair.response] +\
+                enc_response = [voc.lookup_word(w) for w in pair.response_to_list()] +\
                             [voc.get_eos()]
                 if len(enc_response) < self.vec_len:
                     enc_response.extend([voc.get_pad()] * (self.vec_len-len(enc_response)))
-                    enc_response[-1] = voc.get_eos()
                 elif len(enc_response) > self.vec_len:
+                    r_lengths[elem_idx] = vec_len
                     enc_response = enc_response[0 : self.vec_len-1]
                     enc_response.extend([voc.get_eos()])
                 responses[elem_idx] = enc_response

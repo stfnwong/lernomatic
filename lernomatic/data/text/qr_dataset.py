@@ -31,7 +31,7 @@ class QRDataset(Dataset):
         return len(self.fp[self.query_name])
 
     def __getitem__(self, idx) -> tuple:
-        if idx > len(self):
+        if idx >= len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
         query           = torch.LongTensor(self.fp[self.query_name][idx][:])
@@ -39,4 +39,5 @@ class QRDataset(Dataset):
         query_length    = torch.LongTensor(self.fp[self.query_length_name][idx][:])
         response_length = torch.LongTensor(self.fp[self.response_length_name][idx][:])
 
+        # TODO : squeeze lengths?
         return (query, query_length, response, response_length)

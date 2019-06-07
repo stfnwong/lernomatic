@@ -165,4 +165,10 @@ class Vocabulary(object):
 
 # Turn a tensor into a list of printable tokens
 def vec2sentence(vec:torch.Tensor, voc:Vocabulary) -> list:
-    return [voc.lookup_idx(v) for v in vec]
+    sent = list()
+    for n in range(vec.shape[0]):
+        sent.append(voc.lookup_idx(int(vec[n])))
+
+    return sent
+
+    #return [voc.lookup_idx(vec[v]) for v in range(vec.shape[0])]

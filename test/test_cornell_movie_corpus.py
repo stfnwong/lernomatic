@@ -5,7 +5,6 @@ Unit tests for handling the Cornell Movie Corpus Data
 Stefan Wong 2019
 """
 
-
 import sys
 import argparse
 import unittest
@@ -17,7 +16,7 @@ from lernomatic.data.text import vocab
 from lernomatic.data.text import qr_pair
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -123,9 +122,9 @@ class TestCornellMovieVocab(unittest.TestCase):
 
         print('\n OK')
         print(mvocab)
-        # if test_max_length = 20, then we expect there to be 33021 words in
+        # if test_max_length = 20, then we expect there to be 33022 words in
         # vocab
-        self.assertEqual(17993, len(mvocab))
+        self.assertEqual(17994, len(mvocab))
 
         print('======== TestCornellMovieVocab.test_gen_cornell_vocab <END>')
 
@@ -203,6 +202,12 @@ class TestCornellMovieVocab(unittest.TestCase):
             print('mask :', mask)
             print('mask shape : ', mask.shape)
             print('max_target_len :', max_target_len)
+
+            # also translate the batch data back to words
+            for n in range(inp_batch_data.shape[0]):
+                print('input batch %d  [%s]' % (n, str(vocab.vec2sentence(inp_batch_data[n], mvocab))))
+            for n in range(out_batch_data.shape[0]):
+                print('output batch %d [%s]' % (n, str(vocab.vec2sentence(out_batch_data[n], mvocab))))
 
 
         print('======== TestCornellMovieVocab.test_batch_size <END>')

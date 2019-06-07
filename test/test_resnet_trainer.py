@@ -36,8 +36,8 @@ class TestResnetTrainer(unittest.TestCase):
         test_history_name    = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_history.pkl'
         # get a model
         model = resnets.WideResnet(
-            self.resnet_depth,
-            10,     # using CIFAR-10 data
+            depth = self.resnet_depth,
+            num_classes = 10,     # using CIFAR-10 data
             input_channels=3,
             w_factor = 1
         )
@@ -137,8 +137,8 @@ class TestResnetTrainer(unittest.TestCase):
         train_batch_size = 128
         # get a model
         model = resnets.WideResnet(
-            self.resnet_depth,
-            10,     # using CIFAR-10 data
+            depth =self.resnet_depth,
+            num_classes = 10,     # using CIFAR-10 data
             input_channels=3,
             w_factor=1
         )

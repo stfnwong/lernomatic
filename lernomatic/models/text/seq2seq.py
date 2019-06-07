@@ -152,6 +152,9 @@ class LuongAttenDecoderRNN(common.LernomaticModel):
     def __repr__(self) -> str:
         return 'LuongAttenDecoderRNN'
 
+    def get_num_layers(self) -> int:
+        return self.net.num_layers
+
 
 """
 Method:
@@ -202,6 +205,8 @@ class LuongAttenDecoderRNNModule(nn.Module):
                 enc_out:torch.Tensor) -> torch.Tensor:
         embed = self.embedding(input_step)
         embed = self.embed_dropout(embed)
+
+        # TODO : pack_padded_sequence here?
 
         # pass embedded vector through GRU
         gru_out, gru_hidden = self.gru(embed, prev_hidden)

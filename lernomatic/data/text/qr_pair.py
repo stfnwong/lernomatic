@@ -48,6 +48,12 @@ class QRPair(object):
     def to_tuple(self) -> tuple:
         return (self.query, self.response)
 
+    def query_to_list(self) -> list:
+        return self.query.split(self.seperator)
+
+    def response_to_list(self) -> list:
+        return self.response.split(self.seperator)
+
 
 def qr_pair_proc_from_csv(filename:str,
                           encoding:str='utf-8',
