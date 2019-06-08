@@ -20,9 +20,13 @@ class QRDataset(Dataset):
         self.response_name:str        = kwargs.pop('response_name', 'response')
         self.query_length_name:str    = kwargs.pop('query_length_name', 'qlength')
         self.response_length_name:str = kwargs.pop('response_length_name', 'rlength')
+        self.filename:str = filename
 
     def __repr__(self) -> str:
         return 'QRDataset'
+
+    def __str__(self) -> str:
+        return 'QRDataset [%s]' % str(self.filename)
 
     def __del__(self) -> None:
         self.fp.close()

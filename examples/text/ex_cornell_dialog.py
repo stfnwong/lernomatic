@@ -18,11 +18,10 @@ from lernomatic.train.text import seq2seq_trainer
 
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-# TODO : make a batched text dataloader?
 
 
 def print_lines(filename:str, n:int=10) -> None:

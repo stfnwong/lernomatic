@@ -12,10 +12,34 @@ from lernomatic.data.text import vocab
 
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class Seq2SeqTrainer(trainer.Trainer):
+    """
+    Seq2SeqTrainer
+    A Trainer for Sequence to Sequence models
+
+
+    ARGUMENTS:
+        encoder: (LernomaticModel)
+            Encoder object.
+
+        decoder: (LernomaticModel)
+            Decoder object
+
+        voc: (vocab.Vocabulary)
+            Vocabulary object
+
+        tf_rate: (float)
+            Teacher forcing rate. Setting this to 0.0 ensures that teacher forcing never occurs in
+            any given batch. Setting to 1.0 ensures teacher forcing always occurs in any given batch.
+            Setting to any value in between roughly corresponds to the chance that teacher forcing will
+            be used for that batch. The chance of teacher forcing for a given batch is computed as
+
+            use_tf = np.random.random() < self.tf_rate
+
+    """
     def __init__(self,
                  voc:vocab.Vocabulary,
                  encoder:common.LernomaticModel=None,
@@ -24,7 +48,8 @@ class Seq2SeqTrainer(trainer.Trainer):
         self.encoder = encoder
         self.decoder = decoder
         self.voc     = voc
-        self.use_teacher_forcing:bool = kwargs.pop('use_teacher_forcing', True)
+        self.tf_rate:float = kwargs.pop('tf_rate', 0.0)
+        #self.use_teacher_forcing:bool = kwargs.pop('use_teacher_forcing', True)
         super(Seq2SeqTrainer, self).__init__(None, **kwargs)
 
     def __repr__(self) -> str:
@@ -75,13 +100,23 @@ class Seq2SeqTrainer(trainer.Trainer):
             query = query.to(self.device)
             response = response.to(self.device)
 
-            # sort data
-            #query, _    = query.sort(dim=1, descending=True)
-            #response, _ = response.sort(dim=1, descending=True)
+            # sort tensors in descending order of length
+            qlen, qlen_sort_idx = qlen.squeeze(1).sort(dim=0, descending=True)
+            rlen, rlen_sort_idx = rlen.squeeze(1).sort(dim=0, descending=True)
+            query = query[qlen_sort_idx]
+            response = response[rlen_sort_idx]
 
-            # flip batch and time dimensions
             query = query.transpose(0, 1)
             response = response.transpose(0, 1)
+
+            # generate response vector mask
+            resp_mask = torch.where(
+                response > self.voc.get_pad(),
+                torch.CharTensor([1]),
+                torch.CharTensor([0])
+            )
+            resp_mask = resp_mask.to(self.device)
+
 
             # TODO: debug, remove
             if self.verbose:
@@ -93,8 +128,7 @@ class Seq2SeqTrainer(trainer.Trainer):
                 for r in range(response.shape[0]):
                     print(r, vocab.vec2sentence(response[r], self.voc))
 
-            # create mask for response sequence
-            #r_mask = response > torch.LongTensor([self.voc.get_pad()])
+            # TODO : pack_padded_sequence() for criterion?
 
             enc_output, enc_hidden = self.encoder.forward(query, qlen)
             dec_input = torch.LongTensor(decoder_initial_state).to(self.device)

@@ -19,7 +19,7 @@ from lernomatic.data.text import qr_pair
 from lernomatic.data.text import qr_dataset
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -53,10 +53,8 @@ def create_qr_dataset(qr_pairs:list,
         )
 
         for elem_idx, pair in enumerate(tqdm(qr_pairs, unit='Q/R pairs')):
-            # convery query
-            enc_query = []
-            #enc_query = [voc.get_sos()] +\
-            enc_query = [voc.lookup_word(w) for w in pair.query.split(delimiter)] +\
+            # convert query
+            enc_query = [voc.lookup_word(w) for w in pair.query_to_list()] +\
                         [voc.get_eos()]
             qlen[elem_idx] = pair.query_len()
             if len(enc_query) < vec_len:
@@ -68,9 +66,7 @@ def create_qr_dataset(qr_pairs:list,
             queries[elem_idx] = enc_query
 
             # convert response
-            enc_response = []
-            #enc_response = [voc.get_sos()] +\
-            enc_response = [voc.lookup_word(w) for w in pair.response.split(delimiter)] +\
+            enc_response = [voc.lookup_word(w) for w in pair.response_to_list()] +\
                         [voc.get_eos()]
             rlen[elem_idx] = pair.response_len()
             if len(enc_response) < vec_len:
@@ -122,11 +118,11 @@ class TestQRDataset(unittest.TestCase):
             vec_len = self.test_max_length
         )
 
+        print('Loading dataset [%s] from disk' % str(self.qr_dataset_path))
         train_dataset = qr_dataset.QRDataset(
             self.qr_dataset_path
         )
-
-
+        # Test this inside a loader
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size = self.test_batch_size,
@@ -134,9 +130,9 @@ class TestQRDataset(unittest.TestCase):
         )
 
         for batch_idx, (query, qlen, response, rlen) in enumerate(train_loader):
-            if batch_idx > 0:
+            if batch_idx > 4:
                 break
-            print('batch %d' % batch_idx)
+            print('\nbatch %d' % batch_idx)
 
             # sort the data in descending order for pack_padded_sequence()
             qlen, qlen_sort_idx = qlen.squeeze(1).sort(dim=0, descending=True)
@@ -144,8 +140,11 @@ class TestQRDataset(unittest.TestCase):
             query = query[qlen_sort_idx]
             response = response[rlen_sort_idx]
 
-            tquery = query.transpose(0, 1)
-            tresponse = response.transpose(0, 1)
+            query = query.transpose(0, 1)
+            response = response.transpose(0, 1)
+
+            print(query)
+            print(response)
 
             print('Query vectors as strings...')
             for q in range(query.shape[0]):
@@ -155,14 +154,11 @@ class TestQRDataset(unittest.TestCase):
             for r in range(response.shape[0]):
                 print(r, vocab.vec2sentence(response[r], mvocab))
 
-
             ref_query, ref_lengths, ref_response, mask, max_target_len = qr_batch.batch_convert(
                 mvocab,
                 qr_pairs[batch_idx : (batch_idx+1) * self.test_batch_size],
             )
 
-            #self.assertEqual(ref_query.shape, query.shape)
-            #self.assertEqual(ref_response.shape, response.shape)
             print('Reference query vectors as strings...')
             for q in range(ref_query.shape[0]):
                 print(q, vocab.vec2sentence(ref_query[q], mvocab))
@@ -171,31 +167,23 @@ class TestQRDataset(unittest.TestCase):
             for q in range(ref_response.shape[0]):
                 print(q, vocab.vec2sentence(ref_response[q], mvocab))
 
-            print('Transposed (0,1) Query vectors as strings...')
-            for q in range(tquery.shape[0]):
-                print(q, vocab.vec2sentence(tquery[q], mvocab))
+            # assert on data
+            #self.assertEqual(ref_query.shape, query.shape)
+            #self.assertEqual(ref_response.shape, response.shape)
 
-            print('Transposed (0,1) Response vectors as strings...')
-            for r in range(tresponse.shape[0]):
-                print(r, vocab.vec2sentence(tresponse[r], mvocab))
+            #for row in range(ref_query.shape[0]):
+            #    for col in range(ref_query.shape[1]):
+            #        print('Checking element <%d,%d> (ref_query [%d], query [%d]' %\
+            #              (row, col, ref_query[row][col], query[row][col]), end='\r'
+            #        )
+            #        self.assertTrue(torch.eq(ref_query[row][col], query[row][col]))
 
-
-        #print('Generating a reference query')
-        ## these are like the 'reference' batch values
-        #ref_query, ref_lengths, ref_response, mask, max_target_len = qr_batch.batch_convert(
-        #    mvocab,
-        #    qr_pairs[0 : self.test_batch_size],
-        #)
-
-        #print(ref_query.shape)
-        #print('Reference query vectors as strings...')
-        #for q in range(ref_query.shape[0]):
-        #    print(q, vocab.vec2sentence(ref_query[q], mvocab))
-
-        #print('Reference response vectors as strings...')
-        #for q in range(ref_response.shape[0]):
-        #    print(q, vocab.vec2sentence(ref_response[q], mvocab))
-
+            #for row in range(ref_response.shape[0]):
+            #    for col in range(ref_response.shape[1]):
+            #        print('Checking element <%d,%d> (ref_response [%d], response [%d]' %\
+            #              (row, col, ref_response[row][col], response[row][col]), end='\r'
+            #        )
+            #        self.assertTrue(torch.eq(ref_response[row][col], response[row][col]))
 
         print('======== TestQRDataset.test_batch <END>')
 

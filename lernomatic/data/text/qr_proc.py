@@ -71,12 +71,12 @@ class QRDataProc(object):
             # True lengths of each vector
             r_lengths = fp.create_dataset(
                 self.r_length_dataset_name,
-                (len(data_split),),
+                (len(data_split),1),
                 dtype=np.int32
             )
             q_lengths = fp.create_dataset(
                 self.q_length_dataset_name,
-                (len(data_split),),
+                (len(data_split),1),
                 dtype=np.int32
             )
 
@@ -89,21 +89,17 @@ class QRDataProc(object):
                 r_lengths[elem_idx] = pair.response_len()
 
                 # convery query
-                enc_query = []
-                #enc_query = [voc.get_sos()] +\
                 enc_query = [voc.lookup_word(w) for w in pair.query_to_list()] +\
                             [voc.get_eos()]
                 if len(enc_query) < self.vec_len:
                     enc_query.extend([voc.get_pad()] * (self.vec_len-len(enc_query)))
                 elif len(enc_query) > self.vec_len:
-                    q_lenghts[elem_idx] = vec_len
+                    q_lengths[elem_idx] = vec_len
                     enc_query = enc_query[0 : self.vec_len-1]
                     enc_query.extend([voc.get_eos()])
                 queries[elem_idx] = enc_query
 
                 # convert response
-                enc_response = []
-                #enc_response = [voc.get_sos()] +\
                 enc_response = [voc.lookup_word(w) for w in pair.response_to_list()] +\
                             [voc.get_eos()]
                 if len(enc_response) < self.vec_len:

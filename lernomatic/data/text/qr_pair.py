@@ -108,6 +108,3 @@ def qr_pairs_to_csv(filename:str,
 
         if verbose:
             print('\n done. Wrote %d pairs to disk' % len(qr_pairs))
-
-
-
