@@ -5,15 +5,14 @@ Unit tests for TextTrainer object
 Stefan Wong 2019
 """
 
-
 import sys
 import argparse
 import unittest
 import torch
 import matplotlib.pyplot as plt
 # units under test
-from lernomatic.train import text_trainer
-from lernomatic.models import text
+from lernomatic.train.text import text_trainer
+from lernomatic.models.text import text
 from lernomatic.vis import vis_loss_history
 
 # debug

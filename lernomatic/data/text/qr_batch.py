@@ -6,8 +6,6 @@ Stefan Wong 2019
 """
 
 from typing import Tuple
-
-
 import itertools
 import torch
 from lernomatic.data.text import vocab

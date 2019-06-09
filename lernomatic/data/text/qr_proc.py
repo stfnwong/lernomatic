@@ -79,6 +79,8 @@ class QRDataProc(object):
                 (len(data_split),1),
                 dtype=np.int32
             )
+            queries.attrs['num_words'] = len(voc)
+            queries.attrs['vec_len'] = self.vec_len
 
             # TODO : regarding the use of <sos>, in some examples we just set
             # the initial hidden state of the decoder to be all <sos>, in which

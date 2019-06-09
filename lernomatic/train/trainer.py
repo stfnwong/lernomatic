@@ -16,8 +16,6 @@ from lernomatic.models import common
 #from pudb import set_trace; set_trace()
 
 
-# TODO : detach model loading from trainer so that models can be attached,
-# detached, re-attached, etc.
 # TODO : automatically expand history if checkpoint is loaded
 class Trainer(object):
     """

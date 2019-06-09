@@ -38,6 +38,11 @@ def main() -> None:
         mvocab.add_sentence(pair.query)
         mvocab.add_sentence(pair.response)
 
+    if GLOBAL_OPTS['vocab_filename'] is not None:
+        if GLOBAL_OPTS['verbose']:
+            print('Saving vocabulary to file [%s]' % str(GLOBAL_OPTS['vocab_filename']))
+        mvocab.save(GLOBAL_OPTS['vocab_filename'])
+
     # generate data splits
     splitter = qr_split.QRDataSplitter(
         split_names  = GLOBAL_OPTS['split_names'],
@@ -63,12 +68,19 @@ def main() -> None:
     print('\n DONE')
 
 
+
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose',
                         action='store_true',
                         default=False,
                         help='Sets verbose mode'
+                        )
+    # output files
+    parser.add_argument('--vocab-filename',
+                        type=str,
+                        default=None,
+                        help='Write vocab to this file (default: None)'
                         )
     # data options
     parser.add_argument('--data-root',

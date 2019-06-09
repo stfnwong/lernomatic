@@ -57,6 +57,7 @@ class TestVocabulary(unittest.TestCase):
 
         # save the vocab to file
         src_vocab.save(self.test_vocab_file)
+        print('Loading vocab information from file [%s]' % str(self.test_vocab_file))
         # load from file into new vocab object
         dst_vocab = vocab.Vocabulary('Destination Vocabulary')
         dst_vocab.load(self.test_vocab_file)

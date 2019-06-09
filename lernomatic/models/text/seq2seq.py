@@ -8,8 +8,10 @@ Stefan Wong 2019
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from lernomatic.models import common
+
+# debug
+from pudb import set_trace; set_trace()
 
 
 class EncoderRNN(common.LernomaticModel):
@@ -22,6 +24,12 @@ class EncoderRNN(common.LernomaticModel):
 
     def __repr__(self) -> str:
         return 'EncoderRNN'
+
+    def forward(self,
+                input_seq:torch.Tensor,
+                input_lengths:torch.Tensor,
+                hidden=None) -> torch.Tensor:
+        return self.net.forward(input_seq, input_lengths, hidden)
 
 
 # Produce encoded context vectors
@@ -74,6 +82,10 @@ class GlobalAttentionNet(common.LernomaticModel):
     def __repr__(self) -> str:
         return 'GlobalAttentionNet'
 
+    def forward(self,
+                hidden:torch.Tensor,
+                enc_output:torch.Tensor) -> torch.Tensor:
+        return self.net.forward(hidden, enc_output)
 
 class GlobalAttentionNetModule(nn.Module):
     def __init__(self, hidden_size:int, **kwargs) -> None:
@@ -155,6 +167,11 @@ class LuongAttenDecoderRNN(common.LernomaticModel):
     def get_num_layers(self) -> int:
         return self.net.num_layers
 
+    def forward(self,
+                input_step:torch.Tensor,
+                prev_hidden:torch.Tensor,
+                enc_out:torch.Tensor) -> torch.Tensor:
+        return self.net.forward(input_step, prev_hidden, enc_out)
 
 """
 Method:

@@ -6,6 +6,7 @@ Stefan Wong 2019
 
 import importlib
 import torch
+import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import common
 from lernomatic.data.text import vocab
@@ -48,7 +49,9 @@ class Seq2SeqTrainer(trainer.Trainer):
         self.encoder = encoder
         self.decoder = decoder
         self.voc     = voc
-        self.tf_rate:float = kwargs.pop('tf_rate', 0.0)
+        # get subclass specific keyword args
+        self.tf_rate   :float = kwargs.pop('tf_rate', 0.0)
+        self.grad_clip :float = kwargs.pop('grad_clip', 0.0)
         #self.use_teacher_forcing:bool = kwargs.pop('use_teacher_forcing', True)
         super(Seq2SeqTrainer, self).__init__(None, **kwargs)
 
@@ -97,6 +100,8 @@ class Seq2SeqTrainer(trainer.Trainer):
 
         decoder_initial_state = [self.voc.get_sos() for _ in range(self.batch_size)]
         for batch_idx, (query, qlen, response, rlen) in enumerate(self.train_loader):
+            loss = 0        # this becomes a tensor later...?
+            totals = 0
             query = query.to(self.device)
             response = response.to(self.device)
 
@@ -117,7 +122,6 @@ class Seq2SeqTrainer(trainer.Trainer):
             )
             resp_mask = resp_mask.to(self.device)
 
-
             # TODO: debug, remove
             if self.verbose:
                 print('Query vectors as strings...')
@@ -133,7 +137,51 @@ class Seq2SeqTrainer(trainer.Trainer):
             enc_output, enc_hidden = self.encoder.forward(query, qlen)
             dec_input = torch.LongTensor(decoder_initial_state).to(self.device)
             dec_hidden = enc_hidden[0 : self.decoder.get_num_layers()]
+
+            # decide if we are using teacher forcing this iteration
+            tf_this_batch = True if np.random.random < self.tf_rate else False
+            if tf_this_batch:
+                for t in range(rlen.max().item()):
+                    dec_output, dec_hidden = self.decoder(
+                        dec_input, dec_hidden, enc_output
+                    )
+                    # teacher force - next input is current target
+                    dec_input = response[t].view(1, -1)
+                    # accumulate loss
+                    mask_loss, n_total = self.maskNLLLoss(
+                        dec_output,
+                        response[t],
+                        resp_mask[t]
+                    )
+                    loss += mask_loss
+                    totals += n_total
+            else:
+                for t in range(rlen.max().item()):
+                    dec_output, dec_hidden = self.decoder(
+                        dec_input, dec_hidden, enc_output
+                    )
+                    # next input is decoders own output
+                    _, topk = dec_output.topk(1)
+                    dec_input = torch.LongTensor([[topk[k][0] for k in range(self.batch_size)]])
+                    dec_input = dec_input.to(self.device)
+                    # accumulate loss
+                    mask_loss, n_total = self.maskNLLLoss(
+                        dec_output,
+                        response[t],
+                        resp_mask[t]
+                    )
+                    loss += mask_loss
+                    totals += n_total
+
+            self.enc_optim.zero_grad()
+            self.dec_optim.zero_grad()
+            loss.backward()
+
             #loss   = self.criterion(output, target)
+
+            self.enc_optim.step()
+            self.dec_optim.step()
+
 
 
 

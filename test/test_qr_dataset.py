@@ -25,6 +25,7 @@ GLOBAL_OPTS = dict()
 
 
 # util function to createa
+# TODO : re-use the class in qr_proc.py
 def create_qr_dataset(qr_pairs:list,
                       voc:vocab.Vocabulary,
                       filename:str,
@@ -51,6 +52,8 @@ def create_qr_dataset(qr_pairs:list,
             (len(qr_pairs),1),
             dtype=np.int32
         )
+        queries.attrs['num_words'] = len(voc)
+        queries.attrs['vec_len'] = vec_len
 
         for elem_idx, pair in enumerate(tqdm(qr_pairs, unit='Q/R pairs')):
             # convert query
@@ -122,6 +125,7 @@ class TestQRDataset(unittest.TestCase):
         train_dataset = qr_dataset.QRDataset(
             self.qr_dataset_path
         )
+        self.assertEqual(len(mvocab), train_dataset.get_num_words())
         # Test this inside a loader
         train_loader = torch.utils.data.DataLoader(
             train_dataset,

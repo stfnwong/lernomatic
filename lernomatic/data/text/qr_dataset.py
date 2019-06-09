@@ -45,3 +45,9 @@ class QRDataset(Dataset):
 
         # TODO : squeeze lengths?
         return (query, query_length, response, response_length)
+
+    def get_num_words(self) -> int:
+        return self.fp[self.query_name].attrs['num_words']
+
+    def get_vec_len(self) -> int:
+        return self.fp[self.query_name].attrs['vec_len']
