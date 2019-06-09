@@ -31,23 +31,30 @@ class EncoderRNN(common.LernomaticModel):
                 hidden=None) -> torch.Tensor:
         return self.net.forward(input_seq, input_lengths, hidden)
 
+    def get_hidden_size(self) -> int:
+        return self.net.hidden_size
+
+    def get_num_layers(self) -> int:
+        return self.net.num_layers
+
 
 # Produce encoded context vectors
 class EncoderRNNModule(nn.Module):
     def __init__(self, hidden_size:int, **kwargs) -> None:
+        super(EncoderRNNModule, self).__init__()
         self.hidden_size :int       = hidden_size
         self.num_layers  :int       = kwargs.pop('num_layers', 1)
-        self.embedding   :nn.Module = kwargs.pop('embedding', None)
+        #embedding = kwargs.pop('embedding', None)
         self.num_words   :int       = kwargs.pop('num_words', 1000)
         self.dropout     :float     = kwargs.pop('dropout', 0.0)
-        super(EncoderRNNModule, self).__init__()
+        self.embedding   :nn.Module = kwargs.pop('embedding', None)
 
         if self.embedding is None:
             self.embedding = nn.Embedding(self.num_words, self.hidden_size)
         if self.num_layers == 1:
             self.dropout = 0.0
 
-        self.gru = nn.GRU(
+        self.rnn = nn.LSTM(
             self.hidden_size,
             self.hidden_size,
             self.num_layers,
@@ -61,7 +68,7 @@ class EncoderRNNModule(nn.Module):
                 hidden=None) -> torch.Tensor:
         embed = self.embedding(input_seq)
         packed = nn.utils.rnn.pack_padded_sequence(embed, input_lengths)
-        outputs, hidden = self.gru(packed, hidden)
+        outputs, hidden = self.rnn(packed, hidden)
         # unpack the packed padding
         outputs, _ = nn.utils.rnn.pad_packed_sequence(outputs)
         # sum bidirectional GRU outputs
@@ -87,8 +94,16 @@ class GlobalAttentionNet(common.LernomaticModel):
                 enc_output:torch.Tensor) -> torch.Tensor:
         return self.net.forward(hidden, enc_output)
 
+    def get_hidden_size(self) -> int:
+        return self.net.hidden_size
+
+    def get_score_method(self) -> str:
+        return self.net.score_method
+
+
 class GlobalAttentionNetModule(nn.Module):
     def __init__(self, hidden_size:int, **kwargs) -> None:
+        super(GlobalAttentionNetModule, self).__init__()
         self.hidden_size:int  = hidden_size
         self.score_method:str = kwargs.pop('score_method', 'dot')
 
@@ -98,7 +113,6 @@ class GlobalAttentionNetModule(nn.Module):
             raise ValueError('Invalid score_method [%s], must be one of %s' %\
                              (str(self.score_method), str(valid_score_methods))
             )
-        super(GlobalAttentionNetModule, self).__init__()
 
         if self.score_method == 'general':
             self.atten = nn.Linear(self.hidden_size, self.hidden_size)
@@ -173,6 +187,16 @@ class LuongAttenDecoderRNN(common.LernomaticModel):
                 enc_out:torch.Tensor) -> torch.Tensor:
         return self.net.forward(input_step, prev_hidden, enc_out)
 
+    def get_hidden_size(self) -> int:
+        return self.net.hidden_size
+
+    def get_output_size(self) -> int:
+        return self.net.output_size
+
+    def get_score_method(self) -> str:
+        return self.net.get_score_method()
+
+
 """
 Method:
 
@@ -192,6 +216,7 @@ class LuongAttenDecoderRNNModule(nn.Module):
                  hidden_size:int,
                  output_size:int,
                  **kwargs) -> None:
+        super(LuongAttenDecoderRNNModule, self).__init__()
         self.hidden_size = hidden_size
         self.output_size = output_size
         # keyword args
@@ -199,9 +224,7 @@ class LuongAttenDecoderRNNModule(nn.Module):
         self.num_layers   :int       = kwargs.pop('num_layers', 1)
         self.dropout      :float     = kwargs.pop('dropout', 0.0)
         #self.num_words    :int       = kwargs.pop('num_words', 1000)
-        self.score_method :str       = kwargs.pop('score_method', 'dot')
-
-        super(LuongAttenDecoderRNNModule, self).__init__()
+        score_method :str       = kwargs.pop('score_method', 'dot')
 
         if self.embedding is None:
             self.embedding = nn.Embedding(self.output_size, self.hidden_size)
@@ -210,10 +233,10 @@ class LuongAttenDecoderRNNModule(nn.Module):
         if self.num_layers == 1:
             self.dropout = 0.0
         self.embed_dropout = nn.Dropout(self.dropout)
-        self.gru    = nn.GRU(self.hidden_size, self.hidden_size, self.num_layers, self.dropout)
+        self.rnn    = nn.GRU(self.hidden_size, self.hidden_size, self.num_layers, self.dropout)
         self.concat = nn.Linear(2 * self.hidden_size, self.hidden_size)
         self.out    = nn.Linear(self.hidden_size, self.output_size)
-        self.atten  = GlobalAttentionNetModule(self.hidden_size, score_method=self.score_method)
+        self.atten  = GlobalAttentionNetModule(self.hidden_size, score_method=score_method)
 
 
     def forward(self,
@@ -226,7 +249,7 @@ class LuongAttenDecoderRNNModule(nn.Module):
         # TODO : pack_padded_sequence here?
 
         # pass embedded vector through GRU
-        gru_out, gru_hidden = self.gru(embed, prev_hidden)
+        gru_out, gru_hidden = self.rnn(embed, prev_hidden)
         # compute attention weights
         atten_w = self.atten(gru_out, enc_out)
         # context vector is batch-matrix-matrix product of attention weights
