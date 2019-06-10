@@ -59,16 +59,6 @@ def pad_output_seq(l, voc:vocab.Vocabulary) -> Tuple[torch.Tensor, torch.Tensor,
     return (padvar, mask, max_target_len)
 
 
-#def query_convert(voc:vocab.Vocabulary,
-#                  pair_batch:list,
-#                  seperator:str=' ') -> tuple:
-#    pass
-#
-#def response_convert(voc:vocab.Vocabulary,
-#                  pair_batch:list,
-#                  seperator:str=' ') -> tuple:
-#    pass
-
 
 def batch_convert(voc:vocab.Vocabulary,
                   pair_batch:list,

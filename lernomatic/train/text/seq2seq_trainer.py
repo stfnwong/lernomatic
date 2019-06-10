@@ -122,18 +122,7 @@ class Seq2SeqTrainer(trainer.Trainer):
             )
             resp_mask = resp_mask.to(self.device)
 
-            # TODO: debug, remove
-            if self.verbose:
-                print('Query vectors as strings...')
-                for q in range(query.shape[0]):
-                    print(q, vocab.vec2sentence(query[q], self.voc))
-
-                print('Response vectors as strings...')
-                for r in range(response.shape[0]):
-                    print(r, vocab.vec2sentence(response[r], self.voc))
-
-            # TODO : pack_padded_sequence() for criterion?
-
+            # pass oriented data to models
             enc_output, enc_hidden = self.encoder.forward(query, qlen)
             dec_input = torch.LongTensor(decoder_initial_state).to(self.device)
             dec_hidden = enc_hidden[0 : self.decoder.get_num_layers()]
@@ -177,26 +166,13 @@ class Seq2SeqTrainer(trainer.Trainer):
             self.dec_optim.zero_grad()
             loss.backward()
 
-            #loss   = self.criterion(output, target)
-
             self.enc_optim.step()
             self.dec_optim.step()
-
-
-
-
-            #self.optimizer.zero_grad()
-            #loss.backward()
-            #self.optimizer.step()
 
 
     def val_epoch(self) -> None:
         pass
 
-
-    # TODO : history, etc
-
-    # history
 
     # checkpoints
     def save_checkpoint(self, filename:str) -> None:
