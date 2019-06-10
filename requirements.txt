@@ -4,3 +4,7 @@ unittest
 h5py
 pudb
 argparse
+librosa
+wave
+matplotlib
+numpy
