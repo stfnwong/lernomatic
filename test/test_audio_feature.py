@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from lernomatic.util import wav_util
 # units under test
 from lernomatic.feature import audio_feature
+from lernomatic.feature import audio_loop
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -25,6 +26,12 @@ def get_figure():
     ax = fig.add_subplot(1,1,1)
     return fig, ax
 
+
+# make a new dataset for the test
+def create_dataset(data_root:str,
+                   out_file:str,
+                   max_elem:int=256) -> None:
+    pass
 
 class TestMelSpectogramExtractor(unittest.TestCase):
     def setUp(self):
@@ -44,7 +51,7 @@ class TestMelSpectogramExtractor(unittest.TestCase):
         print('len(sample), sample rate : %.6f : %d' % (len(sample), self.sample_rate))
 
         # use all defaults for this test
-        fextract = feature.MelSpectogramExtractor(
+        fextract = audio_feature.MelSpectogramExtractor(
             win_length_samples = self.test_win_length,
             hop_length_samples = self.test_hop_length,
             n_mels = self.test_num_mel_bands
@@ -82,7 +89,7 @@ class TestMelSpectogramExtractor(unittest.TestCase):
         print('len(sample), sample rate : %.6f : %d' % (len(sample), sample_meta['framerate']))
 
         # use all defaults for this test
-        fextract = feature.MelSpectogramExtractor(
+        fextract = audio_feature.MelSpectogramExtractor(
             win_length_samples = self.test_win_length,
             hop_length_samples = self.test_hop_length,
             n_mels = self.test_num_mel_bands
@@ -104,7 +111,7 @@ class TestMelSpectogramExtractor(unittest.TestCase):
         # use all defaults for this test
         test_window_len_seconds = 0.04
         test_hop_len_seconds = 0.01
-        fextract = feature.MelSpectogramExtractor(
+        fextract = audio_feature.MelSpectogramExtractor(
             win_length_samples = 2048,
             fs = sample_meta['framerate'],
             n_fft = 2048,
@@ -134,7 +141,7 @@ class TestMelSpectogramExtractor(unittest.TestCase):
         req_t = 1001
         test_window_len_seconds = 0.04
         test_hop_len_seconds = 0.01
-        fextract = feature.MelSpectogramExtractor(
+        fextract = audio_feature.MelSpectogramExtractor(
             fs = sample_meta['framerate'],
             n_fft = 2048,
             win_length_seconds = test_window_len_seconds,
@@ -176,7 +183,7 @@ class TestMelSpectogramExtractor(unittest.TestCase):
         req_t = 2000
         test_window_len_seconds = 0.04
         test_hop_len_seconds = 0.01
-        fextract = feature.MelSpectogramExtractor(
+        fextract = audio_feature.MelSpectogramExtractor(
             fs = sample_meta['framerate'],
             n_fft = 2048,
             win_length_seconds = test_window_len_seconds,
@@ -191,8 +198,7 @@ class TestMelSpectogramExtractor(unittest.TestCase):
         )
 
         # get a looper and loop up the sample
-        from avetron.data import loop
-        looper = loop.Looper(pred_sample_len)
+        looper = audio_loop.Looper(pred_sample_len)
         looped_sample = looper.loop(sample)
         print('looped_sample shape : %s' % str(looped_sample.shape))
 
@@ -223,11 +229,6 @@ if __name__ == '__main__':
                         help='Draw plots'
                         )
     # Location of test data, etc
-    parser.add_argument('--test-data',
-                        type=str,
-                        default='hdf5/unit_test_data.h5',
-                        help='Location of unit test data'
-                        )
     parser.add_argument('--test-data-prefix',
                         type=str,
                         default='/mnt/ml-data/datasets/freesound-kaggle/',
@@ -235,7 +236,8 @@ if __name__ == '__main__':
                         )
     parser.add_argument('--test-data-root',
                         type=str,
-                        default='./test_data',
+                        default='./test/test_data',
+                        #default='/mnt/ml-data/datasets/kaggle/FSD/FSDKaggle2018.audio_test',
                         help='Path to root of test data'
                         )
     parser.add_argument('--test-data-file',
