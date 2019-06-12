@@ -184,6 +184,58 @@ class TestLogFinder(unittest.TestCase):
 
         print('======== TestLogFinder.test_lr_range_find <END>')
 
+    def test_model_param_save(self):c
+        print('======== TestLogFinder.test_model_param_save ')
+
+        # get a trainer, etcC:w
+        trainer = get_trainer()
+        lr_finder = lr_common.LogFinder(
+            trainer,
+            lr_min     = GLOBAL_TEST_PARAMS['test_lr_min'],
+            lr_max     = GLOBAL_TEST_PARAMS['test_lr_max'],
+            num_iter   = GLOBAL_TEST_PARAMS['test_num_iter'],
+            num_epochs = GLOBAL_TEST_PARAMS['test_lr_num_epochs'],
+            acc_test   = True,
+            verbose    = GLOBAL_OPTS['verbose']
+        )
+
+        # shut linter up
+        if self.verbose:
+            print(lr_finder)
+
+        # make a copy of the model parameters before we start looking for a new
+        # learning rate.
+        lr_find_min, lr_find_max = lr_finder.find()
+        # show plot
+        fig1, ax1 = plt.subplots()
+        lr_finder.plot_lr_vs_acc(ax1)
+
+        # now check that the restored parameters match the copy of the
+        # parameters save earlier
+
+        if GLOBAL_OPTS['draw_plot'] is True:
+            plt.show()
+        else:
+            plt.savefig('figures/test_lr_range_find_lr_vs_acc.png', bbox_inches='tight')
+
+        trainer.print_every = 200
+        trainer.train()
+
+        fig2, ax2 = vis_loss_history.get_figure_subplots()
+        vis_loss_history.plot_train_history_2subplots(
+            ax2,
+            trainer.get_loss_history(),
+            acc_curve = trainer.get_acc_history(),
+            iter_per_epoch = trainer.iter_per_epoch,
+            cur_epoch = trainer.cur_epoch
+        )
+        if GLOBAL_OPTS['draw_plot'] is True:
+            plt.show()
+        else:
+            plt.savefig('figures/test_lr_range_find_train_results.png', bbox_inches='tight')
+
+
+        print('======== TestLogFinder.test_model_param_save <END>')
 
 
 # Entry point

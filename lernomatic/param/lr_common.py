@@ -34,6 +34,8 @@ class LRFinder(object):
         self.lr_max_scale     :float = kwargs.pop('lr_max_scale', 1.0)
         self.lr_select_method :str   = kwargs.pop('lr_select_method', 'max_acc')
         self.lr_trunc         :int   = kwargs.pop('lr_trunc', 10)
+        # search time
+        self.max_batches      :int   = kwargs.pop('max_batches', 0)
         # gradient params
         self.grad_thresh      :float = kwargs.pop('grad_thresh', 0.002)
         # other
@@ -310,6 +312,10 @@ class LogFinder(LRFinder):
                     )
                     break
 
+                if self.max_batches > 0 and batch_idx >= self.max_batches:
+                    break
+
+            # need to also break out of the outer loop
             if explode is True:
                 break
 

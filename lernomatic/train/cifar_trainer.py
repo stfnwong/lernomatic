@@ -72,7 +72,7 @@ class CIFAR10Trainer(trainer.Trainer):
             ),
             batch_size = self.val_batch_size,
             num_workers = self.num_workers,
-            shuffle = self.shuffle
+            shuffle = False
         )
 
     def save_history(self, fname):
