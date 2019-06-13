@@ -288,6 +288,22 @@ class Trainer(object):
             if n >= layer_num:
                 break
 
+    def get_max_acc(self) -> tuple:
+        if self.acc_history is None or len(self.acc_history) == 0:
+            return None
+        max_acc = np.amax(self.acc_history)
+        max_idx = np.where(self.acc_history == max_acc)[0]
+
+        return (max_acc, max_idx)
+
+    def get_min_loss(self) -> tuple:
+        if self.loss_history is None or len(self.loss_history) == 0:
+            return
+        min_loss = np.amin(self.loss_history)
+        min_idx = np.where(self.loss_history == min_loss)[0]
+
+        return (min_loss, min_idx)
+
     # Basic training/test routines. Specialize these when needed
     def train_epoch(self) -> None:
         """

@@ -250,3 +250,5 @@ class WideResnet(common.LernomaticModel):
         )
         self.net.load_state_dict(params['model_state_dict'])
 
+    def get_depth(self) -> int:
+        return self.net.depth
