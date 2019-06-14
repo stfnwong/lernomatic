@@ -16,6 +16,7 @@ from lernomatic.models import common
 #from pudb import set_trace; set_trace()
 
 
+# TODO : change test->val
 # TODO : automatically expand history if checkpoint is loaded
 class Trainer(object):
     """
@@ -95,8 +96,6 @@ class Trainer(object):
         return ''.join(s)
 
     def _init_optimizer(self) -> None:
-        # TODO : is it better to only pass model parameters that have
-        # requires_grad = True?
         if self.model is not None:
             if hasattr(torch.optim, self.optim_function):
                 self.optimizer = getattr(torch.optim, self.optim_function)(
@@ -116,19 +115,6 @@ class Trainer(object):
         else:
             raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
 
-    def _init_history(self) -> None:
-        self.loss_iter = 0
-        self.test_loss_iter = 0
-        self.acc_iter = 0
-        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
-        self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
-        if self.test_loader is not None:
-            self.test_loss_history = np.zeros(len(self.test_loader) * self.num_epochs)
-            self.acc_history = np.zeros(len(self.test_loader) * self.num_epochs)
-        else:
-            self.test_loss_history = None
-            self.acc_history = None
-
     def _init_dataloaders(self) -> None:
         if self.train_dataset is None:
             self.train_loader = None
@@ -139,14 +125,28 @@ class Trainer(object):
                 shuffle = self.shuffle
             )
 
-        if self.test_dataset is None:
-            self.test_loader = None
+        if self.val_dataset is None:
+            self.val_loader = None
         else:
-            self.test_loader = torch.utils.data.DataLoader(
-                self.test_dataset,
+            self.val_loader = torch.utils.data.DataLoader(
+                self.val_dataset,
                 batch_size = self.test_batch_size,
                 shuffle    = self.shuffle
             )
+
+    def _init_history(self) -> None:
+        self.loss_iter      = 0
+        self.val_loss_iter  = 0
+        self.acc_iter       = 0
+        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
+        self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+        if self.val_loader is not None:
+            self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)
+            self.acc_history      = np.zeros(len(self.val_loader) * self.num_epochs)
+        else:
+            self.val_loss_history = None
+            self.acc_history = None
+
 
     def _init_device(self) -> None:
         if self.device_id < 0:
@@ -167,23 +167,23 @@ class Trainer(object):
         if num_epochs > self.num_epochs:
             # resize history
             temp_loss_history = np.copy(self.loss_history)
-            if self.test_loss_history is not None:
-                temp_test_loss_history = np.copy(self.test_loss_history)
+            if self.val_loss_history is not None:
+                temp_val_loss_history = np.copy(self.val_loss_history)
             if self.acc_history is not None:
                 temp_acc_history = np.copy(self.acc_history)
             temp_loss_iter = self.loss_iter
-            temp_test_loss_iter = self.test_loss_iter
+            temp_val_loss_iter = self.test_loss_iter
             temp_acc_iter = self.acc_iter
             self.num_epochs = num_epochs
             self._init_history()
             # restore old history
             self.loss_history[:len(temp_loss_history)] = temp_loss_history
-            if self.test_loss_history is not None:
-                self.test_loss_history[:len(temp_test_loss_history)] = temp_test_loss_history
+            if self.val_loss_history is not None:
+                self.val_loss_history[:len(temp_val_loss_history)] = temp_val_loss_history
             if self.acc_history is not None:
                 self.acc_history[:len(temp_acc_history)] = temp_acc_history
             self.loss_iter = temp_loss_iter
-            self.test_loss_iter = temp_test_loss_iter
+            self.val_loss_iter = temp_test_loss_iter
             self.acc_iter = temp_acc_iter
         else:
             self.num_epochs = num_epochs
@@ -276,7 +276,7 @@ class Trainer(object):
         """
         self.model.set_train()
         # training loop
-        for n, (data, target) in enumerate(self.train_loader):
+        for batch_idx, (data, target) in enumerate(self.train_loader):
             # move data
             data = data.to(self.device)
             target = target.to(self.device)
@@ -288,10 +288,10 @@ class Trainer(object):
             loss.backward()
             self.optimizer.step()
 
-            if (n > 0) and (n % self.print_every) == 0:
+            if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
                 print('[TRAIN] :   Epoch       iteration         Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
 
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
@@ -324,7 +324,7 @@ class Trainer(object):
         test_loss = 0.0
         correct = 0
 
-        for n, (data, labels) in enumerate(self.test_loader):
+        for batch_idx, (data, labels) in enumerate(self.test_loader):
             data = data.to(self.device)
             labels = labels.to(self.device)
 
@@ -337,13 +337,13 @@ class Trainer(object):
             pred = output.data.max(1, keepdim=True)[1]
             correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
-            if (n % self.print_every) == 0:
+            if (batch_idx % self.print_every) == 0:
                 print('[TEST]  :   Epoch       iteration         Test Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.test_loader), loss.item()))
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.test_loader), loss.item()))
 
-            self.test_loss_history[self.test_loss_iter] = loss.item()
-            self.test_loss_iter += 1
+            self.val_loss_history[self.val_loss_iter] = loss.item()
+            self.val_loss_iter += 1
 
         avg_test_loss = test_loss / len(self.test_loader)
         acc = correct / len(self.test_loader.dataset)
@@ -371,7 +371,7 @@ class Trainer(object):
         if self.save_every == -1:
             self.save_every = len(self.train_loader)
 
-        for n in range(self.cur_epoch, self.num_epochs):
+        for epoch in range(self.cur_epoch, self.num_epochs):
             self.train_epoch()
 
             if self.test_loader is not None:
@@ -408,10 +408,10 @@ class Trainer(object):
             return None
         return self.loss_history[0 : self.loss_iter]
 
-    def get_test_loss_history(self) -> np.ndarray:
-        if self.test_loss_iter == 0:
+    def get_val_loss_history(self) -> np.ndarray:
+        if self.val_loss_iter == 0:
             return None
-        return self.test_loss_history[0 : self.test_loss_iter]
+        return self.val_loss_history[0 : self.val_loss_iter]
 
     def get_acc_history(self) -> np.ndarray:
         if self.acc_iter == 0:

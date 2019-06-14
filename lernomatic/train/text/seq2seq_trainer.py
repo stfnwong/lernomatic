@@ -98,6 +98,8 @@ class Seq2SeqTrainer(trainer.Trainer):
 
     def train_epoch(self) -> None:
 
+        self.encoder.set_train()
+        self.decoder.set_train()
         decoder_initial_state = [self.voc.get_sos() for _ in range(self.batch_size)]
         for batch_idx, (query, qlen, response, rlen) in enumerate(self.train_loader):
             loss = 0        # this becomes a tensor later...?

@@ -10,6 +10,8 @@ import torch
 from lernomatic.model import common
 
 
+# TODO ; Do I want to have a common superclass for decoders (eg: so that this
+# and beam search inherit from a common source)?
 # TODO: I've set the models to None here since I think I want to implement checkpoint loading
 class GreedySearchDecoder(object):
     def __init__(self,
@@ -20,10 +22,10 @@ class GreedySearchDecoder(object):
         self.decoder = decoder
 
         # handle keywords
-        self.verbose    = kwargs.pop('verbose', False)
-        self.max_length = kwargs.pop('max_length', 30)
-        self.sos_token  = kwargs.pop('sos_token', 1)
-        self.device_id  = kwargs.pop('device_id', -1)
+        self.verbose    :bool = kwargs.pop('verbose', False)
+        self.max_length :int  = kwargs.pop('max_length', 30)
+        self.sos_token  :int  = kwargs.pop('sos_token', 1)
+        self.device_id  :int  = kwargs.pop('device_id', -1)
 
         self._init_device()
         self._send_to_device()

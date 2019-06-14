@@ -19,7 +19,6 @@ from lernomatic.data.text import vocab
 GLOBAL_OPTS = dict()
 
 
-
 def main() -> None:
     corpus_lines_filename         = GLOBAL_OPTS['data_root'] + GLOBAL_OPTS['corpus_lines_filename']
     corpus_conversations_filename = GLOBAL_OPTS['data_root'] + GLOBAL_OPTS['corpus_conv_filename']
@@ -38,10 +37,10 @@ def main() -> None:
         mvocab.add_sentence(pair.query)
         mvocab.add_sentence(pair.response)
 
-    if GLOBAL_OPTS['vocab_filename'] is not None:
+    if GLOBAL_OPTS['vocab_outfile'] is not None:
         if GLOBAL_OPTS['verbose']:
-            print('Saving vocabulary to file [%s]' % str(GLOBAL_OPTS['vocab_filename']))
-        mvocab.save(GLOBAL_OPTS['vocab_filename'])
+            print('Saving vocabulary to file [%s]' % str(GLOBAL_OPTS['vocab_outfile']))
+        mvocab.save(GLOBAL_OPTS['vocab_outfile'])
 
     # generate data splits
     splitter = qr_split.QRDataSplitter(
@@ -68,7 +67,6 @@ def main() -> None:
     print('\n DONE')
 
 
-
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose',
@@ -77,10 +75,10 @@ def get_parser() -> argparse.ArgumentParser:
                         help='Sets verbose mode'
                         )
     # output files
-    parser.add_argument('--vocab-filename',
+    parser.add_argument('--vocab-outfile',
                         type=str,
                         default=None,
-                        help='Write vocab to this file (default: None)'
+                        help='If specified, write the generated vocab to this file (default: None)'
                         )
     # data options
     parser.add_argument('--data-root',
