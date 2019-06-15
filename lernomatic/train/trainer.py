@@ -12,12 +12,7 @@ import numpy as np
 from lernomatic.train import schedule
 from lernomatic.models import common
 
-# debug
-#from pudb import set_trace; set_trace()
 
-
-# TODO : change test->val
-# TODO : automatically expand history if checkpoint is loaded
 class Trainer(object):
     """
     Trainer
@@ -172,7 +167,7 @@ class Trainer(object):
             if self.acc_history is not None:
                 temp_acc_history = np.copy(self.acc_history)
             temp_loss_iter = self.loss_iter
-            temp_val_loss_iter = self.test_loss_iter
+            temp_val_loss_iter = self.val_loss_iter
             temp_acc_iter = self.acc_iter
             self.num_epochs = num_epochs
             self._init_history()
@@ -183,7 +178,7 @@ class Trainer(object):
             if self.acc_history is not None:
                 self.acc_history[:len(temp_acc_history)] = temp_acc_history
             self.loss_iter = temp_loss_iter
-            self.val_loss_iter = temp_test_loss_iter
+            self.val_loss_iter = temp_val_loss_iter
             self.acc_iter = temp_acc_iter
         else:
             self.num_epochs = num_epochs
@@ -315,21 +310,20 @@ class Trainer(object):
                 new_mtm = self.mtm_scheduler.get_mtm(self.loss_iter)
                 self.set_momentum(new_mtm)
 
-    def test_epoch(self) -> None:
+    def val_epoch(self) -> None:
         """
-        TEST_EPOCH
-        Run a single epoch on the test dataset
+        VAL_EPOCH
+        Run a single epoch on the validation dataset
         """
         self.model.set_eval()
         test_loss = 0.0
         correct = 0
 
-        for batch_idx, (data, labels) in enumerate(self.test_loader):
+        for batch_idx, (data, labels) in enumerate(self.val_loader):
             data = data.to(self.device)
             labels = labels.to(self.device)
 
-            with torch.no_grad():
-                output = self.model.forward(data)
+            output = self.model.forward(data)
             loss = self.criterion(output, labels)
             test_loss += loss.item()
 
@@ -338,19 +332,19 @@ class Trainer(object):
             correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
             if (batch_idx % self.print_every) == 0:
-                print('[TEST]  :   Epoch       iteration         Test Loss')
+                print('[VAL ]  :   Epoch       iteration         Test Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.test_loader), loss.item()))
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
 
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
 
-        avg_test_loss = test_loss / len(self.test_loader)
-        acc = correct / len(self.test_loader.dataset)
+        avg_test_loss = test_loss / len(self.val_loader)
+        acc = correct / len(self.val_loader.dataset)
         self.acc_history[self.acc_iter] = acc
         self.acc_iter += 1
         print('[TEST]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-              (avg_test_loss, correct, len(self.test_loader.dataset),
+              (avg_test_loss, correct, len(self.val_loader.dataset),
                100.0 * acc)
         )
 
@@ -374,8 +368,8 @@ class Trainer(object):
         for epoch in range(self.cur_epoch, self.num_epochs):
             self.train_epoch()
 
-            if self.test_loader is not None:
-                self.test_epoch()
+            if self.val_loader is not None:
+                self.val_epoch()
 
             # save history at the end of each epoch
             if self.save_hist:

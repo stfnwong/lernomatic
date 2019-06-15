@@ -57,7 +57,7 @@ class CIFAR10Trainer(trainer.Trainer):
             shuffle = self.shuffle
         )
         # validation data
-        self.test_loader = torch.utils.data.DataLoader(
+        self.val_loader = torch.utils.data.DataLoader(
             torchvision.datasets.CIFAR10(
                 self.data_dir,
                 train = False,
@@ -66,7 +66,7 @@ class CIFAR10Trainer(trainer.Trainer):
             ),
             batch_size = self.test_batch_size,
             num_workers = self.num_workers,
-            shuffle = self.shuffle
+            shuffle = False
         )
 
     def save_history(self, fname):
@@ -75,8 +75,8 @@ class CIFAR10Trainer(trainer.Trainer):
         history['loss_iter']      = self.loss_iter
         history['cur_epoch']      = self.cur_epoch
         history['iter_per_epoch'] = self.iter_per_epoch
-        if self.test_loss_history is not None:
-            history['test_loss_history'] = self.test_loss_history
+        if self.val_loss_history is not None:
+            history['val_loss_history'] = self.val_loss_history
 
         torch.save(history, fname)
 
@@ -86,8 +86,8 @@ class CIFAR10Trainer(trainer.Trainer):
         self.loss_iter      = history['loss_iter']
         self.cur_epoch      = history['cur_epoch']
         self.iter_per_epoch = history['iter_per_epoch']
-        if 'test_loss_history' in history:
-            self.test_loss_history = history['test_loss_history']
+        if 'val_loss_history' in history:
+            self.val_loss_history = history['val_loss_history']
 
 
 
@@ -138,7 +138,7 @@ class CIFAR100Trainer(trainer.Trainer):
             shuffle = self.shuffle
         )
         # validation data
-        self.test_loader = torch.utils.data.DataLoader(
+        self.val_loader = torch.utils.data.DataLoader(
             torchvision.datasets.CIFAR100(
                 self.data_dir,
                 train = False,
@@ -156,8 +156,8 @@ class CIFAR100Trainer(trainer.Trainer):
         history['loss_iter']      = self.loss_iter
         history['cur_epoch']      = self.cur_epoch
         history['iter_per_epoch'] = self.iter_per_epoch
-        if self.test_loss_history is not None:
-            history['test_loss_history'] = self.test_loss_history
+        if self.val_loss_history is not None:
+            history['val_loss_history'] = self.val_loss_history
 
         torch.save(history, fname)
 
@@ -167,8 +167,8 @@ class CIFAR100Trainer(trainer.Trainer):
         self.loss_iter      = history['loss_iter']
         self.cur_epoch      = history['cur_epoch']
         self.iter_per_epoch = history['iter_per_epoch']
-        if 'test_loss_history' in history:
-            self.test_loss_history = history['test_loss_history']
+        if 'val_loss_history' in history:
+            self.val_loss_history = history['val_loss_history']
 
     def save_checkpoint(self, fname):
         checkpoint = dict()

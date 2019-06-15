@@ -312,9 +312,3 @@ class EncDecTrainer(trainer.Trainer):
 
 
 
-
-# throwaway test for RandBatch and RandBatchGenerator
-if __name__ == '__main__':
-
-
-    data = data_gen()

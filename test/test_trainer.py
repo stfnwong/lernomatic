@@ -13,8 +13,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torchvision
-# data split stuff
-#from sklearn.model_selection import test_train_split
 # unit under test
 from lernomatic.train import cifar_trainer
 # we use a CIFAR-10 model for testing the trainer
