@@ -5,6 +5,7 @@ New Trainer for Adversarial Autoencoder stuff
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -17,9 +18,9 @@ from pudb import set_trace; set_trace()
 
 class AdversarialTrainer(trainer.Trainer):
     def __init__(self,
-                 q_net:common.LernomaticModel,
-                 p_net:common.LernomaticModel,
-                 d_net:common.LernomaticModel,
+                 q_net:common.LernomaticModel=None,
+                 p_net:common.LernomaticModel=None,
+                 d_net:common.LernomaticModel=None,
                  **kwargs) -> None:
         self.q_net = q_net
         self.p_net = p_net
@@ -68,7 +69,6 @@ class AdversarialTrainer(trainer.Trainer):
         self.g_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
         self.d_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
         self.recon_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
-
 
     def _send_to_device(self) -> None:
         if self.p_net is not None:
@@ -288,3 +288,23 @@ class AdversarialTrainer(trainer.Trainer):
 
         # restore trainer object info
         self._send_to_device()
+
+    def save_history(self, filename:str) -> None:
+        history = dict()
+        history['loss_iter']      = self.loss_iter
+        history['cur_epoch']      = self.cur_epoch
+        history['iter_per_epoch'] = self.iter_per_epoch
+        history['g_loss_history'] = self.g_loss_history
+        history['d_loss_history'] = self.d_loss_history
+        history['recon_loss_history'] = self.recon_loss_history
+
+        torch.save(history, filename)
+
+    def load_history(self, filename:str) -> None:
+        history = torch.load(filename)
+        self.loss_iter          = history['loss_iter']
+        self.cur_epoch          = history['cur_epoch']
+        self.iter_per_epoch     = history['iter_per_epoch']
+        self.g_loss_history     = history['g_loss_history']
+        self.d_loss_history     = history['d_loss_history']
+        self.recon_loss_history = history['recon_loss_history']

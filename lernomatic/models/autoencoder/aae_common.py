@@ -1,6 +1,6 @@
 """
-AUTO_COMMON
-Some basic Autoencoder models
+AAE_COMMON
+Some basic AAEencoder models
 
 Stefan Wong 2019
 """
@@ -12,22 +12,21 @@ from lernomatic.models import common
 
 
 # debug
-from pudb import set_trace; set_trace()
-
+#from pudb import set_trace; set_trace()
 
 
 # Encoder side modules
-class AutoQNet(common.LernomaticModel):
+class AAEQNet(common.LernomaticModel):
     def __init__(self,
                  x_dim:int,
                  z_dim:int,
                  hidden_size:int,
                  dropout:float=0.2) -> None:
-        self.import_path       : str             = 'lernomatic.model.autoencoder.auto_common'
-        self.model_name        : str             = 'AutoQNet'
-        self.module_name       : str             = 'AutoQNetModule'
-        self.module_import_path: str             = 'lernomatic.model.autoencoder.auto_common'
-        self.net = AutoQNetModule(
+        self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
+        self.model_name        : str             = 'AAEQNet'
+        self.module_name       : str             = 'AAEQNetModule'
+        self.module_import_path: str             = 'lernomatic.models.autoencoder.aae_common'
+        self.net = AAEQNetModule(
             x_dim,
             z_dim,
             hidden_size,
@@ -35,7 +34,7 @@ class AutoQNet(common.LernomaticModel):
         )
 
     def __repr__(self) -> str:
-        return 'AutoQNet'
+        return 'AAEQNet'
 
     def get_hidden_size(self) -> int:
         return self.net.hidden_size
@@ -47,7 +46,7 @@ class AutoQNet(common.LernomaticModel):
         return self.net.z_dim
 
 
-class AutoQNetModule(nn.Module):
+class AAEQNetModule(nn.Module):
     def __init__(self,
                  x_dim:int,
                  z_dim:int,
@@ -58,7 +57,7 @@ class AutoQNetModule(nn.Module):
         self.hidden_size :int = hidden_size
         self.dropout     :float = dropout
 
-        super(AutoQNetModule, self).__init__()
+        super(AAEQNetModule, self).__init__()
 
         # network graph
         self.l1 = nn.Linear(self.x_dim, self.hidden_size)           # MNIST size?
@@ -78,13 +77,13 @@ class AutoQNetModule(nn.Module):
         return xgauss
 
 # Decoder side
-class AutoPNet(common.LernomaticModel):
+class AAEPNet(common.LernomaticModel):
     def __init__(self, x_dim:int, z_dim:int, hidden_size:int, dropout:float=0.2) -> None:
-        self.import_path       : str             = 'lernomatic.model.autoencoder.auto_common'
-        self.model_name        : str             = 'AutoPNet'
-        self.module_name       : str             = 'AutoPNetModule'
-        self.module_import_path: str             = 'lernomatic.model.autoencoder.auto_common'
-        self.net = AutoPNetModule(
+        self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
+        self.model_name        : str             = 'AAEPNet'
+        self.module_name       : str             = 'AAEPNetModule'
+        self.module_import_path: str             = 'lernomatic.models.autoencoder.aae_common'
+        self.net = AAEPNetModule(
             x_dim,
             z_dim,
             hidden_size,
@@ -92,7 +91,7 @@ class AutoPNet(common.LernomaticModel):
         )
 
     def __repr__(self) -> str:
-        return 'AutoPNet'
+        return 'AAEPNet'
 
     def get_hidden_size(self) -> int:
         return self.net.hidden_size
@@ -104,14 +103,14 @@ class AutoPNet(common.LernomaticModel):
         return self.net.z_dim
 
 
-class AutoPNetModule(nn.Module):
+class AAEPNetModule(nn.Module):
     def __init__(self, x_dim:int, z_dim:int, hidden_size:int, dropout:float=0.2) -> None:
         self.x_dim = x_dim
         self.z_dim = z_dim
         self.hidden_size = hidden_size
         self.dropout     :float = dropout
 
-        super(AutoPNetModule, self).__init__()
+        super(AAEPNetModule, self).__init__()
         # network graph
         self.l1 = nn.Linear(self.z_dim, self.hidden_size)
         self.l2 = nn.Linear(self.hidden_size, self.hidden_size)
@@ -130,20 +129,20 @@ class AutoPNetModule(nn.Module):
         return X
 
 
-class AutoDNetGauss(common.LernomaticModel):
+class AAEDNetGauss(common.LernomaticModel):
     def __init__(self, z_dim:int, hidden_size:int, dropout:float=0.2) -> None:
-        self.import_path       : str             = 'lernomatic.model.autoencoder.auto_common'
-        self.model_name        : str             = 'AutoDNetGauss'
-        self.module_name       : str             = 'AutoDNetGaussModule'
-        self.module_import_path: str             = 'lernomatic.model.autoencoder.auto_common'
-        self.net = AutoDNetGaussModule(
+        self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
+        self.model_name        : str             = 'AAEDNetGauss'
+        self.module_name       : str             = 'AAEDNetGaussModule'
+        self.module_import_path: str             = 'lernomatic.models.autoencoder.aae_common'
+        self.net = AAEDNetGaussModule(
             z_dim,
             hidden_size,
             dropout=dropout
         )
 
     def __repr__(self) -> str:
-        return 'AutoDNetGauss'
+        return 'AAEDNetGauss'
 
     def get_hidden_size(self) -> int:
         return self.net.hidden_size
@@ -152,13 +151,13 @@ class AutoDNetGauss(common.LernomaticModel):
         return self.net.z_dim
 
 
-class AutoDNetGaussModule(nn.Module):
+class AAEDNetGaussModule(nn.Module):
     def __init__(self, z_dim:int, hidden_size:int, dropout:float=0.2) -> None:
         self.z_dim = z_dim
         self.hidden_size = hidden_size
         self.dropout     :float = dropout
 
-        super(AutoDNetGaussModule, self).__init__()
+        super(AAEDNetGaussModule, self).__init__()
 
         # network graph
         self.l1 = nn.Linear(self.z_dim, self.hidden_size)

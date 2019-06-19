@@ -16,9 +16,6 @@ from lernomatic.models import common
 #from pudb import set_trace; set_trace()
 
 
-# TODO : detach model loading from trainer so that models can be attached,
-# detached, re-attached, etc.
-# TODO : automatically expand history if checkpoint is loaded
 class Trainer(object):
     """
     Trainer
@@ -117,9 +114,9 @@ class Trainer(object):
             raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
 
     def _init_history(self) -> None:
-        self.loss_iter     = 0
-        self.val_loss_iter = 0
-        self.acc_iter      = 0
+        self.loss_iter      = 0
+        self.val_loss_iter  = 0
+        self.acc_iter       = 0
         self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
         self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
         if self.val_loader is not None:

@@ -6,11 +6,12 @@ Stefan Wong 2019
 """
 
 import argparse
-from lernomatic.train import mnist_vae_trainer
-from lernomatic.models import mnist_vae
+from lernomatic.train.autoencoder import mnist_vae_trainer
+from lernomatic.models.autoencoder import mnist_vae
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
+
 
 GLOBAL_OPTS = dict()
 

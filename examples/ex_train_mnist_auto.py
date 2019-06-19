@@ -6,11 +6,11 @@ Stefan Wong 2019
 """
 
 import argparse
-from lernomatic.train import mnist_auto_trainer
-from lernomatic.models import mnist_autoencoder
+from lernomatic.train.autoencoder import mnist_auto_trainer
+from lernomatic.models.autoencoder import mnist_autoencoder
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -143,6 +143,6 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()
