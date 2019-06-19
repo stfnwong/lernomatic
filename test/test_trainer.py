@@ -411,7 +411,7 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose']:
         print('-------- GLOBAL OPTS (%s) --------' % str(sys.argv[0]))
         for k, v in GLOBAL_OPTS.items():
-            print('[%s] : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
 
     sys.argv[1:] = args.unittest_args

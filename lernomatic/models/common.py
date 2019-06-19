@@ -171,3 +171,6 @@ class LernomaticModel(object):
         model_params.update({'module_name' : checkpoint_data[model_key]['module_name']})
         model_params.update({'module_import_path' : checkpoint_data[model_key]['module_import_path']})
         self.set_params(model_params)
+
+    def zero_grad(self) -> None:
+        self.net.zero_grad()

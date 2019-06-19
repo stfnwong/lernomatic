@@ -83,28 +83,3 @@ class MNISTTrainer(trainer.Trainer):
         self.iter_per_epoch = history['iter_per_epoch']
         if 'val_loss_history' in history:
             self.val_loss_history = history['val_loss_history']
-
-
-
-
-
-
-
-
-
-    #def save_checkpoint(self, fname):
-    #    checkpoint = dict()
-    #    checkpoint['model'] = self.model.state_dict()
-    #    checkpoint['optimizer'] = self.optimizer.state_dict()
-    #    checkpoint['trainer'] = self.get_trainer_params()
-    #    torch.save(checkpoint, fname)
-
-    #def load_checkpoint(self, fname):
-    #    checkpoint = torch.load(fname)
-    #    self.set_trainer_params(checkpoint['trainer'])
-    #    self.model = mnist.MNISTNet()
-    #    self.model.load_state_dict(checkpoint['model'])
-    #    self._init_optimizer()
-    #    self.optimizer.load_state_dict(checkpoint['optimizer'])
-    #    self._init_device()
-    #    self._send_to_device()
