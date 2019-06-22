@@ -36,7 +36,7 @@ def plot_loss_vs_lr(ax, loss_history, lr_history):
     ax.set_title('loss vs learning rate')
     ax.legend(['loss history', 'lr history'])
 
-def plot_lr_schedule(ax, lr_history):
+def plot_lr_history(ax, lr_history):
 
     ax.plot(np.arange(len(lr_history)), lr_history)
     ax.set_xlabel('Iteration')
@@ -117,7 +117,7 @@ class TestStepLR(unittest.TestCase):
             plt.savefig('step_lr_loss_vs_lr.png', bbox_inches='tight')
 
         fig2, ax2 = plt.subplots()
-        plot_lr_schedule(ax2, lr_scheduler.lr_history)
+        plot_lr_history(ax2, lr_scheduler.lr_history)
         if GLOBAL_OPTS['draw_plot'] is True:
             plt.show()
         else:
@@ -180,7 +180,7 @@ class TestTriangularScheduler(unittest.TestCase):
             plt.savefig('triangular_lr_loss_vs_lr.png', bbox_inches='tight')
 
         fig2, ax2 = plt.subplots()
-        plot_lr_schedule(ax2, lr_scheduler.lr_history)
+        plot_lr_history(ax2, lr_scheduler.lr_history)
         if GLOBAL_OPTS['draw_plot'] is True:
             plt.show()
         else:

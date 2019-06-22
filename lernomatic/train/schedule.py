@@ -11,7 +11,6 @@ import numpy as np
 #from pudb import set_trace; set_trace()
 
 EXP_DEFAULT_K = 1e-4
-# TODO : genericized to param sched?
 
 # ---- Learning Rate ---- #
 class LRScheduler(object):
@@ -38,7 +37,7 @@ class LRScheduler(object):
 
     def __str__(self) -> str:
         s = []
-        s.append('LRScheduler\n')
+        s.append('%s\n' % repr(self))
         s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
 
         return ''.join(s)
@@ -55,7 +54,7 @@ class LRScheduler(object):
         self.lr_history[self.lr_history_ptr] = lr
         self.lr_history_ptr += 1
 
-    def plot_history(self, ax, title=None) -> None:
+    def plot_history(self, ax, title:str=None) -> None:
         if self.lr_history_ptr == 0 or self.lr_history is None:
             raise ValueError('No history recorded in %s' % repr(self))
 
@@ -66,6 +65,19 @@ class LRScheduler(object):
             ax.set_title(title)
         else:
             ax.set_title('[%s] learning rate history' % repr(self))
+
+    def plot_schedule(self, ax, sched_range:int, title:str=None) -> None:
+        schedule = np.zeros(sched_range)
+        for t in range(sched_range):
+            schedule[t] = self.get_lr(t)
+
+        ax.plot(np.arange(schedule), schedule)
+        ax.set_xlabel('Iteration')
+        ax.set_ylabel('Learning rate')
+        if title is not None:
+            ax.set_title(title)
+        else:
+            ax.set_title('[%s] schedule' % repr(self))
 
     def get_lr(self, cur_iter: int) -> float:
         raise NotImplementedError('This should be implemented in the derived class')
@@ -122,7 +134,9 @@ class LinearDecayScheduler(LRScheduler):
     """
     def __init__(self, **kwargs) -> None:
         self.num_iters :int = kwargs.pop('num_iters', 100000)
-        super(LinearDecayScheduler, self).__init__(**kwargs, lr_history_size = self.num_batches)
+        self.num_batches :int = kwargs.pop('num_batches', 10)
+        super(LinearDecayScheduler, self).__init__(**kwargs)
+        #super(LinearDecayScheduler, self).__init__(**kwargs, lr_history_size = self.num_batches)
 
         self.lr_mult = (self.lr_max - self.lr_min) / self.num_batches
         self.cur_lr = self.lr_max
@@ -290,6 +304,7 @@ class InvTriangularScheduler(LRScheduler):
         rate = self.lr_max - rate
         self._update_lr_history(rate)
         return rate
+
 
 class TriangularExpScheduler(LRScheduler):
     def __init__(self, **kwargs) -> None:

@@ -44,9 +44,11 @@ def plot_schedule(lr_out:np.ndarray,
     ax.set_ylabel('Learning Rate')
     fig.savefig(fname)
 
+
 def main() -> None:
     schedulers = [
         'TriangularScheduler',
+        'LinearDecayScheduler',
         'InvTriangularScheduler',
         'Triangular2Scheduler',
         'ExponentialDecayScheduler',
@@ -93,8 +95,8 @@ def get_parser():
                         )
     parser.add_argument('--figure-dir',
                         type=str,
-                        default='./',
-                        help='Path to figure directory (default: ./)'
+                        default='./figures/',
+                        help='Path to figure directory (default: figures/)'
                         )
     parser.add_argument('--num-iters',
                         type=int,

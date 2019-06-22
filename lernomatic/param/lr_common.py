@@ -5,6 +5,7 @@ Tools for finding optimal learning rate
 Stefan Wong 2018
 """
 
+import pickle
 import numpy as np
 import copy
 import torch
@@ -44,17 +45,17 @@ class LRFinder(object):
         self.verbose          :bool  = kwargs.pop('verbose', False)
 
         # trainer and model params
-        self.model_params = None
+        self.model_params   = None
         self.trainer_params = None
         # loss params
-        self.avg_loss = 0.0
-        self.best_loss = 1e6
-        self.best_loss_idx = 0
+        self.avg_loss       = 0.0
+        self.best_loss      = 1e6
+        self.best_loss_idx  = 0
         # acc params
-        self.best_acc = 0.0
-        self.best_acc_idx = 0
+        self.best_acc       = 0.0
+        self.best_acc_idx   = 0
         # learning rate params
-        self.learning_rate = 0.0
+        self.learning_rate  = 0.0
 
         self._init_history()
 
@@ -66,6 +67,18 @@ class LRFinder(object):
         s.append('%s (%.4f -> %.4f)\n' % (repr(self), self.lr_min, self.lr_max))
         s.append('Method [%s]\n' % str(self.lr_select_method))
         return ''.join(s)
+
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
+        # remove stuff we don't want to save
+        del state['trainer']
+        del state['trainer_params']
+        del state['model_params']
+
+        return state
+
+    def __setstate__(self, state:dict) -> None:
+        self.__dict__.update(state)
 
     def _print_find(self, epoch: int, batch_idx: int, loss: float) -> None:
         print('[FIND_LR] :  Epoch    iteration         loss    best loss (smooth)  lr')
@@ -112,6 +125,15 @@ class LRFinder(object):
         lr_min = self.log_lr_history[idxs[-2][0]]
 
         return (lr_min, lr_max)
+
+    def save(self, filename:str) -> None:
+        with open(filename, 'wb') as fp:
+            pickle.dump(self.__getstate__(), fp)
+
+    def load(self, filename:str) -> None:
+        with open(filename, 'rb') as fp:
+            state = pickle.load(fp)
+        self.__setstate__(state)
 
     def save_model_params(self, params: dict) -> None:
         self.model_params = copy.deepcopy(params)
@@ -305,6 +327,7 @@ class LogFinder(LRFinder):
                 self.learning_rate *= self.lr_mult
                 self.trainer.set_learning_rate(self.learning_rate)
 
+                # break if the loss gets too large
                 if smooth_loss > self.explode_thresh * self.best_loss:
                     explode = True
                     print('[FIND_LR] loss hit explode threshold [%.3f x best (%f)]' %\
@@ -312,6 +335,7 @@ class LogFinder(LRFinder):
                     )
                     break
 
+                # break if we've seen enough batches
                 if self.max_batches > 0 and batch_idx >= self.max_batches:
                     break
 
