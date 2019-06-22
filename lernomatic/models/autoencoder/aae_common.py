@@ -5,11 +5,11 @@ Some basic AAEencoder models
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from lernomatic.models import common
-
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -18,9 +18,9 @@ from lernomatic.models import common
 # Encoder side modules
 class AAEQNet(common.LernomaticModel):
     def __init__(self,
-                 x_dim:int,
-                 z_dim:int,
-                 hidden_size:int,
+                 x_dim:int=784,
+                 z_dim:int=2,
+                 hidden_size:int=512,
                  dropout:float=0.2) -> None:
         self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
         self.model_name        : str             = 'AAEQNet'
@@ -44,6 +44,31 @@ class AAEQNet(common.LernomaticModel):
 
     def get_z_dim(self) -> int:
         return self.net.z_dim
+
+    def get_model_args(self) -> dict:
+        return {
+            'x_dim'       : self.net.x_dim,
+            'z_dim'       : self.net.z_dim,
+            'hidden_size' : self.net.hidden_size,
+            'dropout'     : self.net.dropout
+        }
+
+    def set_params(self, params : dict) -> None:
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+
+        self.net = mod(
+            params['model_args']['x_dim'],
+            params['model_args']['z_dim'],
+            params['model_args']['hidden_size'],
+            dropout = params['model_args']['dropout'],
+        )
+        self.net.load_state_dict(params['model_state_dict'])
 
 
 class AAEQNetModule(nn.Module):
@@ -76,9 +101,16 @@ class AAEQNetModule(nn.Module):
 
         return xgauss
 
+
+
+
 # Decoder side
 class AAEPNet(common.LernomaticModel):
-    def __init__(self, x_dim:int, z_dim:int, hidden_size:int, dropout:float=0.2) -> None:
+    def __init__(self,
+                 x_dim:int=784,
+                 z_dim:int=2,
+                 hidden_size:int=512,
+                 dropout:float=0.2) -> None:
         self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
         self.model_name        : str             = 'AAEPNet'
         self.module_name       : str             = 'AAEPNetModule'
@@ -101,6 +133,31 @@ class AAEPNet(common.LernomaticModel):
 
     def get_z_dim(self) -> int:
         return self.net.z_dim
+
+    def get_model_args(self) -> dict:
+        return {
+            'x_dim'       : self.net.x_dim,
+            'z_dim'       : self.net.z_dim,
+            'hidden_size' : self.net.hidden_size,
+            'dropout'     : self.net.dropout
+        }
+
+    def set_params(self, params : dict) -> None:
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+
+        self.net = mod(
+            params['model_args']['x_dim'],
+            params['model_args']['z_dim'],
+            params['model_args']['hidden_size'],
+            dropout = params['model_args']['dropout'],
+        )
+        self.net.load_state_dict(params['model_state_dict'])
 
 
 class AAEPNetModule(nn.Module):
@@ -130,7 +187,10 @@ class AAEPNetModule(nn.Module):
 
 
 class AAEDNetGauss(common.LernomaticModel):
-    def __init__(self, z_dim:int, hidden_size:int, dropout:float=0.2) -> None:
+    def __init__(self,
+                 z_dim:int=2,
+                 hidden_size:int=512,
+                 dropout:float=0.2) -> None:
         self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
         self.model_name        : str             = 'AAEDNetGauss'
         self.module_name       : str             = 'AAEDNetGaussModule'
@@ -149,6 +209,29 @@ class AAEDNetGauss(common.LernomaticModel):
 
     def get_z_dim(self) -> int:
         return self.net.z_dim
+
+    def get_model_args(self) -> dict:
+        return {
+            'z_dim'       : self.net.z_dim,
+            'hidden_size' : self.net.hidden_size,
+            'dropout'     : self.net.dropout
+        }
+
+    def set_params(self, params : dict) -> None:
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+
+        self.net = mod(
+            params['model_args']['z_dim'],
+            params['model_args']['hidden_size'],
+            params['model_args']['dropout'],
+        )
+        self.net.load_state_dict(params['model_state_dict'])
 
 
 class AAEDNetGaussModule(nn.Module):
@@ -177,4 +260,3 @@ class AAEDNetGaussModule(nn.Module):
         X = F.sigmoid(X)
 
         return X
-

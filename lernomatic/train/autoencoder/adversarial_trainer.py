@@ -13,7 +13,7 @@ from lernomatic.models import common
 from lernomatic.train import trainer
 
 #debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class AdversarialTrainer(trainer.Trainer):

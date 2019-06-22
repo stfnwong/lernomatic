@@ -8,6 +8,7 @@ Stefan Wong 2019
 import sys
 import argparse
 import unittest
+import torch
 import torchvision
 # module(s) under test
 from lernomatic.models.autoencoder import aae_common
@@ -15,11 +16,10 @@ from lernomatic.train.autoencoder import adversarial_trainer
 
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 GLOBAL_OPTS = dict()
-
 
 
 def get_mnist_datasets(data_dir:str) -> tuple:
@@ -92,38 +92,42 @@ class TestAdversarialTrainer(unittest.TestCase):
         src_trainer.save_history(test_history_file)
 
         # get a new trainer
-        dst_trainer = adversarial_trainer.AdversarialTrainer()
+        dst_trainer = adversarial_trainer.AdversarialTrainer(device_id = GLOBAL_OPTS['device_id'])
         dst_trainer.load_checkpoint(test_checkpoint_file)
 
-        # Check parameters
-        print('\t Comparing model parameters ')
-        src_model_params = src_trainer.get_model_params()
-        dst_model_params = dst_trainer.get_model_params()
-        self.assertEqual(len(src_model_params.items()), len(dst_model_params.items()))
+        # Check parameters of each model in turn
+        src_models = [src_trainer.q_net, src_trainer.p_net, src_trainer.d_net]
+        dst_models = [dst_trainer.q_net, src_trainer.p_net, src_trainer.d_net]
 
-        # p1, p2 are k,v tuple pairs of each model parameters
-        # k = str
-        # v = torch.Tensor
-        for n, (p1, p2) in enumerate(zip(src_model_params.items(), dst_model_params.items())):
-            self.assertEqual(p1[0], p2[0])
-            print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(src_model_params.items())), end='\r')
-            self.assertEqual(True, torch.equal(p1[1], p2[1]))
-        print('\n ...done')
+        for src_mod, dst_mod in zip(src_models, dst_models):
+
+            print('\t Comparing parameters for %s model' % repr(src_mod))
+            src_model_params = src_mod.get_net_state_dict()
+            dst_model_params = dst_mod.get_net_state_dict()
+
+            self.assertEqual(len(src_model_params.items()), len(dst_model_params.items()))
+
+            # p1, p2 are k,v tuple pairs of each model parameters
+            # k = str
+            # v = torch.Tensor
+            for n, (p1, p2) in enumerate(zip(src_model_params.items(), dst_model_params.items())):
+                self.assertEqual(p1[0], p2[0])
+                print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(src_model_params.items())), end='\r')
+                self.assertEqual(True, torch.equal(p1[1], p2[1]))
+            print('\n ...done')
 
         # History
         dst_trainer.load_history(test_history_file)
-        self.assertIsNot(None, dst_trainer.d_loss)
-        self.assertIsNot(None, dst_trainer.g_loss)
-        self.assertIsNot(None, dst_trainer.recon_loss)
+        self.assertIsNot(None, dst_trainer.d_loss_history)
+        self.assertIsNot(None, dst_trainer.g_loss_history)
+        self.assertIsNot(None, dst_trainer.recon_loss_history)
 
-        self.assertEqual(len(src_trainer.d_loss), len(dst_trainer.d_loss))
-        self.assertEqual(len(src_trainer.g_loss), len(dst_trainer.g_loss))
-        self.assertEqual(len(src_trainer.recon_loss), len(dst_trainer.recon_loss))
+        self.assertEqual(len(src_trainer.d_loss_history), len(dst_trainer.d_loss_history))
+        self.assertEqual(len(src_trainer.g_loss_history), len(dst_trainer.g_loss_history))
+        self.assertEqual(len(src_trainer.recon_loss_history), len(dst_trainer.recon_loss_history))
 
 
         print('======== TestAdversarialTrainer.test_save_load <END>')
-
-
 
 
 
