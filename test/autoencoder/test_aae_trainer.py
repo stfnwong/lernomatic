@@ -1,6 +1,6 @@
 """
 TEST_ADVESARIAL_TRAINER
-Unit tests for AdversarialTrainer object
+Unit tests for AAETrainer object
 
 Stefan Wong 2019
 """
@@ -12,7 +12,7 @@ import torch
 import torchvision
 # module(s) under test
 from lernomatic.models.autoencoder import aae_common
-from lernomatic.train.autoencoder import adversarial_trainer
+from lernomatic.train.autoencoder import aae_trainer
 
 
 # debug
@@ -44,7 +44,7 @@ def get_mnist_datasets(data_dir:str) -> tuple:
     return (train_dataset, val_dataset)
 
 
-class TestAdversarialTrainer(unittest.TestCase):
+class TestAAETrainer(unittest.TestCase):
     def setUp(self):
         # MNIST sizes - unit testing on MNIST should be relatively fast
         self.num_classes     = 10
@@ -54,13 +54,13 @@ class TestAdversarialTrainer(unittest.TestCase):
         self.y_dim           = 10
         self.test_data_dir   = './data'
         self.test_num_epochs = 4
-        self.test_batch_size = 32
+        self.test_batch_size = GLOBAL_OPTS['batch_size']
 
     def test_save_load(self):
-        print('======== TestAdversarialTrainer.test_save_load ')
+        print('======== TestAAETrainer.test_save_load ')
 
-        test_checkpoint_file = 'checkpoint/test_adversarial_trainer_checkpoint.pth'
-        test_history_file = 'checkpoint/test_adversarial_trainer_history.pth'
+        test_checkpoint_file = 'checkpoint/test_aae_trainer_checkpoint.pth'
+        test_history_file = 'checkpoint/test_aae_trainer_history.pth'
 
         # get some models
         q_net = aae_common.AAEQNet(self.x_dim, self.z_dim, self.hidden_size)
@@ -70,7 +70,7 @@ class TestAdversarialTrainer(unittest.TestCase):
         train_dataset, val_dataset = get_mnist_datasets(self.test_data_dir)
 
         # get a trainer
-        src_trainer = adversarial_trainer.AdversarialTrainer(
+        src_trainer = aae_trainer.AAETrainer(
             q_net,
             p_net,
             d_net,
@@ -92,7 +92,7 @@ class TestAdversarialTrainer(unittest.TestCase):
         src_trainer.save_history(test_history_file)
 
         # get a new trainer
-        dst_trainer = adversarial_trainer.AdversarialTrainer(device_id = GLOBAL_OPTS['device_id'])
+        dst_trainer = aae_trainer.AAETrainer(device_id = GLOBAL_OPTS['device_id'])
         dst_trainer.load_checkpoint(test_checkpoint_file)
 
         # Check parameters of each model in turn
@@ -127,7 +127,7 @@ class TestAdversarialTrainer(unittest.TestCase):
         self.assertEqual(len(src_trainer.recon_loss_history), len(dst_trainer.recon_loss_history))
 
 
-        print('======== TestAdversarialTrainer.test_save_load <END>')
+        print('======== TestAAETrainer.test_save_load <END>')
 
 
 

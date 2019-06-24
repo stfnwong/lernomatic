@@ -21,7 +21,9 @@ class AAEQNet(common.LernomaticModel):
                  x_dim:int=784,
                  z_dim:int=2,
                  hidden_size:int=512,
-                 dropout:float=0.2) -> None:
+                 num_classes:int=10,
+                 dropout:float=0.2,
+                 cat_mode:bool=False) -> None:
         self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
         self.model_name        : str             = 'AAEQNet'
         self.module_name       : str             = 'AAEQNetModule'
@@ -30,7 +32,9 @@ class AAEQNet(common.LernomaticModel):
             x_dim,
             z_dim,
             hidden_size,
-            dropout=dropout
+            num_classes = num_classes,
+            dropout=dropout,
+            cat_mode = cat_mode
         )
 
     def __repr__(self) -> str:
@@ -45,12 +49,20 @@ class AAEQNet(common.LernomaticModel):
     def get_z_dim(self) -> int:
         return self.net.z_dim
 
+    def set_cat_mode(self) -> None:
+        self.net.cat_mode = True
+
+    def unset_cat_mode(self) -> None:
+        self.net.cat_mode = False
+
     def get_model_args(self) -> dict:
         return {
             'x_dim'       : self.net.x_dim,
             'z_dim'       : self.net.z_dim,
             'hidden_size' : self.net.hidden_size,
-            'dropout'     : self.net.dropout
+            'num_classes' : self.net.num_classes,
+            'dropout'     : self.net.dropout,
+            'cat_mode'    : self.net.cat_mode
         }
 
     def set_params(self, params : dict) -> None:
@@ -67,6 +79,7 @@ class AAEQNet(common.LernomaticModel):
             params['model_args']['z_dim'],
             params['model_args']['hidden_size'],
             dropout = params['model_args']['dropout'],
+            cat_mode = params['model_args']['cat_mode']
         )
         self.net.load_state_dict(params['model_state_dict'])
 
@@ -76,11 +89,15 @@ class AAEQNetModule(nn.Module):
                  x_dim:int,
                  z_dim:int,
                  hidden_size:int,
-                 dropout:float=0.2) -> None:
+                 num_classes:int=10,
+                 dropout:float=0.2,
+                 cat_mode:bool=False) -> None:
         self.x_dim       :int = x_dim
         self.z_dim       :int = z_dim
         self.hidden_size :int = hidden_size
+        self.num_classes :int = num_classes
         self.dropout     :float = dropout
+        self.cat_mode    :bool  = cat_mode
 
         super(AAEQNetModule, self).__init__()
 
@@ -89,6 +106,8 @@ class AAEQNetModule(nn.Module):
         self.l2 = nn.Linear(self.hidden_size, self.hidden_size)
         # gaussian (z)
         self.lingauss = nn.Linear(self.hidden_size, self.z_dim)
+        # categorical code (y)
+        self.lincat = nn.Linear(self.hidden_size, self.num_classes)
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:
         X = self.l1(X)
@@ -98,6 +117,10 @@ class AAEQNetModule(nn.Module):
         X = F.dropout(X, p=self.dropout)
         X = F.relu(X)
         xgauss = self.lingauss(X)
+
+        if self.cat_mode:
+            xcat = F.softmax(self.lincat(X))
+            return (xgauss, xcat)
 
         return xgauss
 

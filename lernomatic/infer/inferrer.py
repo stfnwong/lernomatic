@@ -23,6 +23,7 @@ class Inferrer(object):
     def __init__(self, model=None, **kwargs) -> None:
         self.model = model
         self.device_id:int = kwargs.pop('device_id', -1)
+        #self.transform     = kwargs.pop('transform', None)
 
         self._init_device()
         self._send_to_device()

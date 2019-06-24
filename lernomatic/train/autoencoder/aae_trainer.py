@@ -16,7 +16,7 @@ from lernomatic.train import trainer
 #from pudb import set_trace; set_trace()
 
 
-class AdversarialTrainer(trainer.Trainer):
+class AAETrainer(trainer.Trainer):
     def __init__(self,
                  q_net:common.LernomaticModel=None,
                  p_net:common.LernomaticModel=None,
@@ -31,10 +31,10 @@ class AdversarialTrainer(trainer.Trainer):
         self.eps       : float = kwargs.pop('eps', 1e-15)
         self.data_norm : float = kwargs.pop('data_norm', 0.3081 + 0.1307)
 
-        super(AdversarialTrainer, self).__init__(None, **kwargs)
+        super(AAETrainer, self).__init__(None, **kwargs)
 
     def __repr__(self) -> str:
-        return 'AdversarialTrainer'
+        return 'AAETrainer'
 
     def _init_optimizer(self) -> None:
         # create optimizers for each of the models
@@ -66,8 +66,8 @@ class AdversarialTrainer(trainer.Trainer):
         self.acc_iter       = 0
         self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
 
-        self.g_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
-        self.d_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
+        self.g_loss_history     = np.zeros(len(self.train_loader) * self.num_epochs)
+        self.d_loss_history     = np.zeros(len(self.train_loader) * self.num_epochs)
         self.recon_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
 
     def _send_to_device(self) -> None:
@@ -91,13 +91,10 @@ class AdversarialTrainer(trainer.Trainer):
         self.d_net.set_train()
 
         for batch_idx, (data, target) in enumerate(self.train_loader):
-
+            # send to device and reshape
             data = data.to(self.device)
             target = target.to(self.device)
-
-            #data = data * self.data_norm        # TODO : where do those constants come from?
             data.resize_(self.batch_size, self.q_net.get_x_dim())
-            #print('data shape :' , str(data.shape))
 
             # init solver gradients
             self.p_decoder_optim.zero_grad()
@@ -165,10 +162,19 @@ class AdversarialTrainer(trainer.Trainer):
             self.g_loss_history[self.loss_iter] = g_loss.item()
             self.d_loss_history[self.loss_iter] = d_loss.item()
             self.recon_loss_history[self.loss_iter] = recon_loss.item()
-
             self.loss_iter += 1
 
-            # TODO : save checkpoint
+            # save checkpoint
+            if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
+                ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
+                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+                self.save_checkpoint(ck_name)
+                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
+                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
+                self.save_history(hist_name)
+
 
             # TODO : scheduling? Usually scheduling doesn't work well on these
             # GAN-type networks
@@ -204,7 +210,7 @@ class AdversarialTrainer(trainer.Trainer):
             self.cur_epoch += 1
 
     def get_trainer_params(self) -> dict:
-        params = super(AdversarialTrainer, self).get_trainer_params()
+        params = super(AAETrainer, self).get_trainer_params()
         params.update({
             'eps' : self.eps,
             'data_norm' : self.data_norm,
