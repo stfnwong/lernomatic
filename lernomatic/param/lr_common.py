@@ -5,6 +5,7 @@ Tools for finding optimal learning rate
 Stefan Wong 2018
 """
 
+import importlib
 import pickle
 import numpy as np
 import copy
@@ -25,9 +26,9 @@ class LRFinder(object):
         # learning params
         self.num_epochs       = kwargs.pop('num_epochs', 8)
         # lr params
-        self.lr_mult          :float = kwargs.pop('lr_mult', 0)
+        self.lr_mult          :float = kwargs.pop('lr_mult', 0.0)
         self.lr_min           :float = kwargs.pop('lr_min', 1e-6)
-        self.lr_max           :float = kwargs.pop('lr_max', 10)
+        self.lr_max           :float = kwargs.pop('lr_max', 1.0)
         self.explode_thresh   :float = kwargs.pop('explode_thresh', 4.0)      # fast.ai uses 4 * min_smoothed_loss
         self.beta             :float = kwargs.pop('beta', 0.999)
         self.gamma            :float = kwargs.pop('gamma', 0.999995)
@@ -74,10 +75,14 @@ class LRFinder(object):
         del state['trainer']
         del state['trainer_params']
         del state['model_params']
+        # add repr and module path
+        state['module_name'] = repr(self)
+        state['module_path'] = 'lernomatic.param.lr_common'
 
         return state
 
     def __setstate__(self, state:dict) -> None:
+        # Set the params on the new object
         self.__dict__.update(state)
 
     def _print_find(self, epoch: int, batch_idx: int, loss: float) -> None:
@@ -146,6 +151,9 @@ class LRFinder(object):
 
     def load_trainer_params(self) -> dict:
         return self.trainer_params
+
+    def get_params(self) -> dict:
+        return self.__getstate__()
 
     def check_loaders(self) -> None:
         if self.trainer.train_loader is None:
@@ -380,3 +388,19 @@ class LogFinder(LRFinder):
                 (avg_val_loss, correct, len(data_loader.dataset),
                 100.0 * acc)
             )
+
+
+
+# Rather than try to have the LFFinder promote itself to the correct class when
+# load() is called, this function wraps the class instantiation and then
+# returns  an object of the original type with the correct state parameters
+def lr_finder_auto_load(filename:str) -> LRFinder:
+    with open(filename, 'rb') as fp:
+        state = pickle.load(fp)
+    imp = importlib.import_module(state['module_path'])
+    mod = getattr(imp, state['module_name'])
+
+    lr_finder = mod(None)
+    lr_finder.load(filename)
+
+    return lr_finder

@@ -60,7 +60,7 @@ GLOBAL_TEST_PARAMS = {
         'test_lr_max'            : 1.0,
         'test_num_iter'          : 5000,
         'test_lr_explode_thresh' : 4.5,
-        'train_num_epochs'       : 8,
+        'train_num_epochs'       : 4,
 }
 
 
@@ -267,10 +267,13 @@ class TestLogFinder(unittest.TestCase):
         src_lr_finder.save(test_finder_state_file)
 
         dst_lr_finder = lr_common.LogFinder(
-            trainer,
+            None,
             verbose    = GLOBAL_OPTS['verbose']
         )
         dst_lr_finder.load(test_finder_state_file)
+
+        # Since the trainer is not preserved in the save operation it makes no
+        # sense to check it here
 
         # if this works, convert to dict and check
         self.assertEqual(src_lr_finder.lr_mult, dst_lr_finder.lr_mult)
@@ -302,10 +305,7 @@ class TestLogFinder(unittest.TestCase):
             self.assertEqual(src_lr_finder.acc_history[n], dst_lr_finder.acc_history[n])
         print(' OK')
 
-
         print('======== TestLogFinder.test_save_load <END>')
-
-
 
 
 # Entry point
