@@ -172,8 +172,116 @@ def generate_plot(trainer, loss_title, acc_title, fig_filename):
     train_fig.savefig(fig_filename)
 
 
+def main() -> None:
+    schedulers = [
+        'TriangularScheduler',
+        'Triangular2Scheduler',
+        'ExponentialDecayScheduler',
+        'WarmRestartScheduler',
+        'TriangularExpScheduler',
+        'Triangular2ExpScheduler',
+        'DecayWhenAcc',
+        'TriangularDecayWhenAcc',
+        None
+    ]
 
-def get_parser():
+    checkpoint_names = [
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular2_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_exp_decay_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_warm_restart_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_exp_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular2_exp_sched_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_decay_when_acc_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_decay_when_acc_cifar10',
+        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_no_sched_cifar10'
+    ]
+
+    figure_dir = 'figures/'
+    figure_names = [
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular2_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_exp_decay_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_warm_restart_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_exp_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular2_exp_sched_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_decay_when_acc_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_decay_when_acc_cifar10.png',
+        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_no_sched_cifar10.png',
+    ]
+
+    assert len(schedulers) == len(checkpoint_names)
+    assert len(schedulers) == len(figure_names)
+
+    trainers = []
+    acc_list = []
+    # run each schedule
+    for idx in range(len(schedulers)):
+
+        model = get_model()
+        trainer = get_trainer(
+            model,
+            checkpoint_names[idx]
+        )
+
+        if idx == 0:
+            lr_find_min, lr_find_max, lr_finder = find_lr(trainer, return_finder=True)
+            # create plots
+            lr_acc_title  = '[' + str(GLOBAL_OPTS['model']) + '][' + str(GLOBAL_OPTS['lr_select_method']) + '] ' +\
+                str(schedulers[idx]) + ' learning rate vs acc (log)'
+            lr_loss_title = '[' + str(GLOBAL_OPTS['model']) + '][' + str(GLOBAL_OPTS['lr_select_method']) + '] ' +\
+                str(schedulers[idx]) + ' learning rate vs loss (log)'
+            lr_fig, lr_ax = vis_loss_history.get_figure_subplots(2)
+            lr_finder.plot_lr_vs_acc(lr_ax[0], lr_acc_title, log=True)
+            lr_finder.plot_lr_vs_loss(lr_ax[1], lr_loss_title, log=True)
+            # save
+            lr_fig.tight_layout()
+            lr_fig.savefig('figures/[%s][%s]_%s_lr_finder_output.png' %\
+                           (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), str(schedulers[idx]))
+            )
+            # also save state information from finder
+            lr_finder_state_file = '[' + str(GLOBAL_OPTS['model']) + '][' +\
+                str(GLOBAL_OPTS['lr_select_method']) + ']_lr_finder_state.pth'
+            lr_finder.save(lr_finder_state_file)
+
+        print('Found learning rates as %.4f -> %.4f' % (lr_find_min, lr_find_max))
+        if GLOBAL_OPTS['find_only'] is True:
+            break
+
+        run_schedule(
+            trainer,
+            schedulers[idx],
+            checkpoint_names[idx],
+            lr_min = lr_find_min,
+            lr_max = lr_find_max
+        )
+        # create plots
+        trainers.append(trainer)
+        acc_list.append(trainer.get_acc_history())
+        loss_title = str(schedulers[idx]) + ' ' + str(GLOBAL_OPTS['lr_select_method']) + ' Loss : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
+        acc_title  = str(schedulers[idx]) + ' ' + str(GLOBAL_OPTS['lr_select_method']) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
+        generate_plot(trainer, loss_title, acc_title, figure_names[idx])
+
+
+    # Make one more plot of comparing accuracies
+    if GLOBAL_OPTS['find_only'] is False:
+        acc_fig, acc_ax = plt.subplots()
+        for acc in acc_list:
+            acc_ax.plot(np.arange(len(acc)), acc)
+        acc_ax.set_xlabel('Epoch')
+        acc_ax.set_ylabel('Accuracy')
+        acc_ax.legend(checkpoint_names)
+        acc_ax.set_title('[%s] [%s] Accuracy comparison for learning rate schedules (LR: %.4f -> %.4f)' %\
+                        (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), lr_find_min, lr_find_max)
+        )
+        acc_fig.tight_layout()
+        acc_fig.set_size_inches(10, 10)
+        acc_fig.savefig('figures/[%s]_[%s]_ex_lr_scheduling_acc_compare_%.4f_%.4f.png' %\
+                        (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), lr_find_min, lr_find_max)
+        )
+
+
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
@@ -334,105 +442,6 @@ if __name__ == '__main__':
         for k,v in GLOBAL_OPTS.items():
             print('\t[%s] : %s' % (str(k), str(v)))
 
-    schedulers = [
-        'TriangularScheduler',
-        'Triangular2Scheduler',
-        'ExponentialDecayScheduler',
-        'WarmRestartScheduler',
-        'TriangularExpScheduler',
-        'Triangular2ExpScheduler',
-        'DecayWhenAcc',
-        'TriangularDecayWhenAcc',
-        None
-    ]
-
-    checkpoint_names = [
-        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular2_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_exp_decay_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_warm_restart_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_exp_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular2_exp_sched_cifar10',
-        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_decay_when_acc_cifar10',
-        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_triangular_decay_when_acc_cifar10',
-        str(GLOBAL_OPTS['model']) + '_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_no_sched_cifar10'
-    ]
-
-    figure_dir = 'figures/'
-    figure_names = [
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular2_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_exp_decay_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_warm_restart_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_exp_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular2_exp_sched_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_decay_when_acc_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_triangular_decay_when_acc_cifar10.png',
-        figure_dir + '[' + str(GLOBAL_OPTS['model']) + ']_[' + str(GLOBAL_OPTS['lr_select_method']) + ']_ex_no_sched_cifar10.png',
-    ]
-
-    assert len(schedulers) == len(checkpoint_names)
-    assert len(schedulers) == len(figure_names)
-
-    trainers = []
-    acc_list = []
-    # run each schedule
-    for idx in range(len(schedulers)):
-
-        model = get_model()
-        trainer = get_trainer(
-            model,
-            checkpoint_names[idx]
-        )
-
-        if idx == 0:
-            lr_find_min, lr_find_max, lr_finder = find_lr(trainer, return_finder=True)
-            # create plots
-            lr_acc_title  = '[' + str(GLOBAL_OPTS['model']) + '[' + str(GLOBAL_OPTS['lr_select_method']) + '] ' +\
-                str(schedulers[idx]) + ' learning rate vs acc (log)'
-            lr_loss_title = '[' + str(GLOBAL_OPTS['model']) + '[' + str(GLOBAL_OPTS['lr_select_method']) + '] ' +\
-                str(schedulers[idx]) + ' learning rate vs loss (log)'
-            lr_fig, lr_ax = vis_loss_history.get_figure_subplots(2)
-            lr_finder.plot_lr_vs_acc(lr_ax[0], lr_acc_title, log=True)
-            lr_finder.plot_lr_vs_loss(lr_ax[1], lr_loss_title, log=True)
-            # save
-            lr_fig.tight_layout()
-            lr_fig.savefig('figures/[%s][%s]_%s_lr_finder_output.png' %\
-                           (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), str(schedulers[idx]))
-            )
-
-        print('Found learning rates as %.4f -> %.4f' % (lr_find_min, lr_find_max))
-        if GLOBAL_OPTS['find_only'] is True:
-            break
-
-        run_schedule(
-            trainer,
-            schedulers[idx],
-            checkpoint_names[idx],
-            lr_min = lr_find_min,
-            lr_max = lr_find_max
-        )
-        # create plots
-        trainers.append(trainer)
-        acc_list.append(trainer.get_acc_history())
-        loss_title = str(schedulers[idx]) + ' ' + str(GLOBAL_OPTS['lr_select_method']) + ' Loss : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
-        acc_title  = str(schedulers[idx]) + ' ' + str(GLOBAL_OPTS['lr_select_method']) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
-        generate_plot(trainer, loss_title, acc_title, figure_names[idx])
+    main()
 
 
-    # Make one more plot of comparing accuracies
-    if GLOBAL_OPTS['find_only'] is False:
-        acc_fig, acc_ax = plt.subplots()
-        for acc in acc_list:
-            acc_ax.plot(np.arange(len(acc)), acc)
-        acc_ax.set_xlabel('Epoch')
-        acc_ax.set_ylabel('Accuracy')
-        acc_ax.legend(checkpoint_names)
-        acc_ax.set_title('[%s] [%s] Accuracy comparison for learning rate schedules (LR: %.4f -> %.4f)' %\
-                        (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), lr_find_min, lr_find_max)
-        )
-        acc_fig.tight_layout()
-        acc_fig.set_size_inches(10, 10)
-        acc_fig.savefig('figures/[%s]_[%s]_ex_lr_scheduling_acc_compare_%.4f_%.4f.png' %\
-                        (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), lr_find_min, lr_find_max)
-        )

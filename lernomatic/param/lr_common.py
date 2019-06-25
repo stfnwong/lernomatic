@@ -44,6 +44,9 @@ class LRFinder(object):
         self.acc_test         :bool  = kwargs.pop('acc_test', True)
         self.print_every      :int   = kwargs.pop('print_every', 20)
         self.verbose          :bool  = kwargs.pop('verbose', False)
+        # can add some unique id (eg: for comparing states from different
+        # experiments)
+        self.expr_id          :str   = kwargs.pop('expr_id', None)
 
         # trainer and model params
         self.model_params   = None
@@ -82,7 +85,6 @@ class LRFinder(object):
         return state
 
     def __setstate__(self, state:dict) -> None:
-        # Set the params on the new object
         self.__dict__.update(state)
 
     def _print_find(self, epoch: int, batch_idx: int, loss: float) -> None:
@@ -109,6 +111,13 @@ class LRFinder(object):
 
         return smooth_loss
 
+    # TODO : need a new algorithm here. I think I want to know
+    # 1) Where all the 'edges' are
+    # 2) What the magnitude of each edge is
+    # I sort of want the highest rate that also has the highest peak. That is,
+    # I want to set lr_max as the right-most tallest peak, then lr_min as the
+    # next right-most tallest peak. I need to sort by position before magnitude
+    # so that I have a 'range' in which the learning rate can vary
     def _laplace_loss(self) -> tuple:
         k = np.array([-1, 4, -1])
         Xs = np.convolve(np.asarray(self.acc_history), k)

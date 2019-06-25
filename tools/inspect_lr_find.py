@@ -7,14 +7,22 @@ Stefan Wong 2019
 
 import sys
 import argparse
+import matplotlib.pyplot as plt
 
 from lernomatic.param import lr_common
+# vis stuff
+from lernomatic.vis import vis_loss_history
+
 
 GLOBAL_OPTS = dict()
-VALID_TOOL_MODES = ('dump')
+VALID_TOOL_MODES = ('dump', 'plot')
 
 
 def dump() -> None:
+    """
+    DUMP
+    Dump parameters to console
+    """
 
     # by default we don't dump any of the history since that would create a
     # large amount of scrollback
@@ -29,6 +37,33 @@ def dump() -> None:
         print('\t [%s] : %s' % (str(k), str(v)))
 
 
+def plot() -> None:
+    """
+    PLOT
+    Draw standard plots of find() results
+    """
+    lr_finder = lr_common.lr_finder_auto_load(GLOBAL_OPTS['input'])
+    if GLOBAL_OPTS['lr_acc_title'] is not None:
+        lr_acc_title = GLOBAL_OPTS['lr_acc_title']
+    else:
+        lr_acc_title  = '[' + str(lr_finder.lr_select_method) + '] learning rate vs acc (log)'
+
+    if GLOBAL_OPTS['lr_loss_title'] is not None:
+        lr_loss_title = GLOBAL_OPTS['lr_loss_title']
+    else:
+        lr_loss_title = '[' + str(lr_finder.lr_select_method) + '] learning rate vs loss (log)'
+
+    lr_fig, lr_ax = vis_loss_history.get_figure_subplots(2)
+    lr_finder.plot_lr_vs_acc(lr_ax[0], lr_acc_title, log=True)
+    lr_finder.plot_lr_vs_loss(lr_ax[1], lr_loss_title, log=True)
+    # save
+    lr_fig.tight_layout()
+
+    if GLOBAL_OPTS['draw']:
+        plt.show()
+    else:
+        lr_fig.savefig(GLOBAL_OPTS['plotfile'], bbox_inches='tight')
+
 
 def arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
@@ -41,10 +76,31 @@ def arg_parser() -> argparse.ArgumentParser:
                         default=False,
                         help='Set verbose mode'
                         )
+    parser.add_argument('--draw',
+                        action='store_true',
+                        default=False,
+                        help='Draw plot directly using matplotlib (default: False)'
+                        )
     parser.add_argument('--mode',
                         type=str,
                         default='dump',
                         help='Tool mode. Must be one of %s (default: dump)' % str(VALID_TOOL_MODES)
+                        )
+    # plot options
+    parser.add_argument('--lr-acc-title',
+                        type=str,
+                        default=None,
+                        help='LR acc plot title (default: None)'
+                        )
+    parser.add_argument('--lr-loss-title',
+                        type=str,
+                        default=None,
+                        help='LR Loss plot title (default: None)'
+                        )
+    parser.add_argument('--plotfile',
+                        type=str,
+                        default='lr_finder.png',
+                        help='Path to file to save plot to (default: lr_finder.png)'
                         )
 
     return parser
@@ -68,5 +124,7 @@ if __name__ == '__main__':
 
     if GLOBAL_OPTS['mode'] == 'dump':
         dump()
+    elif GLOBAL_OPTS['mode'] == 'plot':
+        plot()
     else:
         raise ValueError('Unsupported tool mode [%s]' % str(GLOBAL_OPTS['mode']))
