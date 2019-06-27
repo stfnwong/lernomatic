@@ -23,7 +23,6 @@ def dump() -> None:
     DUMP
     Dump parameters to console
     """
-
     # by default we don't dump any of the history since that would create a
     # large amount of scrollback
     skip_keys = ('smooth_loss_history', 'acc_history', 'log_lr_history', 'loss_grad_history')
@@ -35,6 +34,12 @@ def dump() -> None:
         if k in skip_keys:
             continue
         print('\t [%s] : %s' % (str(k), str(v)))
+
+    print('%s parameter history' % repr(lr_finder))
+    for k in skip_keys:
+        if k not in params:
+            continue
+        print('\t[%s] contains %d elements' % (str(k), len(params[k])))
 
 
 def plot() -> None:
