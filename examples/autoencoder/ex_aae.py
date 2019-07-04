@@ -15,6 +15,11 @@ from lernomatic.infer.autoencoder import aae_inferrer
 from lernomatic.train.autoencoder import aae_trainer
 from lernomatic.train.autoencoder import aae_semisupervised_trainer
 from lernomatic.models.autoencoder import aae_common
+# MNIST subsample
+from lernomatic.data.mnist import mnist_sub
+
+# debug
+from pudb import set_trace; set_trace()
 
 
 GLOBAL_OPTS = dict()
@@ -83,6 +88,28 @@ def get_datasets(data_dir:str) -> tuple:
     return (train_dataset, val_dataset)
 
 
+def get_label_datasets(data_dir:str, k:int=3000) -> tuple:
+    train_label_dataset = mnist_sub.MNISTSub(
+        data_dir,
+        train=True,
+        download = True,
+    )
+    val_label_dataset = mnist_sub.MNISTSub(
+        data_dir,
+        train=False,
+        download=True
+    )
+
+    return (train_label_dataset, val_label_dataset)
+
+
+def get_semilabel_datasets(data_dir:str, k:int=3000, transform=transform) -> tuple:
+    return mnist_sub.gen_mnist_subset(
+        data_dir,
+        transform=transform
+    )
+
+
 def unsupervised() -> None:
     # get some models
     q_net = aae_common.AAEQNet(MNIST_PARAMS['x_dim'], MNIST_PARAMS['z_dim'], MNIST_PARAMS['hidden_size'])
@@ -137,15 +164,35 @@ def unsupervised() -> None:
 
 
 def semisupervised() -> None:
-    train_dataset, val_dataset = get_datasets(GLOBAL_OPTS['data_dir'])
     q_net       = aae_common.AAEQNet(MNIST_PARAMS['x_dim'], MNIST_PARAMS['z_dim'], MNIST_PARAMS['hidden_size'])
     p_net       = aae_common.AAEPNet(MNIST_PARAMS['x_dim'], MNIST_PARAMS['z_dim'], MNIST_PARAMS['hidden_size'])
     d_cat_net   = aae_common.AAEDNetGauss(MNIST_PARAMS['z_dim'], MNIST_PARAMS['hidden_size'])
     d_gauss_net = aae_common.AAEDNetGauss(MNIST_PARAMS['z_dim'], MNIST_PARAMS['hidden_size'])
 
-    # TODO: need another 'unlabelled' dataset here
-    raise NotImplementedError('This mode not yet implemented')
+    # We also need to sub-sample some parts of the MNIST dataset to produce the
+    # 'labelled' data loaders
+    train_label_dataset, val_label_dataset, train_unlabel_dataset = \
+        get_semilabel_datasets(GLOBAL_OPTS['data_dir'])
 
+
+    trainer = aae_semisupervised_trainer.AAESemiTrainer(
+        q_net,
+        p_net,
+        d_cat_netd_net,
+        d_gauss_net,
+        # datasets
+        train_label_dataset   = train_label_dataset,
+        train_unlabel_dataset = train_unlabel_dataset,
+        val_label_dataset     = val_label_dataset,
+        # train options
+        num_epochs    = GLOBAL_OPTS['num_epochs'],
+        batch_size    = GLOBAL_OPTS['batch_size'],
+        # misc
+        print_every   = GLOBAL_OPTS['print_every'],
+        save_every    = GLOBAL_OPTS['save_every'],
+        device_id     = GLOBAL_OPTS['device_id'],
+        verbose       = GLOBAL_OPTS['verbose']
+    )
 
 def supervised() -> None:
     raise NotImplementedError('This mode not yet implemented')
