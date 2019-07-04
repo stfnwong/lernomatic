@@ -11,6 +11,10 @@ from torch.utils.data import Dataset
 from lernomatic.data.text import qr_batch
 from lernomatic.data.text import vocab
 
+# TODO : maybe I need to include all the mask data, etc in the dataset as well.
+# In that case I may need to go back and revisit the data generation step.
+# It also makes more sense to return a named-tuple here I think so that the
+# code becomes self-documenting
 
 class QRDataset(Dataset):
     def __init__(self, filename:str, **kwargs) -> None:

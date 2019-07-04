@@ -54,7 +54,7 @@ class EncoderRNNModule(nn.Module):
         if self.num_layers == 1:
             self.dropout = 0.0
 
-        self.rnn = nn.LSTM(
+        self.rnn = nn.GRU(
             self.hidden_size,
             self.hidden_size,
             self.num_layers,

@@ -7,6 +7,7 @@ Stefan Wong 2019
 
 
 import argparse
+import torch.nn as nn
 
 from lernomatic.data.text import cornell_movie
 from lernomatic.data.text import vocab
@@ -18,45 +19,40 @@ from lernomatic.train.text import seq2seq_trainer
 
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
 
-
-def print_lines(filename:str, n:int=10) -> None:
-    with open(filename, 'rb') as fp:
-        lines = fp.readlines()
-        for line in lines[:n]:
-            print(line)
-
-
 def main() ->None:
-
-    corpus_lines_filename = GLOBAL_OPTS['data_root'] + 'cornell_movie_dialogs_corpus/movie_lines.txt'
+    corpus_lines_filename         = GLOBAL_OPTS['data_root'] + 'cornell_movie_dialogs_corpus/movie_lines.txt'
     corpus_conversations_filename = GLOBAL_OPTS['data_root'] + 'cornell_movie_dialogs_corpus/movie_conversations.txt'
-    qr_pairs_csv_file = 'data/cornell_corpus_out.csv'
+    qr_pairs_csv_file             = 'data/cornell_corpus_out.csv'
 
-    # TODO : implement option to load vocab from disk
-    print('Preparing vocabulary...')
-    mcorpus = cornell_movie.CornellMovieCorpus(
-        corpus_lines_filename,
-        corpus_conversations_filename,
-        verbose=True
-    )
-    qr_pairs = mcorpus.extract_sent_pairs(max_length=GLOBAL_OPTS['max_qr_len'])
+    if GLOBAL_OPTS['vocab_infile'] is not None:
+        mvocab.load(GLOBAL_OPTS['vocab_infile'])
+    else:
+        print('Preparing vocabulary...')
+        mcorpus = cornell_movie.CornellMovieCorpus(
+            corpus_lines_filename,
+            corpus_conversations_filename,
+            verbose=True
+        )
+        qr_pairs = mcorpus.extract_sent_pairs(max_length=GLOBAL_OPTS['max_qr_len'])
+        mvocab = vocab.Vocabulary('Cornell Movie Vocabulary')
+        for n, pair in enumerate(qr_pairs):
+            print('Adding pair [%d/%d] to vocab' % (n+1, len(qr_pairs)), end='\r')
+            mvocab.add_sentence(pair.query)
+            mvocab.add_sentence(pair.response)
+        print('\n Created new vocabulary of %d words' % len(mvocab))
+        print('Pruning words that appear fewer than %d times' % GLOBAL_OPTS['min_word_freq'])
+        mvocab.trim_freq(GLOBAL_OPTS['min_word_freq'])
+        print('Created new vocabulary:')
+        print(mvocab)
 
-    mvocab = vocab.Vocabulary('Cornell Movie Vocabulary')
-    for n, pair in enumerate(qr_pairs):
-        print('Adding pair [%d/%d] to vocab' % (n+1, len(qr_pairs)), end='\r')
-        mvocab.add_sentence(pair.query)
-        mvocab.add_sentence(pair.response)
-    print('\n Created new vocabulary of %d words' % len(mvocab))
-    print('Pruning words that appear fewer than %d times' % GLOBAL_OPTS['min_word_freq'])
-    mvocab.trim_freq(GLOBAL_OPTS['min_word_freq'])
-    print('Created new vocabulary:')
-    print(mvocab)
-
+    ## FIXME: I think there is a problem here with the size of the vocab...
+    #if len(mvocab) < 33021:
+    #    print('Warning, vocab length (%d) < 33021' % len(mvocab))
 
     # Get some datasets (generate these with proc tool first)
     train_dataset = qr_dataset.QRDataset(
@@ -67,16 +63,21 @@ def main() ->None:
     )
 
     # get some models
+    embedding_layer = nn.Embedding(len(mvocab), GLOBAL_OPTS['hidden_size'])
+
     encoder = seq2seq.EncoderRNN(
         GLOBAL_OPTS['hidden_size'],
         num_layers = GLOBAL_OPTS['enc_num_layers'],
-        num_words  = len(mvocab)
+        num_words  = len(mvocab),
+        embedding = embedding_layer,
     )
     decoder = seq2seq.LuongAttenDecoderRNN(
         GLOBAL_OPTS['hidden_size'],
         len(mvocab),
-        num_layers = GLOBAL_OPTS['dec_num_layers']
+        num_layers = GLOBAL_OPTS['dec_num_layers'],
+        embedding = embedding_layer,
     )
+
 
     # get a trainer
     trainer = seq2seq_trainer.Seq2SeqTrainer(

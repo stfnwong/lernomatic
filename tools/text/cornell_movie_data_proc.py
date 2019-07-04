@@ -37,6 +37,9 @@ def main() -> None:
         mvocab.add_sentence(pair.query)
         mvocab.add_sentence(pair.response)
 
+    if GLOBAL_OPTS['min_word_freq'] > 0:
+        mvocab.trim_freq(GLOBAL_OPTS['min_word_freq'])
+
     if GLOBAL_OPTS['vocab_outfile'] is not None:
         if GLOBAL_OPTS['verbose']:
             print('Saving vocabulary to file [%s]' % str(GLOBAL_OPTS['vocab_outfile']))

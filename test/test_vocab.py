@@ -44,6 +44,8 @@ class TestVocabulary(unittest.TestCase):
             src_vocab.add_sentence(pair.query)
             src_vocab.add_sentence(pair.response)
 
+        print('Generated vocabulary with %d words' % len(src_vocab))
+
         # check the builtin tokens
         self.assertEqual(0, src_vocab.lookup_word('<pad>'))
         self.assertEqual(1, src_vocab.lookup_word('<sos>'))
@@ -75,25 +77,24 @@ class TestVocabulary(unittest.TestCase):
         self.assertEqual(src_vocab.get_unk_str(), dst_vocab.get_unk_str())
 
         # check each word, mapping, and count in turn
-        print('Checking word indicies...')
 
-        # check indicies
+        print('Checking words...')
         for n, (k, v) in enumerate(src_vocab.word2idx.items()):
-            print('Checking word <%s> [%d / %d' % (str(k), n+1, len(src_vocab)), end='\r')
+            print('Checking word <%s> [%d / %d]\t\t' % (str(k), n+1, len(src_vocab)), end='\r')
             self.assertIn(k, dst_vocab.word2idx)
             self.assertEqual(src_vocab.word2idx[k], dst_vocab.word2idx[k])
+        print('\n OK')
 
-        # check words
+        print('Checking word indicies...')
         for n, (k, v) in enumerate(src_vocab.idx2word.items()):
-            print('Checking index <%d> [%d / %d' % (int(k), n+1, len(src_vocab)), end='\r')
+            print('Checking index <%d> [%d / %d]\t\t' % (int(k), n+1, len(src_vocab)), end='\r')
             self.assertIn(k, dst_vocab.idx2word)
             self.assertEqual(src_vocab.idx2word[k], dst_vocab.idx2word[k])
+        print('\n OK')
 
         #for n in range(len(src_vocab)):
         #    print('Checking index [%d / %d' % (n+1, len(src_vocab)), end='\r')
         #    self.assertEqual(src_vocab.lookup_idx(n), dst_vocab.lookup_idx(n))
-
-        print('\n OK')
 
 
         print('======== TestVocabulary.test_all <END>')
