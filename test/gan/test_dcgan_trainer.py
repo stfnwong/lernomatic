@@ -13,8 +13,8 @@ import torch
 import torchvision
 from torchvision import transforms
 # units under test
-from lernomatic.models import dcgan
-from lernomatic.train import dcgan_trainer
+from lernomatic.models.gan import dcgan
+from lernomatic.train.gan import dcgan_trainer
 
 
 # debug
@@ -188,7 +188,7 @@ if __name__ == '__main__':
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='resnet-trainer-test',
+                        default='dcgan-trainer-test',
                         help='String to prefix to checkpoint files'
                         )
     parser.add_argument('unittest_args', nargs='*')

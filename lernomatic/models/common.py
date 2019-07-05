@@ -49,6 +49,8 @@ class LernomaticModel(object):
             'module_name'        : self.get_module_name(),
             'module_import_path' : self.get_module_import_path()
         }
+        if hasattr(self, 'get_model_args'):
+            params.update({'model_args' : self.get_model_args()})
         return params
 
     def get_model_name(self) -> str:
@@ -81,7 +83,10 @@ class LernomaticModel(object):
         # Import the actual network module
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
-        self.net = mod()
+        if 'model_args' in params:
+            self.net = mod(**params['model_args'])
+        else:
+            self.net = mod()
         self.net.load_state_dict(params['model_state_dict'])
 
     def set_train(self) -> None:
@@ -171,3 +176,6 @@ class LernomaticModel(object):
         model_params.update({'module_name' : checkpoint_data[model_key]['module_name']})
         model_params.update({'module_import_path' : checkpoint_data[model_key]['module_import_path']})
         self.set_params(model_params)
+
+    def zero_grad(self) -> None:
+        self.net.zero_grad()
