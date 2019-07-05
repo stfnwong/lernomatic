@@ -57,8 +57,8 @@ class EncoderRNNModule(nn.Module):
         self.rnn = nn.GRU(
             self.hidden_size,
             self.hidden_size,
-            self.num_layers,
-            self.dropout,
+            num_layers=self.num_layers,
+            dropout=self.dropout,
             bidirectional=True
         )
 
@@ -68,6 +68,17 @@ class EncoderRNNModule(nn.Module):
                 hidden=None) -> torch.Tensor:
         embed = self.embedding(input_seq)
         packed = nn.utils.rnn.pack_padded_sequence(embed, input_lengths)
+
+        #  This is where there seem to be type issues
+        # We get a type error here which says that lstm/gru got an invalid
+        # combination of arguments
+        #   got :
+        # (Tensor, Tensor, Tensor, list, float, int,  float, bool, bool)
+        #   but expected one of
+        # (Tensor, Tensor, Tensor, tuple, bool, int,  float, bool bool)
+        #   or:
+        # (Tensor, Tensor, tuple,  bool, int,   float, bool, bool, bool)
+
         outputs, hidden = self.rnn(packed, hidden)
         # unpack the packed padding
         outputs, _ = nn.utils.rnn.pad_packed_sequence(outputs)
