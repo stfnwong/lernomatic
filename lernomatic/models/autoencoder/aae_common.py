@@ -49,6 +49,9 @@ class AAEQNet(common.LernomaticModel):
     def get_z_dim(self) -> int:
         return self.net.z_dim
 
+    def get_num_classes(self) -> int:
+        return self.net.num_classes
+
     def set_cat_mode(self) -> None:
         self.net.cat_mode = True
 
@@ -119,11 +122,10 @@ class AAEQNetModule(nn.Module):
         xgauss = self.lingauss(X)
 
         if self.cat_mode:
-            xcat = F.softmax(self.lincat(X))
-            return (xgauss, xcat)
+            xcat = F.softmax(self.lincat(X), dim=0)
+            return (xcat, xgauss)
 
         return xgauss
-
 
 
 

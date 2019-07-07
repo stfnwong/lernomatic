@@ -54,6 +54,7 @@ class Trainer(object):
         self.val_dataset            = kwargs.pop('val_dataset', None)
         self.shuffle         :float = kwargs.pop('shuffle', True)
         self.num_workers     :int   = kwargs.pop('num_workers' , 1)
+        self.drop_last       :bool  = kwargs.pop('drop_last', True)
         # parameter scheduling
         self.lr_scheduler           = kwargs.pop('lr_scheduler', None)
         self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
@@ -133,6 +134,7 @@ class Trainer(object):
             self.train_loader = torch.utils.data.DataLoader(
                 self.train_dataset,
                 batch_size = self.batch_size,
+                drop_last = self.drop_last,
                 shuffle = self.shuffle
             )
 
@@ -142,6 +144,7 @@ class Trainer(object):
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset,
                 batch_size = self.val_batch_size,
+                drop_last = self.drop_last,
                 shuffle    = self.shuffle
             )
 
@@ -151,6 +154,7 @@ class Trainer(object):
             self.val_loader = torch.utils.data.DataLoader(
                 self.val_dataset,
                 batch_size = self.val_batch_size,
+                drop_last = self.drop_last,
                 shuffle    = False
             )
 

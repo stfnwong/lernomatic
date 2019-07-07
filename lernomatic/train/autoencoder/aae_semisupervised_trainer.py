@@ -13,7 +13,7 @@ from lernomatic.models import common
 from lernomatic.train import trainer
 
 #debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 
 def sample_categorical(batch_size:int, n_classes:int=10) -> torch.Tensor:
@@ -44,8 +44,9 @@ class AAESemiTrainer(trainer.Trainer):
         self.data_norm : float = kwargs.pop('data_norm', 0.3081 + 0.1307)
         # in addition to the usual train loader, we also have a labelled train
         # loader
-        self.train_label_dataset = kwargs.pop('train_label_dataset', None)
-        self.val_label_dataset   = kwargs.pop('val_label_dataset', None)
+        self.train_label_dataset   = kwargs.pop('train_label_dataset', None)
+        self.train_unlabel_dataset = kwargs.pop('train_unlabel_dataset', None)
+        self.val_label_dataset     = kwargs.pop('val_label_dataset', None)
 
         super(AAESemiTrainer, self).__init__(None, **kwargs)
 
@@ -53,8 +54,13 @@ class AAESemiTrainer(trainer.Trainer):
         return 'AAESemiTrainer'
 
     def _init_dataloaders(self) -> None:
-        super(AAESemiTrainer, self)._init_dataloaders()
+        #super(AAESemiTrainer, self)._init_dataloaders()
         # also init the 'label' dataloaders
+
+        # None these out so that superclass __init__ doesn't complain
+        self.train_loader = None
+        self.val_loader = None
+        self.test_loader = None
 
         if self.train_label_dataset is None:
             self.train_label_loader = None
@@ -62,7 +68,18 @@ class AAESemiTrainer(trainer.Trainer):
             self.train_label_loader = torch.utils.data.DataLoader(
                 self.train_label_dataset,
                 batch_size = self.batch_size,
-                shuffle = self.shuffle
+                drop_last  = self.drop_last,
+                shuffle    = self.shuffle
+            )
+
+        if self.train_unlabel_dataset is None:
+            self.train_unlabel_loader = None
+        else:
+            self.train_unlabel_loader = torch.utils.data.DataLoader(
+                self.train_unlabel_dataset,
+                batch_size = self.batch_size,
+                drop_last  = self.drop_last,
+                shuffle    = self.shuffle
             )
 
         if self.val_label_dataset is None:
@@ -71,7 +88,8 @@ class AAESemiTrainer(trainer.Trainer):
             self.val_label_loader = torch.utils.data.DataLoader(
                 self.val_label_dataset,
                 batch_size = self.batch_size,
-                shuffle = self.shuffle
+                drop_last  = self.drop_last,
+                shuffle    = self.shuffle
             )
 
     def _init_optimizer(self) -> None:
@@ -125,6 +143,9 @@ class AAESemiTrainer(trainer.Trainer):
         self.recon_loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
 
     def _send_to_device(self) -> None:
+        if self.q_net is not None:
+            self.q_net.send_to(self.device)
+
         if self.p_net is not None:
             self.p_net.send_to(self.device)
 
@@ -161,11 +182,9 @@ class AAESemiTrainer(trainer.Trainer):
         self.d_cat_net.set_train()
         self.d_gauss_net.set_train()
 
-        #for batch_idx, (data, target) in enumerate(self.train_loader):
-        #    data = data.to(self.device)
-        #    target = target.to(self.device)
+        self.q_net.set_cat_mode()
 
-        for batch_idx, ((X_l, target_l), (X_u, target_u)) in enumerate(zip(self.train_label_loader, self.train_loader)):
+        for batch_idx, ((X_l, target_l), (X_u, target_u)) in enumerate(zip(self.train_label_loader, self.train_unlabel_loader)):
             for X, target in [(X_u, target_u), (X_l, target_l)]:
                 if target[0] == -1:
                     labelled = False
@@ -173,7 +192,8 @@ class AAESemiTrainer(trainer.Trainer):
                     labelled = True
 
                 # send data to device
-                X.resize_(self.batch_size, self.q_net.get_x_dim())
+                #X.resize_(self.batch_size, self.q_net.get_x_dim())
+                X      = X.resize(self.batch_size, self.q_net.get_x_dim())
                 X      = X.to(self.device)
                 target = target.to(self.device)
 
@@ -182,8 +202,8 @@ class AAESemiTrainer(trainer.Trainer):
 
                 # ==== Reconstruction phase ==== $
                 if not labelled:
-                    z_sample = torch.cat(self.q_net(X), 1)
-                    x_sample = self.p_net(z_sample)
+                    z_sample = torch.cat(self.q_net.forward(X), 1)
+                    x_sample = self.p_net.forward(z_sample)
 
                     recon_loss = F.binary_cross_entropy(
                         x_sample + self.eps,
@@ -197,18 +217,21 @@ class AAESemiTrainer(trainer.Trainer):
                     # ==== Regularization Phase ==== #
                     # disciminator
                     self.q_net.set_eval()
-                    z_real_cat   = sample_categorical(self.batch_size, n_classes=10)
+                    z_real_cat   = sample_categorical(
+                        self.batch_size,
+                        n_classes=self.q_net.get_num_classes()
+                    )
                     z_real_gauss = torch.Tensor(torch.randn(self.batch_size, self.q_net.get_z_dim()))
 
                     z_real_cat   = z_real_cat.to(self.device)
                     z_real_gauss = z_real_gauss.to(self.device)
 
-                    z_fake_cat, z_fake_gauss = self.q_net(X)
+                    z_fake_cat, z_fake_gauss = self.q_net.forward(X)
 
-                    d_real_cat   = self.d_cat_net(z_real_cat)
-                    d_real_gauss = self.d_gauss_net(z_real_cat)
-                    d_fake_cat   = self.d_cat_net(z_fake_cat)
-                    d_fake_gauss = self.d_gauss_net(z_fake_cat)
+                    d_real_cat   = self.d_cat_net.forward(z_real_cat)
+                    d_real_gauss = self.d_gauss_net.forward(z_real_cat)
+                    d_fake_cat   = self.d_cat_net.forward(z_fake_cat)
+                    d_fake_gauss = self.d_gauss_net.forward(z_fake_cat)
 
                     d_loss_cat = -torch.mean(torch.log(d_real_cat + self.eps), torch.log(1.0 - d_fake_cat + self.eps))
                     d_loss_gauss = -torch.mean(torch.log(d_real_gauss + self.eps) + torch.log(1.0 - d_fake_gauss + self.eps))
@@ -222,10 +245,10 @@ class AAESemiTrainer(trainer.Trainer):
 
                     # ==== Generator ==== #
                     self.q_net.set_train()
-                    z_fake_cat, z_fake_gauss = self.q_net(X)
+                    z_fake_cat, z_fake_gauss = self.q_net.forward(X)
 
-                    d_fake_cat = self.d_cat_net(z_fake_cat)
-                    d_fake_gauss = self.d_gauss_net(z_fake_cat)
+                    d_fake_cat = self.d_cat_net.forward(z_fake_cat)
+                    d_fake_gauss = self.d_gauss_net.forward(z_fake_cat)
 
                     g_loss = -torch.mean(torch.log(d_fake_cat + self.eps)) - torch.mean(torch.log(d_fake_gauss + self.eps))
                     g_loss.backward()
@@ -234,7 +257,7 @@ class AAESemiTrainer(trainer.Trainer):
 
                 # ==== Semi-supervised phase ==== #
                 if labelled:
-                    pred, _ = self.q_net(X)
+                    pred, _    = self.q_net.forward(X)
                     class_loss = F.cross_entropy(pred, target)
                     class_loss.backward()
                     self.q_semi_optim.step()
@@ -246,13 +269,13 @@ class AAESemiTrainer(trainer.Trainer):
                 if labelled:
                     print('[TRAIN] :   Epoch       iteration  [labelled]    Class Loss ')
                     print('            [%3d/%3d]   [%6d/%6d]             %.6f   ' %\
-                            (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader),
+                            (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_label_loader),
                             class_loss.item())
                     )
                 else:
                     print('[TRAIN] :   Epoch       iteration  [unlabelled] G Loss    D Loss     R Loss')
                     print('            [%3d/%3d]   [%6d/%6d]  %.6f   %.6f   %.6f' %\
-                            (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader),
+                            (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_unlabel_loader),
                             g_loss.item(), d_loss.item(), recon_loss.item() )
                     )
 

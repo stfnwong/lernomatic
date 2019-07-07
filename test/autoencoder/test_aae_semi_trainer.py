@@ -48,17 +48,22 @@ class TestAAESemiTrainer(unittest.TestCase):
         d_cat_net   = aae_common.AAEDNetGauss(self.z_dim, self.hidden_size)
         d_gauss_net = aae_common.AAEDNetGauss(self.z_dim, self.hidden_size)
 
+        q_net.set_cat_mode()
+        self.assertEqual(True, q_net.net.cat_mode)
+
         # We also need to sub-sample some parts of the MNIST dataset to produce the
         # 'labelled' data loaders
+        print('Creating MNIST sub-dataset...')
         train_label_dataset, val_label_dataset, train_unlabel_dataset = mnist_sub.gen_mnist_subset(
             self.test_data_dir,
-            transform = self.transform
+            transform = self.transform,
+            verbose = GLOBAL_OPTS['verbose']
         )
 
         trainer = aae_semisupervised_trainer.AAESemiTrainer(
             q_net,
             p_net,
-            d_cat_netd_net,
+            d_cat_net,
             d_gauss_net,
             # datasets
             train_label_dataset   = train_label_dataset,
