@@ -49,6 +49,10 @@ class AAESemiTrainer(trainer.Trainer):
         self.val_label_dataset     = kwargs.pop('val_label_dataset', None)
 
         super(AAESemiTrainer, self).__init__(None, **kwargs)
+        self.stop_when_acc = 0.0
+        # since we re-named the loaders we will call _init_history() here so
+        if self.train_label_loader is not None and self.train_unlabel_loader is not None:
+            self._init_history()
 
     def __repr__(self) -> str:
         return 'AAESemiTrainer'
@@ -59,8 +63,8 @@ class AAESemiTrainer(trainer.Trainer):
 
         # None these out so that superclass __init__ doesn't complain
         self.train_loader = None
-        self.val_loader = None
-        self.test_loader = None
+        self.val_loader   = None
+        self.test_loader  = None
 
         if self.train_label_dataset is None:
             self.train_label_loader = None
@@ -135,12 +139,20 @@ class AAESemiTrainer(trainer.Trainer):
         self.loss_iter      = 0
         self.val_loss_iter  = 0
         self.acc_iter       = 0
-        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
+        self.iter_per_epoch = int(len(self.train_label_loader) / self.num_epochs)
 
-        self.g_loss_history       = np.zeros(len(self.train_loader) * self.num_epochs)
-        self.d_cat_loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
-        self.d_gauss_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
-        self.recon_loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+        # TODO: check which loader length to use for each history array
+        self.g_loss_history       = np.zeros(len(self.train_label_loader) * self.num_epochs)
+        self.d_loss_history       = np.zeros(len(self.train_label_loader) * self.num_epochs)
+        self.recon_loss_history   = np.zeros(len(self.train_label_loader) * self.num_epochs)
+        self.class_loss_history   = np.zeros(len(self.train_unlabel_loader) * self.num_epochs)
+
+        if self.val_label_loader is not None:
+            self.val_loss_history = np.zeros(len(self.val_label_loader) * self.num_epochs)
+            self.acc_history = np.zeros(len(self.val_label_loader) * self.num_epochs)
+        else:
+            self.val_loss_history = None
+            self.acc_history = None
 
     def _send_to_device(self) -> None:
         if self.q_net is not None:
@@ -165,7 +177,7 @@ class AAESemiTrainer(trainer.Trainer):
         self.q_semi_optim.zero_grad()
         self.d_gauss_optim.zero_grad()
         self.d_cat_optim.zero_grad()
-        self.q_gnerator_optim.zero_grad()
+        self.q_generator_optim.zero_grad()
         self.q_encoder_optim.zero_grad()
         self.p_decoder_optim.zero_grad()
 
@@ -255,12 +267,19 @@ class AAESemiTrainer(trainer.Trainer):
                     self.q_decoder_optim.step()
                     self._zero_all_nets()
 
+                    # save losses
+                    self.g_loss_history[self.loss_iter] = g_loss.item()
+                    self.d_loss_history[self.loss_iter] = d_loss.item()
+                    self.recon_loss_history[self.loss_iter] = recon_loss.item()
+
                 # ==== Semi-supervised phase ==== #
                 if labelled:
                     pred, _    = self.q_net.forward(X)
                     class_loss = F.cross_entropy(pred, target)
                     class_loss.backward()
                     self.q_semi_optim.step()
+
+                    self.class_loss_history[self.loss_iter] = class_loss.item()
 
                     self._zero_all_nets()
 
@@ -278,4 +297,177 @@ class AAESemiTrainer(trainer.Trainer):
                             (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_unlabel_loader),
                             g_loss.item(), d_loss.item(), recon_loss.item() )
                     )
+            self.loss_iter += 1
 
+    def val_epoch(self) -> None:
+        self.q_net.set_eval()
+
+        labels = []
+        val_loss = 0.0
+        correct = 0
+
+        for batch_idx, (X, target) in enumerate(self.val_label_loader):
+            X = X.resize(self.batch_size, self.q_net.get_x_dim())
+            X = X.to(self.device)
+
+            labels.extend(target.data.tolist())
+            output = self.q_net.forward(X)
+            val_loss += F.nll_loss(output, target).data[0]
+
+            pred = output.data.max(1)[1]
+            correct += pred.eq(target.data).cpu().sum()
+
+            if (batch_idx % self.print_every) == 0:
+                print('[VAL ]  :   Epoch       iteration         Test Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_label_loader), val_loss.item()))
+
+            self.val_loss_history[self.val_loss_iter] = loss.item()
+            self.val_loss_iter += 1
+
+        avg_val_loss = val_loss / len(self.val_label_loader)
+        acc = correct / len(self.val_label_loader.dataset)
+        self.acc_history[self.acc_iter] = acc
+        self.acc_iter += 1
+        print('[VAL ]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+              (avg_val_loss, correct, len(self.val_label_loader.dataset),
+               100.0 * acc)
+        )
+
+        # save the best weights
+        if acc > self.best_acc:
+            self.best_acc = acc
+            if self.save_best is True:
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name + '.pkl'
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+                self.save_checkpoint(ck_name)
+
+
+    def save_history(self, filename:str) -> None:
+        history = dict()
+        history['loss_iter']            = self.loss_iter
+        history['cur_epoch']            = self.cur_epoch
+        history['iter_per_epoch']       = self.iter_per_epoch
+        history['g_loss_history']       = self.g_loss_history
+        history['d_loss_history']       = self.d_loss_history
+        history['class_loss_history']   = self.class_loss_history
+        history['recon_loss_history']   = self.recon_loss_history
+        if self.val_loss_history is not None:
+            history['val_loss_history'] = self.val_loss_history
+            history['val_loss_iter']    = self.val_loss_iter
+        if self.acc_history is not None:
+            history['acc_history'] = self.acc_history
+            history['acc_iter'] = self.acc_iter
+
+        torch.save(history, filename)
+
+    def load_history(self, filename:str) -> None:
+        history = torch.load(filename)
+        self.loss_iter            = history['loss_iter']
+        self.cur_epoch            = history['cur_epoch']
+        self.iter_per_epoch       = history['iter_per_epoch']
+        self.g_loss_history       = history['g_loss_history']
+        self.d_loss_history       = history['d_loss_history']
+        self.class_loss_history   = history['class_loss_history']
+        self.recon_loss_history   = history['recon_loss_history']
+
+        if 'val_loss_history' in history:
+            self.val_loss_history = history['val_loss_history']
+            self.val_loss_iter = history['val_loss_iter']
+
+        if 'acc_history' in history:
+            self.acc_history = history['acc_history']
+            self.acc_iter = history['acc_iter']
+
+    def save_checkpoint(self, filename:str) -> None:
+        if self.verbose:
+            print('\t Saving checkpoint (epoch %d) to [%s]' % (self.cur_epoch, filename))
+        checkpoint_data = {
+            # networks
+            'q_net'       : self.q_net.get_params(),
+            'p_net'       : self.p_net.get_params(),
+            'd_cat_net'   : self.d_cat_net.get_params(),
+            'd_gauss_net' : self.d_gauss_net.get_params(),
+            # optimizers
+            'q_semi_optim' : self.q_semi_optim.state_dict(),
+            'd_gauss_optim' : self.d_gauss_optim.state_dict(),
+            'd_cat_optim' : self.d_cat_optim.state_dict(),
+            'q_generator_optim' : self.q_generator_optim.state_dict(),
+            'q_encoder_optim' : self.q_encoder_optim.state_dict(),
+            'p_decoder_optim' : self.p_decoder_optim.state_dict(),
+            'trainer_params' : self.get_trainer_params(),
+        }
+        torch.save(checkpoint_data, filename)
+
+    def load_checkpoint(self, filename:str) -> None:
+        pass
+        checkpoint_data = torch.load(filename)
+        self.set_trainer_params(checkpoint_data['trainer_params'])
+
+        # Load the models
+        # P-Net
+        model_import_path = checkpoint_data['p_net']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['p_net']['model_name'])
+        self.p_net = mod()
+        self.p_net.set_params(checkpoint_data['p_net'])
+        # Q-Net
+        model_import_path = checkpoint_data['q_net']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['q_net']['model_name'])
+        self.q_net = mod()
+        self.q_net.set_params(checkpoint_data['q_net'])
+        # D-Net (cat)
+        model_import_path = checkpoint_data['d_cat_net']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['d_cat_net']['model_name'])
+        self.d_cat_net = mod()
+        self.d_cat_net.set_params(checkpoint_data['d_cat_net'])
+        # D-Net (gauss)
+        model_import_path = checkpoint_data['d_gauss_net']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['d_gauss_net']['model_name'])
+        self.d_gauss_net = mod()
+        self.d_gauss_net.set_params(checkpoint_data['d_gauss_net'])
+
+        # Load the optimizers
+        self._init_optimizer()
+        self.p_decoder_optim.load_state_dict(checkpoint_data['p_decoder_optim'])
+        for state in self.p_decoder_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        self.q_encoder_optim.load_state_dict(checkpoint_data['q_encoder_optim'])
+        for state in self.q_encoder_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        self.q_generator_optim.load_state_dict(checkpoint_data['q_generator_optim'])
+        for state in self.q_generator_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        self.q_semi_optim.load_state_dict(checkpoint_data['q_semi_optim'])
+        for state in self.q_semi_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        self.d_gauss_optim.load_state_dict(checkpoint_data['d_gauss_optim'])
+        for state in self.d_gauss_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        self.d_cat_optim.load_state_dict(checkpoint_data['d_cat_optim'])
+        for state in self.d_cat_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        # restore trainer object info
+        self._send_to_device()

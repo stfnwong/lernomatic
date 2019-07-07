@@ -60,7 +60,11 @@ class TestAAESemiTrainer(unittest.TestCase):
             verbose = GLOBAL_OPTS['verbose']
         )
 
-        trainer = aae_semisupervised_trainer.AAESemiTrainer(
+        self.assertIsNotNone(train_label_dataset)
+        self.assertIsNotNone(train_unlabel_dataset)
+        self.assertIsNotNone(val_label_dataset)
+
+        src_trainer = aae_semisupervised_trainer.AAESemiTrainer(
             q_net,
             p_net,
             d_cat_net,
@@ -79,9 +83,81 @@ class TestAAESemiTrainer(unittest.TestCase):
             verbose       = GLOBAL_OPTS['verbose']
         )
 
-        trainer.train()
+        src_trainer.train()
+        print('Saving checkpoint to file [%s]' % str(test_checkpoint_file))
+        src_trainer.save_checkpoint(test_checkpoint_file)
+
+        dst_trainer = aae_semisupervised_trainer.AAESemiTrainer(device_id = GLOBAL_OPTS['device_id'])
+        self.assertEqual(None, dst_trainer.q_net)
+        self.assertEqual(None, dst_trainer.p_net)
+        self.assertEqual(None, dst_trainer.d_cat_net)
+        self.assertEqual(None, dst_trainer.d_gauss_net)
+
+        # Test that models, etc are loaded
+        print('Loading checkpoint data from [%s]' % str(test_checkpoint_file))
+        dst_trainer.load_checkpoint(test_checkpoint_file)
+        self.assertIsNotNone(dst_trainer.q_net)
+        self.assertIsNotNone(dst_trainer.p_net)
+        self.assertIsNotNone(dst_trainer.d_cat_net)
+        self.assertIsNotNone(dst_trainer.d_gauss_net)
+
+        model_list = ['q_net', 'p_net', 'd_cat_net', 'd_gauss_net']
+
+        for model in model_list:
+            src_model = getattr(src_trainer, model)
+            dst_model = getattr(dst_trainer, model)
+            self.assertIsNotNone(src_model)
+            self.assertIsNotNone(dst_model)
+            print('\t Comparing parameters for model [%s]' % repr(src_model))
+            src_model_params = src_model.get_net_state_dict()
+            dst_model_params = dst_model.get_net_state_dict()
+
+            self.assertEqual(len(src_model_params.items()), len(dst_model_params.items()))
+
+            # p1, p2 are k,v tuple pairs of each model parameters
+            # k = str
+            # v = torch.Tensor
+            for n, (p1, p2) in enumerate(zip(src_model_params.items(), dst_model_params.items())):
+                self.assertEqual(p1[0], p2[0])
+                print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(src_model_params.items())), end='\r')
+                self.assertEqual(True, torch.equal(p1[1], p2[1]))
+            print('\n ...done')
 
 
+        # Test that history is correctly loaded
+        print('Saving history to file [%s]' % str(test_history_file))
+        src_trainer.save_history(test_history_file)
+        dst_trainer.load_history(test_history_file)
+
+        self.assertIsNotNone(dst_trainer.d_loss_history)
+        self.assertIsNotNone(dst_trainer.g_loss_history)
+        self.assertIsNotNone(dst_trainer.recon_loss_history)
+        self.assertIsNotNone(dst_trainer.class_loss_history)
+
+        self.assertEqual(len(src_trainer.d_loss_history), len(dst_trainer.d_loss_history))
+        self.assertEqual(len(src_trainer.g_loss_history), len(dst_trainer.g_loss_history))
+        self.assertEqual(len(src_trainer.recon_loss_history), len(dst_trainer.recon_loss_history))
+        self.assertEqual(len(src_trainer.class_loss_history), len(dst_trainer.class_loss_history))
+
+        for idx in range(len(src_trainer.d_loss_history)):
+            print('Checking d_loss_history idx [%d / %d]' % (idx+1, len(src_trainer.d_loss_history)), end='\r')
+            self.assertEqual(src_trainer.d_loss_history[idx], dst_trainer.d_loss_history[idx])
+        print('\n OK')
+
+        for idx in range(len(src_trainer.g_loss_history)):
+            print('Checking d_loss_history idx [%d / %d]' % (idx+1, len(src_trainer.g_loss_history)), end='\r')
+            self.assertEqual(src_trainer.g_loss_history[idx], dst_trainer.g_loss_history[idx])
+        print('\n OK')
+
+        for idx in range(len(src_trainer.recon_loss_history)):
+            print('Checking d_loss_history idx [%d / %d]' % (idx+1, len(src_trainer.recon_loss_history)), end='\r')
+            self.assertEqual(src_trainer.recon_loss_history[idx], dst_trainer.recon_loss_history[idx])
+        print('\n OK')
+
+        for idx in range(len(src_trainer.class_loss_history)):
+            print('Checking d_loss_history idx [%d / %d]' % (idx+1, len(src_trainer.class_loss_history)), end='\r')
+            self.assertEqual(src_trainer.class_loss_history[idx], dst_trainer.class_loss_history[idx])
+        print('\n OK')
         print('======== TestAAESemiTrainer.test_save_load <END>')
 
 
