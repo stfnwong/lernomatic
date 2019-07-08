@@ -15,6 +15,8 @@ from lernomatic.infer.autoencoder import aae_inferrer
 from lernomatic.train.autoencoder import aae_trainer
 from lernomatic.train.autoencoder import aae_semisupervised_trainer
 from lernomatic.models.autoencoder import aae_common
+from lernomatic.models import common        # mainly for type hints
+
 # MNIST subsample
 from lernomatic.data.mnist import mnist_sub
 
@@ -103,11 +105,46 @@ def get_label_datasets(data_dir:str, k:int=3000) -> tuple:
     return (train_label_dataset, val_label_dataset)
 
 
-def get_semilabel_datasets(data_dir:str, k:int=3000, transform=transform) -> tuple:
+def get_semilabel_datasets(data_dir:str, k:int=3000, transform=mnist_sub.default_mnist_transform) -> tuple:
     return mnist_sub.gen_mnist_subset(
         data_dir,
-        transform=transform
+        transform=transform,
+        verbose = GLOBAL_OPTS['verbose']
     )
+
+
+def infer_aae(
+    q_net:common.LernomaticModel,
+    p_net:common.LernomaticModel,
+    batch_size:int,
+    val_dataset) -> None:
+
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset,
+        batch_size,
+        drop_last = True,
+        shuffle = False,
+    )
+
+    # Now run inference and generate some examples
+    inferrer = aae_inferrer.AAEInferrer(
+        q_net,
+        p_net,
+        device_id = GLOBAL_OPTS['device_id']
+    )
+
+    # grab some data from the val_loader and push through inferrer
+    fig, ax = get_fig_subplots(num_subplots = 2)
+
+    for batch_idx, (data, target) in enumerate(val_loader):
+        print('Processing validation example [%d / %d]' % (batch_idx+1, len(val_loader)), end='\r')
+        data.resize_(batch_size, inferrer.q_net.get_x_dim())
+        gen_img = inferrer.forward(data)
+        img_filename = 'figures/aae/aae_batch_%d.png' % int(batch_idx)
+        recon_to_plt(ax, data.cpu(), gen_img.cpu())
+        fig.savefig(img_filename, bbox_inches='tight')
+
+    print('\n OK')
 
 
 def unsupervised() -> None:
@@ -141,26 +178,7 @@ def unsupervised() -> None:
     # GANs
     trainer.train()
 
-    # Now run inference and generate some examples
-    inferrer = aae_inferrer.AAEInferrer(
-        q_net,
-        p_net,
-        device_id = GLOBAL_OPTS['device_id']
-    )
-
-    # grab some data from the val_loader and push through inferrer
-    fig, ax = get_fig_subplots(num_subplots = 2)
-
-    for batch_idx, (data, target) in enumerate(trainer.val_loader):
-        print('Processing validation example [%d / %d]' % (batch_idx+1, len(trainer.val_loader)), end='\r')
-        data.resize_(trainer.batch_size, trainer.q_net.get_x_dim())
-        gen_img = inferrer.forward(data)
-        img_filename = 'figures/aae/aae_batch_%d.png' % int(batch_idx)
-        recon_to_plt(ax, data.cpu(), gen_img.cpu())
-        fig.savefig(img_filename, bbox_inches='tight')
-
-    print('\n OK')
-
+    infer_aae(q_net, p_net, GLOBAL_OPTS['batch_size'], val_dataset)
 
 
 def semisupervised() -> None:
@@ -178,7 +196,7 @@ def semisupervised() -> None:
     trainer = aae_semisupervised_trainer.AAESemiTrainer(
         q_net,
         p_net,
-        d_cat_netd_net,
+        d_cat_net,
         d_gauss_net,
         # datasets
         train_label_dataset   = train_label_dataset,
@@ -193,12 +211,16 @@ def semisupervised() -> None:
         device_id     = GLOBAL_OPTS['device_id'],
         verbose       = GLOBAL_OPTS['verbose']
     )
+    trainer.train()
+
+    # now do an inference pass...
+    infer_aae(q_net, p_net, GLOBAL_OPTS['batch_size'], val_label_dataset)
 
 def supervised() -> None:
     raise NotImplementedError('This mode not yet implemented')
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
@@ -218,7 +240,7 @@ def get_parser():
                         )
     parser.add_argument('--print-every',
                         type=int,
-                        default=100,
+                        default=10,
                         help='Print output every N epochs'
                         )
     # TODO: should -2 be every 2 epochs, -3 every 3 epochs, etc?
@@ -286,6 +308,9 @@ if __name__ == '__main__':
 
     for k, v in opts.items():
         GLOBAL_OPTS[k] = v
+
+    GLOBAL_OPTS['checkpoint_name'] =\
+        str(GLOBAL_OPTS['checkpoint_name']) + '_' + GLOBAL_OPTS['mode']
 
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')

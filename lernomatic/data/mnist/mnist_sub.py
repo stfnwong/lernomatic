@@ -83,7 +83,7 @@ def gen_mnist_subset(data_dir:str, num_elem:int=300, transform=None, verbose=Fal
     trainset_new.train_data = train_data_sub.clone()
     trainset_new.train_labels = train_label_sub.clone()
     if verbose:
-        print('DONE')
+        print('\n...OK')
 
     # original file dumps to disk here
 
@@ -106,7 +106,7 @@ def gen_mnist_subset(data_dir:str, num_elem:int=300, transform=None, verbose=Fal
     validset_new.test_labels = valid_labels_sub.clone()
 
     if verbose:
-        print('DONE')
+        print('\n ...OK')
 
     # dump() validation set here...
 
@@ -141,7 +141,7 @@ def gen_mnist_subset(data_dir:str, num_elem:int=300, transform=None, verbose=Fal
     trainset_unl_new.train_labels = None
 
     if verbose:
-        print('DONE')
+        print('\n...OK')
 
     return (trainset_new, validset_new, trainset_unl_new)
 

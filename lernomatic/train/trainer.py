@@ -77,8 +77,7 @@ class Trainer(object):
         # Init the loss and accuracy history. If no train_loader is provided
         # then we assume that one will be loaded later (eg: in some checkpoint
         # data)
-        if self.train_loader is not None:
-            self._init_history()
+        self._init_history()
 
         self._send_to_device()
 
@@ -119,7 +118,12 @@ class Trainer(object):
         self.val_loss_iter  = 0
         self.acc_iter       = 0
         self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
-        self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+
+        if self.train_loader is not None:
+            self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+        else:
+            self.loss_history = None
+
         if self.val_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)
             self.acc_history = np.zeros(len(self.val_loader) * self.num_epochs)
@@ -405,7 +409,7 @@ class Trainer(object):
                 self.save_history(hist_name)
 
             # check we have reached the required accuracy and can stop early
-            if self.stop_when_acc > 0.0 and self.test_loader is not None:
+            if self.stop_when_acc > 0.0 and self.val_loader is not None:
                 if self.acc_history[self.acc_iter] >= self.stop_when_acc:
                     return
 

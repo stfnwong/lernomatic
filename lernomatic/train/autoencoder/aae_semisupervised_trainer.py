@@ -13,7 +13,7 @@ from lernomatic.models import common
 from lernomatic.train import trainer
 
 #debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 def sample_categorical(batch_size:int, n_classes:int=10) -> torch.Tensor:
@@ -51,8 +51,6 @@ class AAESemiTrainer(trainer.Trainer):
         super(AAESemiTrainer, self).__init__(None, **kwargs)
         self.stop_when_acc = 0.0
         # since we re-named the loaders we will call _init_history() here so
-        if self.train_label_loader is not None and self.train_unlabel_loader is not None:
-            self._init_history()
 
     def __repr__(self) -> str:
         return 'AAESemiTrainer'
@@ -139,13 +137,22 @@ class AAESemiTrainer(trainer.Trainer):
         self.loss_iter      = 0
         self.val_loss_iter  = 0
         self.acc_iter       = 0
-        self.iter_per_epoch = int(len(self.train_label_loader) / self.num_epochs)
 
-        # TODO: check which loader length to use for each history array
-        self.g_loss_history       = np.zeros(len(self.train_label_loader) * self.num_epochs)
-        self.d_loss_history       = np.zeros(len(self.train_label_loader) * self.num_epochs)
-        self.recon_loss_history   = np.zeros(len(self.train_label_loader) * self.num_epochs)
-        self.class_loss_history   = np.zeros(len(self.train_unlabel_loader) * self.num_epochs)
+        if self.train_label_loader is not None:
+            self.iter_per_epoch       = int(len(self.train_label_loader) / self.num_epochs)
+            self.g_loss_history       = np.zeros(len(self.train_label_loader) * self.num_epochs)
+            self.d_loss_history       = np.zeros(len(self.train_label_loader) * self.num_epochs)
+            self.recon_loss_history   = np.zeros(len(self.train_label_loader) * self.num_epochs)
+        else:
+            self.iter_per_epoch       = 0
+            self.g_loss_history       = None
+            self.d_loss_history       = None
+            self.recon_loss_history   = None
+
+        if self.train_unlabel_loader is not None:
+            self.class_loss_history   = np.zeros(len(self.train_unlabel_loader) * self.num_epochs)
+        else:
+            self.class_loss_history = None
 
         if self.val_label_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_label_loader) * self.num_epochs)
@@ -181,6 +188,45 @@ class AAESemiTrainer(trainer.Trainer):
         self.q_encoder_optim.zero_grad()
         self.p_decoder_optim.zero_grad()
 
+    def train(self) -> None:
+        """
+        TRAIN
+        Standard training routine
+        """
+        if self.save_every == -1:
+            self.save_every = len(self.train_label_loader)
+
+        for epoch in range(self.cur_epoch, self.num_epochs):
+            self.train_epoch()
+
+            if self.val_loader is not None:
+                self.val_epoch()
+
+            # save history at the end of each epoch
+            if self.save_hist:
+                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
+                if self.verbose:
+                    print('\t Saving history to file [%s] ' % str(hist_name))
+                self.save_history(hist_name)
+
+            # check we have reached the required accuracy and can stop early
+            if self.stop_when_acc > 0.0 and self.val_label_loader is not None:
+                if self.acc_history[self.acc_iter] >= self.stop_when_acc:
+                    return
+
+            # check if we need to perform early stopping
+            if self.early_stop is not None:
+                if self.cur_epoch > self.early_stop['num_epochs']:
+                    acc_then = self.acc_history[self.acc_iter - self.early_stop['num_epochs']]
+                    acc_now  = self.acc_history[self.acc_iter]
+                    acc_delta = acc_now - acc_then
+                    if acc_delta < self.early_stop['improv']:
+                        if self.verbose:
+                            print('[%s] Stopping early at epoch %d' % (repr(self), self.cur_epoch))
+                        return
+
+            self.cur_epoch += 1
+
     def train_epoch(self) -> None:
         """
         TRAIN_EPOCH
@@ -204,8 +250,8 @@ class AAESemiTrainer(trainer.Trainer):
                     labelled = True
 
                 # send data to device
-                #X.resize_(self.batch_size, self.q_net.get_x_dim())
-                X      = X.resize(self.batch_size, self.q_net.get_x_dim())
+                #X      = X.resize(self.batch_size, self.q_net.get_x_dim())
+                X.resize_(self.batch_size, self.q_net.get_x_dim())
                 X      = X.to(self.device)
                 target = target.to(self.device)
 
@@ -272,6 +318,13 @@ class AAESemiTrainer(trainer.Trainer):
                     self.d_loss_history[self.loss_iter] = d_loss.item()
                     self.recon_loss_history[self.loss_iter] = recon_loss.item()
 
+                    if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
+                        print('[TRAIN] :   Epoch       iteration  [unlabelled] G Loss    D Loss     R Loss')
+                        print('            [%3d/%3d]   [%6d/%6d]  %.6f   %.6f   %.6f' %\
+                                (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_unlabel_loader),
+                                g_loss.item(), d_loss.item(), recon_loss.item() )
+                        )
+
                 # ==== Semi-supervised phase ==== #
                 if labelled:
                     pred, _    = self.q_net.forward(X)
@@ -280,23 +333,15 @@ class AAESemiTrainer(trainer.Trainer):
                     self.q_semi_optim.step()
 
                     self.class_loss_history[self.loss_iter] = class_loss.item()
-
                     self._zero_all_nets()
 
-            # display
-            if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
-                if labelled:
-                    print('[TRAIN] :   Epoch       iteration  [labelled]    Class Loss ')
-                    print('            [%3d/%3d]   [%6d/%6d]             %.6f   ' %\
-                            (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_label_loader),
-                            class_loss.item())
-                    )
-                else:
-                    print('[TRAIN] :   Epoch       iteration  [unlabelled] G Loss    D Loss     R Loss')
-                    print('            [%3d/%3d]   [%6d/%6d]  %.6f   %.6f   %.6f' %\
-                            (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_unlabel_loader),
-                            g_loss.item(), d_loss.item(), recon_loss.item() )
-                    )
+                    if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
+                        print('[TRAIN] :   Epoch       iteration  [labelled]    Class Loss ')
+                        print('            [%3d/%3d]   [%6d/%6d]             %.6f   ' %\
+                                (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_label_loader),
+                                class_loss.item())
+                        )
+
             self.loss_iter += 1
 
     def val_epoch(self) -> None:

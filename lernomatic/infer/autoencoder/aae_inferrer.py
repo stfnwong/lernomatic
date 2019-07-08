@@ -53,23 +53,20 @@ class AAEInferrer(inferrer.Inferrer):
         mod = getattr(imp, checkpoint_data['q_net']['model_name'])
         self.q_net = mod()
         self.q_net.set_params(checkpoint_data['q_net'])
-        # D-Net
-        model_import_path = checkpoint_data['d_net']['model_import_path']
-        imp = importlib.import_module(model_import_path)
-        mod = getattr(imp, checkpoint_data['d_net']['model_name'])
-        self.d_net = mod()
-        self.d_net.set_params(checkpoint_data['d_net'])
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:
         self.q_net.set_eval()
         self.p_net.set_eval()
-        self.q_net.set_cat_mode()
+        #self.q_net.set_cat_mode()
 
         X = X.to(self.device)
         X.resize_(X.shape[0], self.q_net.get_x_dim())
 
-        z_c, z_g = self.q_net.forward(X)
-        #z = torch.cat((z_c, z_g), 1)
-        z = self.p_net.forward(z_c)     # TODO: until I get the cat network sorted
+        q_out = self.q_net.forward(X)
+        if type(q_out) is tuple:
+            z_in = torch.cat((q_out[0], q_out[1]), 1)
+            z = self.p_net.forward(z_in)
+        else:
+            z = self.p_net.forward(q_out)
 
         return z

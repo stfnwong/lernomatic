@@ -64,11 +64,17 @@ class AAETrainer(trainer.Trainer):
         self.loss_iter      = 0
         self.val_loss_iter  = 0
         self.acc_iter       = 0
-        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
 
-        self.g_loss_history     = np.zeros(len(self.train_loader) * self.num_epochs)
-        self.d_loss_history     = np.zeros(len(self.train_loader) * self.num_epochs)
-        self.recon_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
+        if self.train_loader is not None:
+            self.iter_per_epoch     = int(len(self.train_loader) / self.num_epochs)
+            self.g_loss_history     = np.zeros(len(self.train_loader) * self.num_epochs)
+            self.d_loss_history     = np.zeros(len(self.train_loader) * self.num_epochs)
+            self.recon_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
+        else:
+            self.iter_per_epoch     = 0
+            self.g_loss_history     = None
+            self.d_loss_history     = None
+            self.recon_loss_history = None
 
     def _send_to_device(self) -> None:
         if self.p_net is not None:
@@ -179,6 +185,9 @@ class AAETrainer(trainer.Trainer):
             # TODO : scheduling? Usually scheduling doesn't work well on these
             # GAN-type networks
 
+    # Don't do anything for validation
+    def val_epoch(self) -> None:
+        pass
 
     def train(self) -> None:
         """
