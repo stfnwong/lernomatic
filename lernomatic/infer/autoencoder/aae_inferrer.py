@@ -70,3 +70,27 @@ class AAEInferrer(inferrer.Inferrer):
             z = self.p_net.forward(q_out)
 
         return z
+
+
+# TODO : subclassing for now, but a functional approach (args to forward())
+# might be better/less hassle long term
+class AAESemiInferrer(AAEInferrer):
+    def __init__(self,
+                 q_net:common.LernomaticModel=None,
+                 p_net:common.LernomaticModel=None,
+                 **kwargs) -> None:
+        super(AAESemiInferrer, self).__init__(q_net, p_net, **kwargs)
+
+    def __repr__(self) -> str:
+        return 'AAESemiInferrer'
+
+    def forward(self, X:torch.Tensor) -> torch.Tensor:
+        self.q_net.set_eval()
+        self.p_net.set_eval()
+
+        X = X.to(self.device)
+        X.resize_(X.shape[0], self.q_net.get_x_dim())
+        q_out = self.q_net.forward(X)
+        z = self.p_net.forward(q_out[1])
+
+        return z

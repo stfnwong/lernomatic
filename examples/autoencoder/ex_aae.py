@@ -21,7 +21,7 @@ from lernomatic.models import common        # mainly for type hints
 from lernomatic.data.mnist import mnist_sub
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 GLOBAL_OPTS = dict()
@@ -117,7 +117,8 @@ def infer_aae(
     q_net:common.LernomaticModel,
     p_net:common.LernomaticModel,
     batch_size:int,
-    val_dataset) -> None:
+    val_dataset,
+    aae_mode:str='supervised') -> None:
 
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
@@ -127,20 +128,29 @@ def infer_aae(
     )
 
     # Now run inference and generate some examples
-    inferrer = aae_inferrer.AAEInferrer(
-        q_net,
-        p_net,
-        device_id = GLOBAL_OPTS['device_id']
-    )
+    if aae_mode == 'unsupervised':
+        inferrer = aae_inferrer.AAEInferrer(
+            q_net,
+            p_net,
+            device_id = GLOBAL_OPTS['device_id']
+        )
+    elif aae_mode == 'semisupervised':
+        inferrer = aae_inferrer.AAESemiInferrer(
+            q_net,
+            p_net,
+            device_id = GLOBAL_OPTS['device_id']
+        )
+    else:
+        raise NotImplementedError('Mode [%s] not implemented' % str(aae_mode))
 
     # grab some data from the val_loader and push through inferrer
     fig, ax = get_fig_subplots(num_subplots = 2)
 
     for batch_idx, (data, target) in enumerate(val_loader):
         print('Processing validation example [%d / %d]' % (batch_idx+1, len(val_loader)), end='\r')
-        data.resize_(batch_size, inferrer.q_net.get_x_dim())
+        #data.resize_(batch_size, inferrer.q_net.get_x_dim())
         gen_img = inferrer.forward(data)
-        img_filename = 'figures/aae/aae_batch_%d.png' % int(batch_idx)
+        img_filename = 'figures/aae/aae_%s_batch_%d.png' % (str(aae_mode), int(batch_idx))
         recon_to_plt(ax, data.cpu(), gen_img.cpu())
         fig.savefig(img_filename, bbox_inches='tight')
 
@@ -178,7 +188,13 @@ def unsupervised() -> None:
     # GANs
     trainer.train()
 
-    infer_aae(q_net, p_net, GLOBAL_OPTS['batch_size'], val_dataset)
+    infer_aae(
+        q_net,
+        p_net,
+        GLOBAL_OPTS['batch_size'],
+        val_dataset,
+        aae_mode = GLOBAL_OPTS['mode']
+    )
 
 
 def semisupervised() -> None:
@@ -214,7 +230,13 @@ def semisupervised() -> None:
     trainer.train()
 
     # now do an inference pass...
-    infer_aae(q_net, p_net, GLOBAL_OPTS['batch_size'], val_label_dataset)
+    infer_aae(
+        q_net,
+        p_net,
+        GLOBAL_OPTS['batch_size'],
+        val_label_dataset,
+        aae_mode = GLOBAL_OPTS['mode']
+    )
 
 def supervised() -> None:
     raise NotImplementedError('This mode not yet implemented')
