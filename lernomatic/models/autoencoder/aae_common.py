@@ -24,10 +24,10 @@ class AAEQNet(common.LernomaticModel):
                  num_classes:int=10,
                  dropout:float=0.2,
                  cat_mode:bool=False) -> None:
-        self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
-        self.model_name        : str             = 'AAEQNet'
-        self.module_name       : str             = 'AAEQNetModule'
-        self.module_import_path: str             = 'lernomatic.models.autoencoder.aae_common'
+        self.import_path       : str = 'lernomatic.models.autoencoder.aae_common'
+        self.model_name        : str = 'AAEQNet'
+        self.module_name       : str = 'AAEQNetModule'
+        self.module_import_path: str = 'lernomatic.models.autoencoder.aae_common'
         self.net = AAEQNetModule(
             x_dim,
             z_dim,
@@ -136,10 +136,10 @@ class AAEPNet(common.LernomaticModel):
                  z_dim:int=2,
                  hidden_size:int=512,
                  dropout:float=0.2) -> None:
-        self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
-        self.model_name        : str             = 'AAEPNet'
-        self.module_name       : str             = 'AAEPNetModule'
-        self.module_import_path: str             = 'lernomatic.models.autoencoder.aae_common'
+        self.import_path       : str = 'lernomatic.models.autoencoder.aae_common'
+        self.model_name        : str = 'AAEPNet'
+        self.module_name       : str = 'AAEPNetModule'
+        self.module_import_path: str = 'lernomatic.models.autoencoder.aae_common'
         self.net = AAEPNetModule(
             x_dim,
             z_dim,
@@ -187,9 +187,9 @@ class AAEPNet(common.LernomaticModel):
 
 class AAEPNetModule(nn.Module):
     def __init__(self, x_dim:int, z_dim:int, hidden_size:int, dropout:float=0.2) -> None:
-        self.x_dim = x_dim
-        self.z_dim = z_dim
-        self.hidden_size = hidden_size
+        self.x_dim       :int   = x_dim
+        self.z_dim       :int   = z_dim
+        self.hidden_size :int   = hidden_size
         self.dropout     :float = dropout
 
         super(AAEPNetModule, self).__init__()
@@ -216,10 +216,10 @@ class AAEDNetGauss(common.LernomaticModel):
                  z_dim:int=2,
                  hidden_size:int=512,
                  dropout:float=0.2) -> None:
-        self.import_path       : str             = 'lernomatic.models.autoencoder.aae_common'
-        self.model_name        : str             = 'AAEDNetGauss'
-        self.module_name       : str             = 'AAEDNetGaussModule'
-        self.module_import_path: str             = 'lernomatic.models.autoencoder.aae_common'
+        self.import_path       : str = 'lernomatic.models.autoencoder.aae_common'
+        self.model_name        : str = 'AAEDNetGauss'
+        self.module_name       : str = 'AAEDNetGaussModule'
+        self.module_import_path: str = 'lernomatic.models.autoencoder.aae_common'
         self.net = AAEDNetGaussModule(
             z_dim,
             hidden_size,

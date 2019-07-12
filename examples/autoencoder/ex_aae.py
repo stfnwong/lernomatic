@@ -129,7 +129,7 @@ def infer_aae(
 
     # Now run inference and generate some examples
     if aae_mode == 'unsupervised':
-        inferrer = aae_inferrer.AAEInferrer(
+        inferrer = aae_inferrer.AAEUnsupervisedInferrer(
             q_net,
             p_net,
             device_id = GLOBAL_OPTS['device_id']
@@ -198,10 +198,25 @@ def unsupervised() -> None:
 
 
 def semisupervised() -> None:
-    q_net       = aae_common.AAEQNet(MNIST_PARAMS['x_dim'], MNIST_PARAMS['z_dim'], MNIST_PARAMS['hidden_size'])
-    p_net       = aae_common.AAEPNet(MNIST_PARAMS['x_dim'], MNIST_PARAMS['z_dim'], MNIST_PARAMS['hidden_size'])
-    d_cat_net   = aae_common.AAEDNetGauss(MNIST_PARAMS['z_dim'], MNIST_PARAMS['hidden_size'])
-    d_gauss_net = aae_common.AAEDNetGauss(MNIST_PARAMS['z_dim'], MNIST_PARAMS['hidden_size'])
+    q_net = aae_common.AAEQNet(
+        MNIST_PARAMS['x_dim'],
+        MNIST_PARAMS['z_dim'],
+        MNIST_PARAMS['hidden_size'],
+        num_classes = MNIST_PARAMS['num_classes']
+    )
+    p_net = aae_common.AAEPNet(
+        MNIST_PARAMS['x_dim'],
+        MNIST_PARAMS['z_dim'] + MNIST_PARAMS['num_classes'],
+        MNIST_PARAMS['hidden_size']
+    )
+    d_cat_net = aae_common.AAEDNetGauss(
+        MNIST_PARAMS['num_classes'],
+        MNIST_PARAMS['hidden_size']
+    )
+    d_gauss_net = aae_common.AAEDNetGauss(
+        MNIST_PARAMS['z_dim'],
+        MNIST_PARAMS['hidden_size']
+    )
 
     # We also need to sub-sample some parts of the MNIST dataset to produce the
     # 'labelled' data loaders

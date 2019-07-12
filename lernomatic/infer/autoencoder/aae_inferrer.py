@@ -55,13 +55,11 @@ class AAEInferrer(inferrer.Inferrer):
         self.q_net.set_params(checkpoint_data['q_net'])
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:
-        self.q_net.set_eval()
-        self.p_net.set_eval()
-        #self.q_net.set_cat_mode()
-
         X = X.to(self.device)
         X.resize_(X.shape[0], self.q_net.get_x_dim())
 
+        self.q_net.set_eval()
+        self.p_net.set_eval()
         q_out = self.q_net.forward(X)
         if type(q_out) is tuple:
             z_in = torch.cat((q_out[0], q_out[1]), 1)
@@ -72,8 +70,30 @@ class AAEInferrer(inferrer.Inferrer):
         return z
 
 
-# TODO : subclassing for now, but a functional approach (args to forward())
-# might be better/less hassle long term
+
+class AAEUnsupervisedInferrer(AAEInferrer):
+    def __init__(self,
+                 q_net:common.LernomaticModel=None,
+                 p_net:common.LernomaticModel=None,
+                 **kwargs) -> None:
+        super(AAEUnsupervisedInferrer, self).__init__(q_net, p_net, **kwargs)
+
+    def __repr__(self) -> str:
+        return 'AAEUnsupervisedInferrer'
+
+    def forward(self, X:torch.Tensor) -> torch.Tensor:
+        X = X.to(self.device)
+        X.resize_(X.shape[0], self.q_net.get_x_dim())
+
+        self.q_net.set_eval()
+        self.p_net.set_eval()
+        q_out = self.q_net.forward(X)
+        z = self.p_net.forward(q_out)
+
+        return z
+
+
+
 class AAESemiInferrer(AAEInferrer):
     def __init__(self,
                  q_net:common.LernomaticModel=None,
@@ -85,12 +105,13 @@ class AAESemiInferrer(AAEInferrer):
         return 'AAESemiInferrer'
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:
-        self.q_net.set_eval()
-        self.p_net.set_eval()
-
         X = X.to(self.device)
         X.resize_(X.shape[0], self.q_net.get_x_dim())
+
+        self.q_net.set_eval()
+        self.p_net.set_eval()
         q_out = self.q_net.forward(X)
-        z = self.p_net.forward(q_out[1])
+        z_in = torch.cat((q_out[0], q_out[1]), 1)
+        z = self.p_net.forward(z_in)
 
         return z

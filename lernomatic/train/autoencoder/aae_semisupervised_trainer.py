@@ -13,13 +13,13 @@ from lernomatic.models import common
 from lernomatic.train import trainer
 
 #debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 
-def sample_categorical(batch_size:int, n_classes:int=10) -> torch.Tensor:
+def sample_categorical(batch_size:int, num_classes:int=10) -> torch.Tensor:
 
     cat = np.random.randint(0, num_classes, batch_size)
-    cat = np.eye(n_classes)[cat].astype('float32')
+    cat = np.eye(num_classes)[cat].astype('float32')
     cat = torch.from_numpy(cat)
 
     return torch.Tensor(cat)
@@ -50,15 +50,11 @@ class AAESemiTrainer(trainer.Trainer):
 
         super(AAESemiTrainer, self).__init__(None, **kwargs)
         self.stop_when_acc = 0.0
-        # since we re-named the loaders we will call _init_history() here so
 
     def __repr__(self) -> str:
         return 'AAESemiTrainer'
 
     def _init_dataloaders(self) -> None:
-        #super(AAESemiTrainer, self)._init_dataloaders()
-        # also init the 'label' dataloaders
-
         # None these out so that superclass __init__ doesn't complain
         self.train_loader = None
         self.val_loader   = None
@@ -96,8 +92,6 @@ class AAESemiTrainer(trainer.Trainer):
 
     def _init_optimizer(self) -> None:
         # create optimizers for each of the models
-
-        # optimizers for unsupervised phase
         if self.p_net is not None:
             self.p_decoder_optim = torch.optim.Adam(
                 self.p_net.get_model_parameters(),
@@ -242,15 +236,19 @@ class AAESemiTrainer(trainer.Trainer):
 
         self.q_net.set_cat_mode()
 
+        # Alternately provide an unlabelled and labelled example
         for batch_idx, ((X_l, target_l), (X_u, target_u)) in enumerate(zip(self.train_label_loader, self.train_unlabel_loader)):
-            for X, target in [(X_u, target_u), (X_l, target_l)]:
-                if target[0] == -1:
+            for label_step, (X, target) in enumerate([(X_u, target_u), (X_l, target_l)]):
+                #if target[0] == -1:
+                #    labelled = False
+                #else:
+                #    labelled = True
+                if label_step == 0:
                     labelled = False
                 else:
                     labelled = True
 
                 # send data to device
-                #X      = X.resize(self.batch_size, self.q_net.get_x_dim())
                 X.resize_(self.batch_size, self.q_net.get_x_dim())
                 X      = X.to(self.device)
                 target = target.to(self.device)
@@ -269,7 +267,7 @@ class AAESemiTrainer(trainer.Trainer):
                     )
                     recon_loss.backward()
                     self.p_decoder_optim.step()
-                    self.q_decoder_optim.step()
+                    self.q_encoder_optim.step()
                     self._zero_all_nets()
 
                     # ==== Regularization Phase ==== #
@@ -277,7 +275,7 @@ class AAESemiTrainer(trainer.Trainer):
                     self.q_net.set_eval()
                     z_real_cat   = sample_categorical(
                         self.batch_size,
-                        n_classes=self.q_net.get_num_classes()
+                        num_classes=self.q_net.get_num_classes()
                     )
                     z_real_gauss = torch.Tensor(torch.randn(self.batch_size, self.q_net.get_z_dim()))
 
@@ -287,11 +285,11 @@ class AAESemiTrainer(trainer.Trainer):
                     z_fake_cat, z_fake_gauss = self.q_net.forward(X)
 
                     d_real_cat   = self.d_cat_net.forward(z_real_cat)
-                    d_real_gauss = self.d_gauss_net.forward(z_real_cat)
+                    d_real_gauss = self.d_gauss_net.forward(z_real_gauss)
                     d_fake_cat   = self.d_cat_net.forward(z_fake_cat)
-                    d_fake_gauss = self.d_gauss_net.forward(z_fake_cat)
+                    d_fake_gauss = self.d_gauss_net.forward(z_fake_gauss)
 
-                    d_loss_cat = -torch.mean(torch.log(d_real_cat + self.eps), torch.log(1.0 - d_fake_cat + self.eps))
+                    d_loss_cat = -torch.mean(torch.log(d_real_cat + self.eps) + torch.log(1.0 - d_fake_cat + self.eps))
                     d_loss_gauss = -torch.mean(torch.log(d_real_gauss + self.eps) + torch.log(1.0 - d_fake_gauss + self.eps))
 
                     d_loss = d_loss_cat + d_loss_gauss
@@ -306,11 +304,11 @@ class AAESemiTrainer(trainer.Trainer):
                     z_fake_cat, z_fake_gauss = self.q_net.forward(X)
 
                     d_fake_cat = self.d_cat_net.forward(z_fake_cat)
-                    d_fake_gauss = self.d_gauss_net.forward(z_fake_cat)
+                    d_fake_gauss = self.d_gauss_net.forward(z_fake_gauss)
 
                     g_loss = -torch.mean(torch.log(d_fake_cat + self.eps)) - torch.mean(torch.log(d_fake_gauss + self.eps))
                     g_loss.backward()
-                    self.q_decoder_optim.step()
+                    self.q_encoder_optim.step()
                     self._zero_all_nets()
 
                     # save losses
