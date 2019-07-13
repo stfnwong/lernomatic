@@ -11,12 +11,12 @@ import torchvision
 from torchvision import transforms
 from torchvision import datasets
 import torch.nn as nn
-
+# models, etc
+from lernomatic.data import hdf5_dataset
 from lernomatic.models import cvdnet
 from lernomatic.train import trainer
-from lernomatic.train import cvd_trainer
-from lernomatic.data import hdf5_dataset
-
+from lernomatic.train.cvd import cvd_trainer
+# vis
 from lernomatic.vis import vis_loss_history
 
 # debug

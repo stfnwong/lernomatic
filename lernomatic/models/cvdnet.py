@@ -6,6 +6,7 @@ Network for Cats-vs-Dogs
 
 import torch.nn as nn
 import torchvision
+from lernomatic.models import common
 
 # debug
 #from pudb import set_trace; set_trace()
