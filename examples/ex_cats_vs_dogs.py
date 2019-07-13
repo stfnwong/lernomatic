@@ -55,7 +55,7 @@ def main() -> None:
             transform=normalize
         )
 
-        cvd_test_dataset = hdf5_dataset.HDF5Dataset(
+        cvd_val_dataset = hdf5_dataset.HDF5Dataset(
             GLOBAL_OPTS['test_dataset'],
             feature_name = 'images',
             label_name = 'labels',
@@ -70,9 +70,9 @@ def main() -> None:
             train_dataset_transform
         )
 
-        cvd_test_dir = '/home/kreshnik/ml-data/cats-vs-dogs/test'
-        cvd_test_dataset = datasets.ImageFolder(
-            cvd_test_dir,
+        csv_val_dir = '/home/kreshnik/ml-data/cats-vs-dogs/test'
+        cvd_val_dataset = datasets.ImageFolder(
+            csv_val_dir,
             test_dataset_transform
         )
 
@@ -84,7 +84,7 @@ def main() -> None:
         model,
         # dataset options
         train_dataset   = cvd_train_dataset,
-        test_dataset    = cvd_test_dataset,
+        val_dataset     = cvd_val_dataset,
         # training options
         loss_function   = 'CrossEntropyLoss',
         learning_rate   = GLOBAL_OPTS['learning_rate'],

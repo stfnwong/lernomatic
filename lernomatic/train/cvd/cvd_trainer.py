@@ -54,7 +54,7 @@ class CVDTrainer(trainer.Trainer):
             data = data.to(self.device)
             labels = labels.to(self.device)
 
-            output = self.model(data)
+            output = self.model.forward(data)
             loss = self.criterion(output, labels)
             val_loss += loss.item()
 
