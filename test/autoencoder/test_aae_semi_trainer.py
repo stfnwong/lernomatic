@@ -16,7 +16,7 @@ from lernomatic.train.autoencoder import aae_semisupervised_trainer
 from lernomatic.data.mnist import mnist_sub
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -43,10 +43,25 @@ class TestAAESemiTrainer(unittest.TestCase):
         test_checkpoint_file = 'checkpoint/test_aae_semi_trainer_checkpoint.pth'
         test_history_file = 'checkpoint/test_aae_semi_trainer_history.pth'
 
-        q_net       = aae_common.AAEQNet(self.x_dim, self.z_dim, self.hidden_size)
-        p_net       = aae_common.AAEPNet(self.x_dim, self.z_dim, self.hidden_size)
-        d_cat_net   = aae_common.AAEDNetGauss(self.z_dim, self.hidden_size)
-        d_gauss_net = aae_common.AAEDNetGauss(self.z_dim, self.hidden_size)
+        q_net = aae_common.AAEQNet(
+            self.x_dim,
+            self.z_dim,
+            self.hidden_size,
+            num_classes = self.num_classes
+        )
+        p_net = aae_common.AAEPNet(
+            self.x_dim,
+            self.z_dim+ self.num_classes,
+            self.hidden_size
+        )
+        d_cat_net = aae_common.AAEDNetGauss(
+            self.num_classes,
+            self.hidden_size
+        )
+        d_gauss_net = aae_common.AAEDNetGauss(
+            self.z_dim,
+            self.hidden_size
+        )
 
         q_net.set_cat_mode()
         self.assertEqual(True, q_net.net.cat_mode)
@@ -129,6 +144,15 @@ class TestAAESemiTrainer(unittest.TestCase):
         src_trainer.save_history(test_history_file)
         dst_trainer.load_history(test_history_file)
 
+        # Check iteration values
+        self.assertEqual(src_trainer.loss_iter, dst_trainer.loss_iter)
+        self.assertEqual(src_trainer.val_loss_iter, dst_trainer.val_loss_iter)
+        self.assertEqual(src_trainer.train_val_loss_iter, dst_trainer.train_val_loss_iter)
+        self.assertEqual(src_trainer.acc_iter, dst_trainer.acc_iter)
+        self.assertEqual(src_trainer.cur_epoch, dst_trainer.cur_epoch)
+        self.assertEqual(src_trainer.iter_per_epoch, dst_trainer.iter_per_epoch)
+
+        # Check history arrays
         self.assertIsNotNone(dst_trainer.d_loss_history)
         self.assertIsNotNone(dst_trainer.g_loss_history)
         self.assertIsNotNone(dst_trainer.recon_loss_history)

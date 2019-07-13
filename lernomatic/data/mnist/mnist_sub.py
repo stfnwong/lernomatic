@@ -42,6 +42,9 @@ class MNISTSub(torchvision.datasets.MNIST):
             return 10000
 
 
+# This is basically a modified version of the sub-set creation routine at
+# https://github.com/fducau/AAE_pytorch/blob/master/script/create_datasets.py
+# In fact, it ought to be re-factored for modularity
 def gen_mnist_subset(data_dir:str, num_elem:int=300, transform=None, verbose=False) -> tuple:
 
     if transform is None:

@@ -99,6 +99,7 @@ class AAESemiTrainer(trainer.Trainer):
             )
 
         if self.q_net is not None:
+            # un-labelled optimizers for Q net
             self.q_encoder_optim = torch.optim.Adam(
                 self.q_net.get_model_parameters(),
                 lr = self.gen_lr
@@ -106,6 +107,11 @@ class AAESemiTrainer(trainer.Trainer):
             self.q_generator_optim = torch.optim.Adam(
                 self.q_net.get_model_parameters(),
                 lr = self.reg_lr
+            )
+            # labelled optimizer for Q net
+            self.q_semi_optim = torch.optim.Adam(
+                self.q_net.get_model_parameters(),
+                lr = self.semi_lr
             )
 
         if self.d_cat_net is not None:
@@ -120,17 +126,11 @@ class AAESemiTrainer(trainer.Trainer):
                 lr = self.reg_lr
             )
 
-        # optimizers for semi-supervised
-        if self.q_net is not None:
-            self.q_semi_optim = torch.optim.Adam(
-                self.q_net.get_model_parameters(),
-                lr = self.semi_lr
-            )
-
     def _init_history(self) -> None:
-        self.loss_iter      = 0
-        self.val_loss_iter  = 0
-        self.acc_iter       = 0
+        self.loss_iter           = 0
+        self.val_loss_iter       = 0
+        self.acc_iter            = 0
+        self.train_val_loss_iter = 0
 
         if self.train_label_loader is not None:
             self.iter_per_epoch       = int(len(self.train_label_loader) / self.num_epochs)
@@ -144,16 +144,18 @@ class AAESemiTrainer(trainer.Trainer):
             self.recon_loss_history   = None
 
         if self.train_unlabel_loader is not None:
-            self.class_loss_history   = np.zeros(len(self.train_unlabel_loader) * self.num_epochs)
+            self.class_loss_history     = np.zeros(len(self.train_unlabel_loader) * self.num_epochs)
+            self.train_val_loss_history = np.zeros(len(self.train_unlabel_loader) * self.num_epochs)
         else:
-            self.class_loss_history = None
+            self.class_loss_history     = None
+            self.train_val_loss_history = None
 
         if self.val_label_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_label_loader) * self.num_epochs)
-            self.acc_history = np.zeros(len(self.val_label_loader) * self.num_epochs)
+            self.acc_history      = np.zeros(len(self.val_label_loader) * self.num_epochs)
         else:
             self.val_loss_history = None
-            self.acc_history = None
+            self.acc_history      = None
 
     def _send_to_device(self) -> None:
         if self.q_net is not None:
@@ -193,8 +195,11 @@ class AAESemiTrainer(trainer.Trainer):
         for epoch in range(self.cur_epoch, self.num_epochs):
             self.train_epoch()
 
-            if self.val_loader is not None:
+            if self.val_label_loader is not None:
                 self.val_epoch()
+
+            if self.train_unlabel_loader is not None:
+                self.train_val_epoch()
 
             # save history at the end of each epoch
             if self.save_hist:
@@ -239,10 +244,6 @@ class AAESemiTrainer(trainer.Trainer):
         # Alternately provide an unlabelled and labelled example
         for batch_idx, ((X_l, target_l), (X_u, target_u)) in enumerate(zip(self.train_label_loader, self.train_unlabel_loader)):
             for label_step, (X, target) in enumerate([(X_u, target_u), (X_l, target_l)]):
-                #if target[0] == -1:
-                #    labelled = False
-                #else:
-                #    labelled = True
                 if label_step == 0:
                     labelled = False
                 else:
@@ -265,6 +266,7 @@ class AAESemiTrainer(trainer.Trainer):
                         x_sample + self.eps,
                         X.resize(self.batch_size, self.q_net.get_x_dim()) + self.eps
                     )
+                    recon_loss = recon_loss
                     recon_loss.backward()
                     self.p_decoder_optim.step()
                     self.q_encoder_optim.step()
@@ -289,7 +291,7 @@ class AAESemiTrainer(trainer.Trainer):
                     d_fake_cat   = self.d_cat_net.forward(z_fake_cat)
                     d_fake_gauss = self.d_gauss_net.forward(z_fake_gauss)
 
-                    d_loss_cat = -torch.mean(torch.log(d_real_cat + self.eps) + torch.log(1.0 - d_fake_cat + self.eps))
+                    d_loss_cat   = -torch.mean(torch.log(d_real_cat + self.eps) + torch.log(1.0 - d_fake_cat + self.eps))
                     d_loss_gauss = -torch.mean(torch.log(d_real_gauss + self.eps) + torch.log(1.0 - d_fake_gauss + self.eps))
 
                     d_loss = d_loss_cat + d_loss_gauss
@@ -303,12 +305,13 @@ class AAESemiTrainer(trainer.Trainer):
                     self.q_net.set_train()
                     z_fake_cat, z_fake_gauss = self.q_net.forward(X)
 
-                    d_fake_cat = self.d_cat_net.forward(z_fake_cat)
+                    d_fake_cat   = self.d_cat_net.forward(z_fake_cat)
                     d_fake_gauss = self.d_gauss_net.forward(z_fake_gauss)
 
                     g_loss = -torch.mean(torch.log(d_fake_cat + self.eps)) - torch.mean(torch.log(d_fake_gauss + self.eps))
+                    g_loss = g_loss
                     g_loss.backward()
-                    self.q_encoder_optim.step()
+                    self.q_generator_optim.step()
                     self._zero_all_nets()
 
                     # save losses
@@ -317,10 +320,10 @@ class AAESemiTrainer(trainer.Trainer):
                     self.recon_loss_history[self.loss_iter] = recon_loss.item()
 
                     if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
-                        print('[TRAIN] :   Epoch       iteration  [unlabelled] G Loss    D Loss     R Loss')
-                        print('            [%3d/%3d]   [%6d/%6d]  %.6f   %.6f   %.6f' %\
+                        print('[TRAIN] :   Epoch       iteration         [labelled]   G Loss    D Loss     R Loss')
+                        print('            [%3d/%3d]   [%6d/%6d]     %s     %.6f   %.6f   %.6f' %\
                                 (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_unlabel_loader),
-                                g_loss.item(), d_loss.item(), recon_loss.item() )
+                                str(labelled), g_loss.item(), d_loss.item(), recon_loss.item() )
                         )
 
                 # ==== Semi-supervised phase ==== #
@@ -334,15 +337,19 @@ class AAESemiTrainer(trainer.Trainer):
                     self._zero_all_nets()
 
                     if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
-                        print('[TRAIN] :   Epoch       iteration  [labelled]    Class Loss ')
-                        print('            [%3d/%3d]   [%6d/%6d]             %.6f   ' %\
+                        print('[TRAIN] :   Epoch       iteration         [labelled]    Class Loss ')
+                        print('            [%3d/%3d]   [%6d/%6d]     %s        %.6f   ' %\
                                 (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_label_loader),
-                                class_loss.item())
+                                str(labelled), class_loss.item())
                         )
 
             self.loss_iter += 1
 
     def val_epoch(self) -> None:
+        """
+        VAL_EPOCH
+        Run a single epoch on the validation dataset
+        """
         self.q_net.set_eval()
 
         labels = []
@@ -352,29 +359,78 @@ class AAESemiTrainer(trainer.Trainer):
         for batch_idx, (X, target) in enumerate(self.val_label_loader):
             X = X.resize(self.batch_size, self.q_net.get_x_dim())
             X = X.to(self.device)
+            target = target.to(self.device)
 
             labels.extend(target.data.tolist())
-            output = self.q_net.forward(X)
-            val_loss += F.nll_loss(output, target).data[0]
+            output, _ = self.q_net.forward(X)
+            val_loss += F.nll_loss(output, target)
 
             pred = output.data.max(1)[1]
             correct += pred.eq(target.data).cpu().sum()
 
             if (batch_idx % self.print_every) == 0:
-                print('[VAL ]  :   Epoch       iteration         Test Loss')
+                print('[VAL ]  :   Epoch       iteration         Val Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_label_loader), val_loss.item()))
 
-            self.val_loss_history[self.val_loss_iter] = loss.item()
+            self.val_loss_history[self.val_loss_iter] = val_loss.item()
             self.val_loss_iter += 1
 
         avg_val_loss = val_loss / len(self.val_label_loader)
         acc = correct / len(self.val_label_loader.dataset)
         self.acc_history[self.acc_iter] = acc
         self.acc_iter += 1
-        print('[VAL ]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-              (avg_val_loss, correct, len(self.val_label_loader.dataset),
-               100.0 * acc)
+        print('[VAL ]  : Avg. Val Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+              (avg_val_loss, correct, len(self.val_label_loader.dataset), 100.0 * acc)
+        )
+
+        # save the best weights
+        if acc > self.best_acc:
+            self.best_acc = acc
+            if self.save_best is True:
+                ck_name = self.checkpoint_dir + '/' + 'best_' +  self.checkpoint_name + '.pkl'
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s] ' % str(ck_name))
+                self.save_checkpoint(ck_name)
+
+
+    def train_val_epoch(self) -> None:
+        """
+        TRAIN_VAL_EPOCH
+        Run a single epoch of validation on the unlabelled training set.
+        """
+        self.q_net.set_eval()
+
+        labels = []
+        train_u_loss = 0.0
+        correct = 0
+
+        for batch_idx, (X, target) in enumerate(self.train_unlabel_loader):
+            X = X.resize(self.batch_size, self.q_net.get_x_dim())
+            X = X.to(self.device)
+            target = target.to(self.device)
+
+            labels.extend(target.data.tolist())
+            output, _ = self.q_net.forward(X)
+            train_u_loss += F.nll_loss(output, target)
+
+            pred = output.data.max(1)[1]
+            correct += pred.eq(target.data).cpu().sum()
+
+            if (batch_idx % self.print_every) == 0:
+                print('[TRAIN_U_VAL]  :   Epoch       iteration         Test Loss')
+                print('                  [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_unlabel_loader), train_u_loss.item()))
+
+            self.train_val_loss_history[self.train_val_loss_iter] = train_u_loss.item()
+            self.train_val_loss_iter += 1
+
+        avg_val_loss = train_u_loss / len(self.val_label_loader)
+        acc = correct / len(self.val_label_loader.dataset)
+        self.acc_history[self.acc_iter] = acc
+        self.acc_iter += 0
+        print('[VAL ]  : Avg. T(u) Loss : %.4f, Train (U) Accuracy : %d / %d (%.4f%%)' %\
+              (avg_val_loss, correct, len(self.train_unlabel_loader.dataset), 100.0 * acc)
         )
 
         # save the best weights
@@ -389,13 +445,17 @@ class AAESemiTrainer(trainer.Trainer):
 
     def save_history(self, filename:str) -> None:
         history = dict()
-        history['loss_iter']            = self.loss_iter
-        history['cur_epoch']            = self.cur_epoch
-        history['iter_per_epoch']       = self.iter_per_epoch
-        history['g_loss_history']       = self.g_loss_history
-        history['d_loss_history']       = self.d_loss_history
-        history['class_loss_history']   = self.class_loss_history
-        history['recon_loss_history']   = self.recon_loss_history
+        history['loss_iter']              = self.loss_iter
+        history['val_loss_iter']          = self.val_loss_iter
+        history['train_val_loss_iter']    = self.train_val_loss_iter
+        history['acc_iter']               = self.acc_iter
+        history['cur_epoch']              = self.cur_epoch
+        history['iter_per_epoch']         = self.iter_per_epoch
+        history['g_loss_history']         = self.g_loss_history
+        history['d_loss_history']         = self.d_loss_history
+        history['class_loss_history']     = self.class_loss_history
+        history['recon_loss_history']     = self.recon_loss_history
+        history['train_val_loss_history'] = self.train_val_loss_history
         if self.val_loss_history is not None:
             history['val_loss_history'] = self.val_loss_history
             history['val_loss_iter']    = self.val_loss_iter
@@ -407,13 +467,17 @@ class AAESemiTrainer(trainer.Trainer):
 
     def load_history(self, filename:str) -> None:
         history = torch.load(filename)
-        self.loss_iter            = history['loss_iter']
-        self.cur_epoch            = history['cur_epoch']
-        self.iter_per_epoch       = history['iter_per_epoch']
-        self.g_loss_history       = history['g_loss_history']
-        self.d_loss_history       = history['d_loss_history']
-        self.class_loss_history   = history['class_loss_history']
-        self.recon_loss_history   = history['recon_loss_history']
+        self.loss_iter              = history['loss_iter']
+        self.val_loss_iter          = history['val_loss_iter']
+        self.train_val_loss_iter    = history['train_val_loss_iter']
+        self.acc_iter               = history['acc_iter']
+        self.cur_epoch              = history['cur_epoch']
+        self.iter_per_epoch         = history['iter_per_epoch']
+        self.g_loss_history         = history['g_loss_history']
+        self.d_loss_history         = history['d_loss_history']
+        self.class_loss_history     = history['class_loss_history']
+        self.recon_loss_history     = history['recon_loss_history']
+        self.train_val_loss_history = history['train_val_loss_history']
 
         if 'val_loss_history' in history:
             self.val_loss_history = history['val_loss_history']
@@ -428,18 +492,18 @@ class AAESemiTrainer(trainer.Trainer):
             print('\t Saving checkpoint (epoch %d) to [%s]' % (self.cur_epoch, filename))
         checkpoint_data = {
             # networks
-            'q_net'       : self.q_net.get_params(),
-            'p_net'       : self.p_net.get_params(),
-            'd_cat_net'   : self.d_cat_net.get_params(),
-            'd_gauss_net' : self.d_gauss_net.get_params(),
+            'q_net'             : self.q_net.get_params(),
+            'p_net'             : self.p_net.get_params(),
+            'd_cat_net'         : self.d_cat_net.get_params(),
+            'd_gauss_net'       : self.d_gauss_net.get_params(),
             # optimizers
-            'q_semi_optim' : self.q_semi_optim.state_dict(),
-            'd_gauss_optim' : self.d_gauss_optim.state_dict(),
-            'd_cat_optim' : self.d_cat_optim.state_dict(),
+            'q_semi_optim'      : self.q_semi_optim.state_dict(),
+            'd_gauss_optim'     : self.d_gauss_optim.state_dict(),
+            'd_cat_optim'       : self.d_cat_optim.state_dict(),
             'q_generator_optim' : self.q_generator_optim.state_dict(),
-            'q_encoder_optim' : self.q_encoder_optim.state_dict(),
-            'p_decoder_optim' : self.p_decoder_optim.state_dict(),
-            'trainer_params' : self.get_trainer_params(),
+            'q_encoder_optim'   : self.q_encoder_optim.state_dict(),
+            'p_decoder_optim'   : self.p_decoder_optim.state_dict(),
+            'trainer_params'    : self.get_trainer_params(),
         }
         torch.save(checkpoint_data, filename)
 

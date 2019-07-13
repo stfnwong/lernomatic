@@ -1,6 +1,6 @@
 """
-EX_AAE
-Adversairal Autoencoder example
+EX_AAE_MNIST
+Adversairal Autoencoder example with MNIST dataset
 
 Stefan Wong 2019
 """
