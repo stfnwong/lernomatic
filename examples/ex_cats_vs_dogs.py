@@ -135,7 +135,7 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--print-every',
                         type=int,
-                        default=100,
+                        default=20,
                         help='Print output every N epochs'
                         )
     parser.add_argument('--save-every',

@@ -63,7 +63,7 @@ class CVDTrainer(trainer.Trainer):
             correct += torch.sum(pred == labels.data).item()
 
             if (n % self.print_every) == 0:
-                print('[VAL ]  :   Epoch       iteration         Val Loss     Correct    Total ')
+                print('[VAL ]  :   Epoch       iteration         Val Loss    Correct    Total ')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f    %d     %d' %\
                       (self.cur_epoch+1, self.num_epochs, n, len(self.val_loader), loss.item(),
                        correct, len(self.val_loader.dataset))
