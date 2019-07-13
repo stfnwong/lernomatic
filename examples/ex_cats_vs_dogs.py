@@ -20,15 +20,13 @@ from lernomatic.data import hdf5_dataset
 from lernomatic.vis import vis_loss_history
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
-
-
 GLOBAL_USE_HDF5 = True      # until I figure out what is up with HDF5 data
 
-def main():
 
+def main() -> None:
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225])
@@ -122,7 +120,7 @@ def main():
     fig.savefig('figures/cvd_train.png')
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
@@ -244,6 +242,6 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()
