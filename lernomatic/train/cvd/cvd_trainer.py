@@ -8,7 +8,7 @@ Stefan Wong 2018
 import torch
 from lernomatic.train import trainer
 from lernomatic.models import common
-from lernomatic.models import cvdnet
+from lernomatic.models.cvd import cvdnet
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -41,29 +41,14 @@ class CVDTrainer(trainer.Trainer):
         if 'val_loss_history' in history:
             self.val_loss_history = history['val_loss_history']
 
-    def save_checkpoint(self, fname:str) -> None:
-        checkpoint = dict()
-        checkpoint['model'] = self.model.state_dict()
-        checkpoint['optimizer'] = self.optimizer.state_dict()
-        checkpoint['trainer'] = self.get_trainer_params()
-        torch.save(checkpoint, fname)
-
-    def load_checkpoint(self, fname:str) -> None:
-        checkpoint = torch.load(fname)
-        self.set_trainer_params(checkpoint['trainer'])
-        self.model = cvdnet.CVDNet()
-        self.model.load_state_dict(checkpoint['model'])
-        self._init_optimizer()
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
-
     def val_epoch(self) -> None:
         """
         VAL_EPOCH
         Run a single epoch of validation
         """
         self.model.set_eval()
-        test_loss = 0.0
-        correct   = 0
+        val_loss = 0.0
+        correct  = 0
 
         for n, (data, labels) in enumerate(self.val_loader):
             data = data.to(self.device)
@@ -71,7 +56,7 @@ class CVDTrainer(trainer.Trainer):
 
             output = self.model(data)
             loss = self.criterion(output, labels)
-            test_loss += loss.item()
+            val_loss += loss.item()
 
             # accuracy
             _, pred = torch.max(output, 1)
@@ -84,16 +69,15 @@ class CVDTrainer(trainer.Trainer):
                        correct, len(self.val_loader.dataset))
                 )
 
-            self.val_loss_history[self.test_loss_iter] = loss.item()
-            self.test_loss_iter += 1
+            self.val_loss_history[self.val_loss_iter] = loss.item()
+            self.val_loss_iter += 1
 
-        avg_test_loss = test_loss / len(self.val_loader)
+        avg_val_loss = val_loss / len(self.val_loader)
         acc = correct / len(self.val_loader.dataset)
         self.acc_history[self.acc_iter] = acc
         self.acc_iter += 1
         print('[VAL ]  : Avg. Val Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-              (avg_test_loss, correct, len(self.val_loader.dataset),
-               100.0 * acc)
+              (avg_val_loss, correct, len(self.val_loader.dataset), 100.0 * acc)
         )
 
         # save the best weights
