@@ -25,14 +25,14 @@ from lernomatic.vis import vis_loss_history
 
 GLOBAL_OPTS = dict()
 
-def get_figure_subplots(num_subplots=2):
+def get_figure_subplots(num_subplots=2) -> tuple:
     fig = plt.figure()
     ax = []
     for p in range(num_subplots):
         sub_ax = fig.add_subplot(num_subplots, 1, (p+1))
         ax.append(sub_ax)
 
-    return fig, ax
+    return (fig, ax)
 
 
 class TestTrainer(unittest.TestCase):
@@ -276,8 +276,8 @@ class TestTrainer(unittest.TestCase):
 
         test_checkpoint = 'checkpoint/trainer_train_test.pkl'
         model = cifar.CIFAR10Net()
+
         # Get trainer object
-        test_num_epochs = 10
         trainer = cifar_trainer.CIFAR10Trainer(
             model,
             save_every    = 0,
@@ -361,7 +361,6 @@ class TestTrainer(unittest.TestCase):
         self.assertIsNot(None, extend_trainer.loss_history)
         self.assertEqual(10 * len(extend_trainer.train_loader), len(extend_trainer.loss_history))
 
-        # TODO : issue here with tensors not being on the correct device
         extend_trainer.set_num_epochs(20)
         self.assertEqual(20 * len(extend_trainer.train_loader), len(extend_trainer.loss_history))
         for i in range(10 * len(extend_trainer.train_loader)):
@@ -411,7 +410,7 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose']:
         print('-------- GLOBAL OPTS (%s) --------' % str(sys.argv[0]))
         for k, v in GLOBAL_OPTS.items():
-            print('[%s] : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
 
     sys.argv[1:] = args.unittest_args

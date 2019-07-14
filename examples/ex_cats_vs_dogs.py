@@ -11,24 +11,22 @@ import torchvision
 from torchvision import transforms
 from torchvision import datasets
 import torch.nn as nn
-
-from lernomatic.models import cvdnet
-from lernomatic.train import trainer
-from lernomatic.train import cvd_trainer
+# models, etc
 from lernomatic.data import hdf5_dataset
-
+from lernomatic.train import trainer
+from lernomatic.train.cvd import cvd_trainer
+from lernomatic.models.cvd import cvdnet
+# vis
 from lernomatic.vis import vis_loss_history
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
-
-
 GLOBAL_USE_HDF5 = True      # until I figure out what is up with HDF5 data
 
-def main():
 
+def main() -> None:
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225])
@@ -57,7 +55,7 @@ def main():
             transform=normalize
         )
 
-        cvd_test_dataset = hdf5_dataset.HDF5Dataset(
+        cvd_val_dataset = hdf5_dataset.HDF5Dataset(
             GLOBAL_OPTS['test_dataset'],
             feature_name = 'images',
             label_name = 'labels',
@@ -72,9 +70,9 @@ def main():
             train_dataset_transform
         )
 
-        cvd_test_dir = '/home/kreshnik/ml-data/cats-vs-dogs/test'
-        cvd_test_dataset = datasets.ImageFolder(
-            cvd_test_dir,
+        csv_val_dir = '/home/kreshnik/ml-data/cats-vs-dogs/test'
+        cvd_val_dataset = datasets.ImageFolder(
+            csv_val_dir,
             test_dataset_transform
         )
 
@@ -86,7 +84,7 @@ def main():
         model,
         # dataset options
         train_dataset   = cvd_train_dataset,
-        test_dataset    = cvd_test_dataset,
+        val_dataset     = cvd_val_dataset,
         # training options
         loss_function   = 'CrossEntropyLoss',
         learning_rate   = GLOBAL_OPTS['learning_rate'],
@@ -122,7 +120,7 @@ def main():
     fig.savefig('figures/cvd_train.png')
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
@@ -137,7 +135,7 @@ def get_parser():
                         )
     parser.add_argument('--print-every',
                         type=int,
-                        default=100,
+                        default=20,
                         help='Print output every N epochs'
                         )
     parser.add_argument('--save-every',
@@ -244,6 +242,6 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()

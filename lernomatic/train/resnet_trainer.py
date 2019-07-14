@@ -43,10 +43,10 @@ class ResnetTrainer(trainer.Trainer):
             s.append('Training set size :%d\n' % len(self.train_loader.dataset))
         else:
             s.append('Training set not loaded\n')
-        if self.test_loader is not None:
-            s.append('Test set size :%d\n' % len(self.train_loader.dataset))
+        if self.val_loader is not None:
+            s.append('Val set size :%d\n' % len(self.val_loader.dataset))
         else:
-            s.append('Test set not loaded\n')
+            s.append('Val set not loaded\n')
 
         return ''.join(s)
 
