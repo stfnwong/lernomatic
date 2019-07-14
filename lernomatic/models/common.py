@@ -158,7 +158,7 @@ class LernomaticModel(object):
             param.requires_grad = True
 
     # Load the model component directly from a checkpoint
-    def load_checkpoint(self, fname, model_key='model'):
+    def load_checkpoint(self, fname:str, model_key:str='model') -> None:
         """
         load_checkpoint
         Load model information from a trainer checkpoint file

@@ -12,7 +12,7 @@ import torch
 import matplotlib.pyplot as plt
 # units under test
 from lernomatic.train.text import text_trainer
-from lernomatic.models.text import text
+from lernomatic.models.text import text_rnn
 from lernomatic.vis import vis_loss_history
 
 # debug
@@ -61,7 +61,9 @@ class TestTextTrainer(unittest.TestCase):
         src_tr_checkpoint_file = 'checkpoint/test_text_trainer.pkl'
         src_tr_history_file = 'checkpoint/test_text_trainer_history.pkl'
 
-        src_tr = get_text_trainer()
+        # get a word map
+
+        src_tr = get_text_trainer(word_map)
         src_tr.save_every = 0      # we just save a single checkpoint at the end
         src_tr.train()
         src_tr.save_checkpoint(src_tr_checkpoint_file)

@@ -19,7 +19,7 @@ from lernomatic.train.text import seq2seq_trainer
 
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -90,6 +90,9 @@ def main() ->None:
         num_epochs = 10,
         learning_rate = 4e-3,
         device_id = GLOBAL_OPTS['device_id'],
+        save_every = GLOBAL_OPTS['save_every'],
+        # display
+        print_every = GLOBAL_OPTS['print_every'],
 
         # dataset options
         train_dataset = train_dataset,
@@ -109,6 +112,17 @@ def get_parser():
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
+                        )
+    # Display options
+    parser.add_argument('--print-every',
+                        type=int,
+                        default=64,
+                        help='Print output every N epochs'
+                        )
+    parser.add_argument('--save-every',
+                        type=int,
+                        default=-1,
+                        help='Save model checkpoint every N epochs'
                         )
     # Device options
     parser.add_argument('--device-id',
@@ -155,6 +169,11 @@ def get_parser():
                         default=32,
                         help='Number of epochs to train for (default: 32)'
                         )
+    parser.add_argument('--tf-rate',
+                        type=float,
+                        default=0.0,
+                        help='Teacher forcing rate (default: 0.0)'
+                        )
     # TODO : learning rate, learning rate finder...
 
     # data options
@@ -199,5 +218,8 @@ if __name__ == '__main__':
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
             print('\t[%s] : %s' % (str(k), str(v)))
+
+    if GLOBAL_OPTS['tf_rate'] > 1.0 or GLOBAL_OPTS['tf_rate'] < 0.0:
+        raise ValueError('tf_rate (%f) must be 0.0 < tf_rate < 1.0' % GLOBAL_OPTS['tf_rate'])
 
     main()

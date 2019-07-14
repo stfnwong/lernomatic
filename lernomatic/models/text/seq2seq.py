@@ -44,7 +44,6 @@ class EncoderRNNModule(nn.Module):
         super(EncoderRNNModule, self).__init__()
         self.hidden_size :int       = hidden_size
         self.num_layers  :int       = kwargs.pop('num_layers', 1)
-        #embedding = kwargs.pop('embedding', None)
         self.num_words   :int       = kwargs.pop('num_words', 1000)
         self.dropout     :float     = kwargs.pop('dropout', 0.0)
         self.embedding   :nn.Module = kwargs.pop('embedding', None)
@@ -68,23 +67,13 @@ class EncoderRNNModule(nn.Module):
                 hidden=None) -> torch.Tensor:
         embed = self.embedding(input_seq)
         packed = nn.utils.rnn.pack_padded_sequence(embed, input_lengths)
-
-        #  This is where there seem to be type issues
-        # We get a type error here which says that lstm/gru got an invalid
-        # combination of arguments
-        #   got :
-        # (Tensor, Tensor, Tensor, list, float, int,  float, bool, bool)
-        #   but expected one of
-        # (Tensor, Tensor, Tensor, tuple, bool, int,  float, bool bool)
-        #   or:
-        # (Tensor, Tensor, tuple,  bool, int,   float, bool, bool, bool)
-
         outputs, hidden = self.rnn(packed, hidden)
         # unpack the packed padding
         outputs, _ = nn.utils.rnn.pad_packed_sequence(outputs)
         # sum bidirectional GRU outputs
-        outputs = outputs[:, :, self.hidden_size] + outputs[:, :, self.hidden_size:]
+        outputs = outputs[:, :, 0:self.hidden_size] + outputs[:, :, self.hidden_size:]
 
+        # TODO :  hidden should be 3 dimensions here...
         return (outputs, hidden)
 
 
@@ -158,11 +147,11 @@ class GlobalAttentionNetModule(nn.Module):
                 enc_output:torch.Tensor) -> torch.Tensor:
         # compute attention weights
         if self.score_method == 'dot':
-            atten_w = self.dot_score(hidden, enc_out)
+            atten_w = self.dot_score(hidden, enc_output)
         elif self.score_method == 'general':
-            atten_w = self.general_score(hidden, enc_out)
+            atten_w = self.general_score(hidden, enc_output)
         elif self.score_method == 'concat':
-            atten_w = self.concat_score(hidden, enc_out)
+            atten_w = self.concat_score(hidden, enc_output)
 
         # transpose batch dimension
         atten_w = atten_w.t()
@@ -222,6 +211,7 @@ Method:
     7) Return output and final hidden state
 
 """
+# TODO: factor attention out to new sub-module?
 class LuongAttenDecoderRNNModule(nn.Module):
     def __init__(self,
                  hidden_size:int,
@@ -234,8 +224,7 @@ class LuongAttenDecoderRNNModule(nn.Module):
         self.embedding    :nn.Module = kwargs.pop('embedding', None)
         self.num_layers   :int       = kwargs.pop('num_layers', 1)
         self.dropout      :float     = kwargs.pop('dropout', 0.0)
-        #self.num_words    :int       = kwargs.pop('num_words', 1000)
-        score_method :str       = kwargs.pop('score_method', 'dot')
+        score_method      :str       = kwargs.pop('score_method', 'dot')
 
         if self.embedding is None:
             self.embedding = nn.Embedding(self.output_size, self.hidden_size)
@@ -244,21 +233,22 @@ class LuongAttenDecoderRNNModule(nn.Module):
         if self.num_layers == 1:
             self.dropout = 0.0
         self.embed_dropout = nn.Dropout(self.dropout)
-        self.rnn    = nn.GRU(self.hidden_size, self.hidden_size, self.num_layers, self.dropout)
+        self.rnn = nn.GRU(
+            self.hidden_size,
+            self.hidden_size,
+            num_layers=self.num_layers,
+            dropout=self.dropout,
+        )
         self.concat = nn.Linear(2 * self.hidden_size, self.hidden_size)
         self.out    = nn.Linear(self.hidden_size, self.output_size)
         self.atten  = GlobalAttentionNetModule(self.hidden_size, score_method=score_method)
-
 
     def forward(self,
                 input_step:torch.Tensor,
                 prev_hidden:torch.Tensor,
                 enc_out:torch.Tensor) -> torch.Tensor:
         embed = self.embedding(input_step)
-        embed = self.embed_dropout(embed)
-
-        # TODO : pack_padded_sequence here?
-
+        embed = self.embed_dropout(embed)       # <- dim() here = 3
         # pass embedded vector through GRU
         gru_out, gru_hidden = self.rnn(embed, prev_hidden)
         # compute attention weights
@@ -273,7 +263,7 @@ class LuongAttenDecoderRNNModule(nn.Module):
         concat_out  = torch.tanh(self.concat(concat_inp))
 
         # predict next word
-        output = self.out(concat_output)
+        output = self.out(concat_out)
         output = F.softmax(output, dim=1)
 
         return (output, gru_hidden)

@@ -100,17 +100,16 @@ class Seq2SeqTrainer(trainer.Trainer):
 
         self.encoder.set_train()
         self.decoder.set_train()
-        decoder_initial_state = [self.voc.get_sos() for _ in range(self.batch_size)]
+        decoder_initial_state = [[self.voc.get_sos() for _ in range(self.batch_size)]]
+
         for batch_idx, (query, qlen, response, rlen) in enumerate(self.train_loader):
-            loss = 0        # this becomes a tensor later...?
-            totals = 0
-            query = query.to(self.device)
-            response = response.to(self.device)
+            loss     = 0        # this becomes a tensor later...?
+            totals   = 0
 
             # sort tensors in descending order of length
             qlen, qlen_sort_idx = qlen.squeeze(1).sort(dim=0, descending=True)
             rlen, rlen_sort_idx = rlen.squeeze(1).sort(dim=0, descending=True)
-            query = query[qlen_sort_idx]
+            query    = query[qlen_sort_idx]
             response = response[rlen_sort_idx]
 
             query = query.transpose(0, 1)
@@ -119,18 +118,25 @@ class Seq2SeqTrainer(trainer.Trainer):
             # generate response vector mask
             resp_mask = torch.where(
                 response > self.voc.get_pad(),
-                torch.CharTensor([1]),
-                torch.CharTensor([0])
+                torch.ByteTensor([1]),
+                torch.ByteTensor([0])
             )
             resp_mask = resp_mask.to(self.device)
+            query    = query.to(self.device)
+            response = response.to(self.device)
 
             # pass oriented data to models
             enc_output, enc_hidden = self.encoder.forward(query, qlen)
-            dec_input = torch.LongTensor(decoder_initial_state).to(self.device)
+            dec_input  = torch.LongTensor(decoder_initial_state)
+            dec_input  = dec_input.to(self.device)
             dec_hidden = enc_hidden[0 : self.decoder.get_num_layers()]
 
             # decide if we are using teacher forcing this iteration
-            tf_this_batch = True if np.random.random < self.tf_rate else False
+            if np.random.random() < self.tf_rate:
+                tf_this_batch = True
+            else:
+                tf_this_batch = False
+
             if tf_this_batch:
                 for t in range(rlen.max().item()):
                     dec_output, dec_hidden = self.decoder(
@@ -148,7 +154,7 @@ class Seq2SeqTrainer(trainer.Trainer):
                     totals += n_total
             else:
                 for t in range(rlen.max().item()):
-                    dec_output, dec_hidden = self.decoder(
+                    dec_output, dec_hidden = self.decoder.forward(
                         dec_input, dec_hidden, enc_output
                     )
                     # next input is decoders own output
@@ -171,10 +177,23 @@ class Seq2SeqTrainer(trainer.Trainer):
             self.enc_optim.step()
             self.dec_optim.step()
 
+            # save loss history
+            self.loss_history[self.loss_iter] = loss.item()
+            self.loss_iter += 1
+
+            # display
+            if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
+                print('[TRAIN] :   Epoch       iteration         Loss          Forced')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f     %s' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item(), str(tf_this_batch)))
 
     def val_epoch(self) -> None:
+        """
+        VAL_EPOCH
+        Perform validation on one epoch of validation data
+        TODO : Write seperate beam searchers for this which can be brought in as modules
+        """
         pass
-
 
     # checkpoints
     def save_checkpoint(self, filename:str) -> None:
