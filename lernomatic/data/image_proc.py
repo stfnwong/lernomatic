@@ -9,15 +9,45 @@ import h5py
 import cv2
 import numpy as np
 from tqdm import tqdm
+from lernomatic.data import data_split as lm_data_split
 
 # debug
 #from pudb import set_trace; set_trace()
 
 class ImageDataProc(object):
+    """
+    ImageDataProc
+    Process a generic image dataset
+
+    Arguments:
+        image_dataset_name: (str)
+            Name of image dataset in output HDF5 file (default: 'images')
+
+        image_dataset_size: (tuple)
+            Shape of a single image in the image dataset (default: (3, 224, 224))
+
+        label_dataset_name: (str)
+            Name of label dataset in output HDF5 file (default: 'labels')
+
+        label_dataset_size: (tuple)
+            Shape of a single label in the image dataset (default: 1)
+
+        label_dataset_dtype: (int)
+            Datatype of the labels in the label dataset
+
+        id_dataset_name: (str)
+            Name of id dataset in output HDF5 file (default: 'ids')
+
+        id_dtype:
+            Datatype of the ids in the id dataset
+
+        verbose: (bool)
+            Set verbose mode
+
+    """
     def __init__(self, **kwargs) -> None:
         self.verbose = kwargs.pop('verbose', False)
         # dataset options
-        #self.dataset_size       = kwargs.pop('dataset_size', 1000)
         self.image_dataset_name  : str   = kwargs.pop('image_dataset_name', 'images')
         self.image_dataset_size  : tuple = kwargs.pop('image_dataset_size', (3, 224, 224))
         self.label_dataset_name  : str   = kwargs.pop('label_dataset_name', 'labels')
@@ -32,7 +62,11 @@ class ImageDataProc(object):
     def __len__(self) -> int:
         return self.dataset_size
 
-    def proc(self, data_split, outfile) -> None:
+    def proc(self, data_split:lm_data_split.DataSplit, outfile:str) -> None:
+        """
+        proc()
+        Process a split into an HDF5 file
+        """
         with h5py.File(outfile, 'w') as fp:
             images = fp.create_dataset(
                 self.image_dataset_name,

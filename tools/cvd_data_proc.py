@@ -75,7 +75,6 @@ def main():
         data_root = GLOBAL_OPTS['data_root'],
         verbose = GLOBAL_OPTS['verbose']
     )
-
     splits = splitter.gen_splits(
         path_list,
         label_list,
@@ -99,7 +98,7 @@ def main():
 
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
