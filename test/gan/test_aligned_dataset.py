@@ -14,6 +14,7 @@ import h5py
 # unit(s) under test
 from lernomatic.data.gan import aligned_data_split
 from lernomatic.data.gan import aligned_data_proc
+from lernomatic.data.gan import aligned_dataset
 from lernomatic.data import hdf5_dataset
 
 
@@ -120,17 +121,23 @@ class TestAlignedDatasetProc(unittest.TestCase):
         test_b_id_name = 'B_ids'
         with h5py.File(test_outfile, 'r') as fp:
             self.assertIn(test_image_dataset_name, fp)
+            self.assertIn(test_a_id_name, fp)
+            self.assertIn(test_b_id_name, fp)
             self.assertEqual(len(fp[test_image_dataset_name]), len(test_a_paths))
             self.assertEqual(len(fp[test_a_id_name]), len(test_a_paths))
             self.assertEqual(len(fp[test_b_id_name]), len(test_a_paths))
 
         # Test as HDF5Dataset
-        test_dataset = hdf5_dataset.HDF5Dataset(
+        test_dataset = aligned_dataset.AlignedDatasetHDF5(
             test_outfile,
-            feature_name = align_proc.image_dataset_name,
-            label_name = align_proc.id_dataset_name
+            image_dataset_name = align_proc.image_dataset_name,
+            a_id_name = test_a_id_name,
+            b_id_name = test_b_id_name,
+            verbose = self.verbose
         )
         self.assertEqual(len(test_a_paths), len(test_dataset))
+
+        for elem_idx, (
 
         # now that the test is over, get rid of the file
         os.remove(test_outfile)
