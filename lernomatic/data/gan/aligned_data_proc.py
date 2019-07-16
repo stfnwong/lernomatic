@@ -128,6 +128,7 @@ class AlignedImageProc(object):
             )
 
             # add attributes
+            images.attrs['direction'] = self.direction
 
             invalid_file_list = []
             for idx, (a_img_path, b_img_path) in enumerate(
@@ -158,10 +159,12 @@ class AlignedImageProc(object):
 
                 # add image to dataset
                 images[idx] = aligned_image
-                #a_id, _ = os.path.splitext(os.path.basename(a_img_path))
-                #b_id, _ = os.path.splitext(os.path.basename(b_img_path))
-                #a_ids[idx] = a_id
-                #b_ids[idx] = b_id
+                a_id, _ = os.path.splitext(os.path.basename(a_img_path))
+                b_id, _ = os.path.splitext(os.path.basename(b_img_path))
+                a_id    = a_id.encode('ascii')
+                b_id    = b_id.encode('ascii')
+                a_ids[idx] = a_id
+                b_ids[idx] = b_id
 
         # Print stats?
         print('Processed %d images, %s images failed' % (len(a_paths), len(invalid_file_list)))
