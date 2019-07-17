@@ -11,8 +11,6 @@ import torch.nn as nn
 from lernomatic.models import common
 
 
-
-
 class NLayerDiscriminator(common.LernomaticModel):
     def __init__(self,
                  num_input_channels:int,
@@ -81,7 +79,6 @@ class NLayerDiscriminatorModule(nn.Module):
                  num_input_channels:int,
                  num_filters:int=64,
                  num_layers:int=3,
-                 norm_layer=nn.BatchNorm2d,
                  **kwargs) -> None:
 
         self.num_input_channels :int = num_input_channels
@@ -89,8 +86,12 @@ class NLayerDiscriminatorModule(nn.Module):
         self.num_layers         :int = num_layers
         self.ksize              :int = kwargs.pop('ksize', 4)       # kernel width
         self.pad_size           :int = kwargs.pop('pad_size', 1)
+        self.norm_layer              = kwargs.pop('norm_layer', None)
 
         super(NLayerDiscriminator, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+
         if type(norm_layer) == functools.partial:
             use_bias = (norm_layer.func != nn.BatchNorm2d)
         else:

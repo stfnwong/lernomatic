@@ -1,38 +1,102 @@
 """
-EX_TRAIN_RESNETS
-Train a resnet classifier on CIFAR10 (for now)
+EX_PIX2PIX
+Example which trains a pix2pix model
 
 Stefan Wong 2019
 """
 
 import argparse
-from lernomatic.train import resnet_trainer
-from lernomatic.models import resnets
+from lernomatic.train.gan import pix2pix_trainer
+from lernomatic.models.gan.cycle_gan import pix2pix
+from lernomatic.models.gan.cycle_gan import pixel_disc
+from lernomatic.models.gan.cycle_gan import nlayer_disc
+from lernomatic.models.gan.cycle_gan import resnet_generator
+from lernomatic.models.gan.cycle_gan import unet_generator
+from lernomatic.models import common
 
-# debug
-#from pudb import set_trace; set_trace()
+from lernomatic.data.gan import aligned_dataset
+
 
 GLOBAL_OPTS = dict()
 
 
+def get_dataset() -> aligned_dataset.AlignedDatasetHDF5:
+    pass
+
+
+
+# TODO: add in the rest of the kwargs - accept the defaults for now
+def get_generator(gen_type:str, input_nc:int=3, output_nc:int=3, img_size:int=256) -> common.LernomaticModel:
+    if gen_type == 'resnet':
+        gen = resnet_generator.ResnetGenerator(
+            input_nc,
+            output_nc,
+        )
+
+    elif gen_type == 'unet':
+        if img_size == 128:
+            num_filters = 7
+        elif img_size == 256:
+            num_filters = 8
+        else:
+            raise ValueError('img_size [%d] must be either 128, 256' % int(img_size))
+
+        gen = unet_generator.UNETGenerator(
+            input_nc,
+            output_nc,
+            num_filters = num_filters
+        )
+    else:
+        raise ValueError('Generator [%s] not supported' % str(gen_type))
+
+    return gen
+
+
+# TODO: add in the rest of the kwargs
+def get_discriminator(disc_type:str, input_nc:int, num_filters:int=64, num_layers:int=3) -> common.LernomaticModel:
+    if disc_type == 'nlayer':
+        disc = nlayer_disc.NLayerDiscriminator(
+            input_nc,
+            num_filters = num_filters,
+            num_layers = num_layers
+        )
+    elif disc_type == 'pixel':
+        disc = pixel_disc.PixelDiscriminator(
+            input_nc,
+            num_filters,
+        )
+    else:
+        raise ValueError('Discriminator [%s] not supported' % str(disc_type))
+
+    return disc
+
+
 def main() -> None:
-    # Get a model
-    model = resnets.WideResnet(
-        GLOBAL_OPTS['num_layers'],
-        GLOBAL_OPTS['num_classes'],
-        GLOBAL_OPTS['widen_factor']
+    # get some models
+    generator = get_generator(
+        GLOBAL_OPTS['gen_type'],
+        3,      # input channels
+        3       # output channels
+    )
+    discriminator = get_discriminator(
+        GLOBAL_OPTS['disc_type'],
+        3,      # input channels
     )
 
-    # Get a trainer
-    # NOTE: no need for special dataset opts for now
-    trainer = resnet_trainer.ResnetTrainer(
-        model,
-        # training parameters
-        batch_size = GLOBAL_OPTS['batch_size'],
-        num_epochs = GLOBAL_OPTS['num_epochs'],
+    # get some data
+    train_data = get_dataset(GLOBAL_OPTS['train_data_path'])
+
+    # get a trainer
+    trainer = pix2pix_trainer.Pix2PixTrainer(
+        # models
+        discriminator,
+        generator,
+        # dataset
+        train_dataset = train_dataset,
+        # training params
+        batch_size    = GLOBAL_OPTS['batch_size'],
         learning_rate = GLOBAL_OPTS['learning_rate'],
-        momentum = GLOBAL_OPTS['momentum'],
-        weight_decay = GLOBAL_OPTS['weight_decay'],
+        num_epochs    = GLOBAL_OPTS['num_epochs'],
         # device
         device_id = GLOBAL_OPTS['device_id'],
         # checkpoint
@@ -41,12 +105,11 @@ def main() -> None:
         # display,
         print_every = GLOBAL_OPTS['print_every'],
         save_every = GLOBAL_OPTS['save_every'],
-        verbose = GLOBAL_OPTS['verbose']
     )
 
-    trainer.train()
 
-def get_parser() -> argparse.ArgumentParser:
+
+def get_parser() -> argparser.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
@@ -76,21 +139,7 @@ def get_parser() -> argparse.ArgumentParser:
                         help='Set device id (-1 for CPU)'
                         )
     # Network options
-    parser.add_argument('--num-layers',
-                        type=int,
-                        default=28,
-                        help='Number of layers for Resnet model'
-                        )
-    parser.add_argument('--num-classes',
-                        type=int,
-                        default=10,
-                        help='Number of output classes for classification'
-                        )
-    parser.add_argument('--widen-factor',
-                        type=int,
-                        default=1,
-                        help='Widen factor for wide Resnet'
-                        )
+
     # Training options
     parser.add_argument('--start-epoch',
                         type=int,
@@ -117,17 +166,17 @@ def get_parser() -> argparse.ArgumentParser:
                         default=1e-3,
                         help='Learning rate for optimizer'
                         )
-    parser.add_argument('--momentum',
-                        type=float,
-                        default=0.5,
-                        help='Momentum for SGD'
-                        )
-    parser.add_argument('--grad-clip',
-                        type=float,
-                        default=5.0,
-                        help='Clip gradients at this (absolute) value'
-                        )
     # Data options
+    parser.add_argument('--train-data-path',
+                        type=str,
+                        default='/home/kreshnik/ml-data/night2day/train/',
+                        help='Path to training data'
+                        )
+    parser.add_argument('--val-data-path',
+                        type=str,
+                        default='/home/kreshnik/ml-data/night2day/val/',
+                        help='Path to training data'
+                        )
     parser.add_argument('--checkpoint-dir',
                         type=str,
                         default='./checkpoint',
@@ -135,7 +184,7 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='resnet-cifar10',
+                        default='pix2pix',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',
@@ -162,6 +211,6 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()

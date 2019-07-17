@@ -54,6 +54,7 @@ class Trainer(object):
         self.val_dataset            = kwargs.pop('val_dataset', None)
         self.shuffle         :float = kwargs.pop('shuffle', True)
         self.num_workers     :int   = kwargs.pop('num_workers' , 1)
+        self.drop_last       :bool  = kwargs.pop('drop_last', True)
         # parameter scheduling
         self.lr_scheduler           = kwargs.pop('lr_scheduler', None)
         self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
@@ -65,7 +66,6 @@ class Trainer(object):
         self.best_acc = 0.0
         if self.save_every > 0:
             self.save_best = True
-        self.start_epoch = 0
 
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()
@@ -77,8 +77,7 @@ class Trainer(object):
         # Init the loss and accuracy history. If no train_loader is provided
         # then we assume that one will be loaded later (eg: in some checkpoint
         # data)
-        if self.train_loader is not None:
-            self._init_history()
+        self._init_history()
 
         self._send_to_device()
 
@@ -119,7 +118,12 @@ class Trainer(object):
         self.val_loss_iter  = 0
         self.acc_iter       = 0
         self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
-        self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+
+        if self.train_loader is not None:
+            self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+        else:
+            self.loss_history = None
+
         if self.val_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)
             self.acc_history = np.zeros(len(self.val_loader) * self.num_epochs)
@@ -134,6 +138,7 @@ class Trainer(object):
             self.train_loader = torch.utils.data.DataLoader(
                 self.train_dataset,
                 batch_size = self.batch_size,
+                drop_last = self.drop_last,
                 shuffle = self.shuffle
             )
 
@@ -143,6 +148,7 @@ class Trainer(object):
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset,
                 batch_size = self.val_batch_size,
+                drop_last = self.drop_last,
                 shuffle    = self.shuffle
             )
 
@@ -152,6 +158,7 @@ class Trainer(object):
             self.val_loader = torch.utils.data.DataLoader(
                 self.val_dataset,
                 batch_size = self.val_batch_size,
+                drop_last = self.drop_last,
                 shuffle    = False
             )
 
@@ -402,7 +409,7 @@ class Trainer(object):
                 self.save_history(hist_name)
 
             # check we have reached the required accuracy and can stop early
-            if self.stop_when_acc > 0.0 and self.test_loader is not None:
+            if self.stop_when_acc > 0.0 and self.val_loader is not None:
                 if self.acc_history[self.acc_iter] >= self.stop_when_acc:
                     return
 

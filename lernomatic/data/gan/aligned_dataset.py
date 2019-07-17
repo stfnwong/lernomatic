@@ -5,6 +5,7 @@ Dataset that provides aligned image pairs
 Stefan Wong 2019
 """
 
+import cv2
 import h5py
 import torch
 from torch.utils.data import Dataset
@@ -12,21 +13,46 @@ from torch.utils.data import Dataset
 
 # Aligned dataset from Folders/Paths
 class AlignedDataset(Dataset):
-    def __init__(self, data_root:str, **kwargs) -> None:
-        self.data_root = data_root
+    def __init__(self, a_data_paths:list, b_data_paths:list, **kwargs) -> None:
+        self.a_data_paths :list = a_data_paths
+        self.b_data_paths :list = b_data_paths
+        self.data_root    :str  = kwargs.pop('data_root', None)
+        self.input_nc     :int  = kwargs.pop('input_nc', 3)
+        self.output_nc    :int  = kwargs.pop('output_nc', 3)
         self.transform = kwargs.pop('transform', None)
 
-        # TODO : need a way to get all the paths for A and B datasets
+        # Ensure that we have the same number of A paths as B paths
+        if len(self.a_data_paths) != len(self.b_data_paths):
+            raise ValueError('[%s] num A paths (%d) must equal num B paths (%d)' %\
+                    (repr(self), len(self.a_data_paths), len(self.b_data_paths))
+            )
 
     def __repr__(self) -> str:
         return 'AlignedDataset'
 
     def __len__(self) -> int:
-        return 0        # will these use HDF5?
+        return len(self.a_data_paths)
 
     def __getitem__(self, idx:int) -> tuple:
-        pass
+        if idx > len(self):
+            raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
+        if self.data_root is None:
+            a_img = cv2.imread(self.a_data_paths[idx])
+            b_img = cv2.imread(self.b_data_paths[idx])
+        else:
+            a_img = cv2.imread(str(self.data_root + self.a_data_paths[idx]))
+            b_img = cv2.imread(str(self.data_root + self.b_data_paths[idx]))
+
+        # transpose the image arrays to match the pytorch tensor shape order
+        a_img = a_img.transpose(2, 0, 1)
+        b_img = b_img.transpose(2, 0, 1)
+
+        if self.transform is not None:
+            a_img = self.transform(a_img)
+            b_img = self.transform(b_img)
+
+        return (a_img, b_img)
 
 
 # TODO : subclass from HDF5Dataset?
@@ -54,9 +80,7 @@ class AlignedDatasetHDF5(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return len(self.fp[self.image_dataset_name])
 
-    # TODO: actually, I think I want to take the AB image and split it
-    # manually into A and B images
-    def __getitem(self, idx:int) -> tuple:
+    def __getitem__(self, idx:int) -> tuple:
         if idx > len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 

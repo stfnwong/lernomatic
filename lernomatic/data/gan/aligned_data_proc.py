@@ -14,8 +14,7 @@ from lernomatic.data.gan import aligned_data_split
 from lernomatic.util import image_util
 
 # debug
-from pudb import set_trace; set_trace()
-
+#from pudb import set_trace; set_trace()
 
 
 def align_image_arrays(a_img:np.ndarray,
@@ -101,7 +100,6 @@ class AlignedImageProc(object):
 
         return (img_a, img_b, status_ok)
 
-    # TODO : proc from two data split objects?
     def proc(self, a_paths:list, b_paths:list, outfile:str) -> None:
         if len(a_paths) != len(b_paths):
             raise ValueError('Number of a_paths (%d) must match number of b_paths (%d)' %\

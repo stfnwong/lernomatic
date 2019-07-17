@@ -27,6 +27,9 @@ def main() -> None:
     print('test_a_root [%s] contains %d files' % (test_a_root, len(test_a_paths)))
     print('test_b_root [%s] contains %d files' % (test_b_root, len(test_b_paths)))
 
+    data_proc = aligned_data_proc.AlignedImageProc(
+        verbose = GLOBAL_OPTS['verbose']
+    )
 
 
 
