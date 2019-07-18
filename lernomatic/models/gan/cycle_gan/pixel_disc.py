@@ -19,7 +19,6 @@ class PixelDiscriminator(common.LernomaticModel):
         self.net = PixelDiscriminatorModule(
             num_input_channels,
             num_filters = num_filters,
-            norm_layer = norm_layer,
             **kwargs)
 
         self.import_path        : str = 'lernomatic.model.gan.cycle_gan.pixel_disc'
@@ -74,18 +73,19 @@ class PixelDiscriminatorModule(nn.Module):
 
         self.num_input_channels:int = num_input_channels
         self.num_filters:int    = num_filters
-        self.ksize:int          = kwargs.pop('ksize' 1)
+        self.ksize:int          = kwargs.pop('ksize', 1)
         self.stride:int         = kwargs.pop('stride', 1)
         self.pad_size:int       = kwargs.pop('pad_size', 0)
+        self.norm_layer         = kwargs.pop('norm_layer', None)
         super(PixelDiscriminatorModule, self).__init__()
 
-        if type(norm_layer) is None:
-            norm_layer = nn.BatchNorm2d()
+        if self.norm_layer is None:
+            self.norm_layer = nn.BatchNorm2d
 
-        if type(norm_layer) == functools.partial:
-            use_bias = norm_layer.func != nn.InstanceNorm2d
+        if type(self.norm_layer) == functools.partial:
+            use_bias = self.norm_layer.func != nn.InstanceNorm2d
         else:
-            use_bias = norm_layer != nn.Instance2d
+            use_bias = self.norm_layer != nn.InstanceNorm2d
 
         self.model = [
             nn.Conv2d(self.num_input_channels,
@@ -102,7 +102,7 @@ class PixelDiscriminatorModule(nn.Module):
                       padding = self.pad_size,
                       bias = use_bias
             ),
-            norm_layer(self.num_filters * 2),
+            self.norm_layer(self.num_filters * 2),
             nn.LeakyReLU(0.2, True),
             nn.Conv2d(self.num_filters * 2,
                       1,

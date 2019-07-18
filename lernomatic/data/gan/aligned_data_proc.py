@@ -26,7 +26,7 @@ class AlignedImageProc(object):
     """
     ALIGINEDIMAGEPROC
     Processs aligned image data into and HDF5 file.
-    For use with CycleGAN/pix2pix models
+    For use with pix2pix models
 
     Arguments:
 

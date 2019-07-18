@@ -12,35 +12,7 @@ import functools
 import torch
 import torch.nn as nn
 from lernomatic.models import common
-from lernomatic.models.cycle_gan import gan_resnet
-
-
-def get_norm_layer(norm_type:str='instance') -> nn.Module:
-
-    if norm_type == 'batch':
-        norm_layer = functools.partial(
-            nn.BatchNorm2d,
-            affine=True,
-            track_running_stats=True
-        )
-    elif norm_layer == 'instance':
-        norm_layer = functools.partial(
-            nn.InstanceNorm2d,
-            affine=False,
-            track_running_stats=False
-        )
-    elif norm_layer == 'none':
-        norm_layer = lambda x: IdentityModule()
-    else:
-        raise NotImplementedError('[%s] normalization layer not supported' % str(norm_type))
-
-    return norm_layer
-
-
-
-class IdentityModule(nn.Module):
-    def forward(self, X:torch.Tensor) -> torch.Tensor:
-        return X
+from lernomatic.models.gan import gan_norm
 
 
 # This is the same resnet block as in
@@ -72,7 +44,7 @@ class ResnetBlock(nn.Module):
                 padding = p,
                 bias = use_bias
             ),
-            norm_layer = norm_layer,
+            norm_layer(num_channels),
             nn.ReLU(True)
         ]
 
@@ -94,7 +66,7 @@ class ResnetBlock(nn.Module):
                 padding = p,
                 bias = use_bias
             ),
-            norm_layer = norm_layer,
+            norm_layer(num_channels)
         ]
 
         self.conv_block = nn.Sequential(*block)
@@ -114,8 +86,8 @@ class ResnetGenerator(common.LernomaticModel):
             input_channels,
             output_channels,
             **kwargs)
-        self.import_path = 'lernomatic.models.cycle_gan.resnet_gen'
-        self.module_import_path = 'lernomatic.models.cycle_gan.resnet_gen'
+        self.import_path = 'lernomatic.models.gan.cycle_gan.resnet_gen'
+        self.module_import_path = 'lernomatic.models.gan.cycle_gan.resnet_gen'
         self.model_name = 'ResnetGenerator'
         self.module_name = 'ResnetGeneratorModule'
 
@@ -158,13 +130,13 @@ class ResnetGenerator(common.LernomaticModel):
 
 
 
-class ResnetGenerator(nn.Module):
+class ResnetGeneratorModule(nn.Module):
     def __init__(self, input_channels:int, output_channels:int, **kwargs) -> None:
         self.input_channels:int = input_channels
         self.output_channels:int = output_channels
 
         self.num_blocks:int      = kwargs.pop('num_blocks', 6)
-        self.num_gen_filters:int = kwargs.pop('num_gen_filters', 64)
+        self.num_filters:int     = kwargs.pop('num_filters', 64)
         self.drop_rate:float     = kwargs.pop('drop_rate', 0.0)
         self.norm_type:str       = kwargs.pop('norm_type', 'instance')
         self.padding_type:str    = kwargs.pop('padding_type', 'reflect')
@@ -175,7 +147,7 @@ class ResnetGenerator(nn.Module):
 
         super(ResnetGeneratorModule, self).__init__()
 
-        self.norm_layer = get_norm_layer(self.norm_type)
+        self.norm_layer = gan_norm.get_norm_layer(self.norm_type)
         if type(self.norm_layer) == functools.partial:
             use_bias = self.norm_layer.func == nn.InstanceNorm2d
         else:
@@ -206,7 +178,7 @@ class ResnetGenerator(nn.Module):
                     stride = 2,
                     padding = 1,
                     bias = use_bias
-                )
+                ),
                 self.norm_layer(self.num_filters * mult * 2),
                 nn.ReLU(True)
             ]
@@ -217,7 +189,7 @@ class ResnetGenerator(nn.Module):
             model += [
                 ResnetBlock(
                     self.num_filters * mult,
-                    padding_type = self.padding_type,
+                    pad_type = self.padding_type,
                     norm_layer = self.norm_layer,
                     use_dropout = self.use_dropout,
                     use_bias = use_bias
@@ -242,7 +214,7 @@ class ResnetGenerator(nn.Module):
             ]
 
         model += [nn.ReflectionPad2d(3)]
-        model += [nn.Conv2d(self.num_filters, self.output_nc, kernel_size = 7, padding = 0)]
+        model += [nn.Conv2d(self.num_filters, self.output_channels, kernel_size = 7, padding = 0)]
         model += [nn.Tanh()]
 
         self.model = nn.Sequential(*model)

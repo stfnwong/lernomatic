@@ -12,12 +12,16 @@ from lernomatic.train import trainer
 from lernomatic.models.gan import gan_loss
 
 
+# debug
+from pudb import set_trace; set_trace()
+
+
 class Pix2PixTrainer(trainer.Trainer):
     def __init__(self,
                  d_net:common.LernomaticModel=None,
                  g_net:common.LernomaticModel=None,
                  **kwargs) -> None:
-        self.d_net            = d_net,
+        self.d_net            = d_net
         self.g_net            = g_net
         self.beta1     :float = kwargs.pop('beta1', 0.5)
         self.l1_lambda :float = kwargs.pop('l1_lambda', 100.0)
@@ -76,19 +80,18 @@ class Pix2PixTrainer(trainer.Trainer):
         TRAIN_EPOCH
         Train the networks on a single epoch of data
         """
-
         self.d_net.set_train()
         self.g_net.set_train()
 
         for batch_idx, (a_real, b_real) in enumerate(self.train_loader):
-
             a_real = a_real.to(self.device)
             b_real = b_real.to(self.device)
 
             # ======= Train discriminator ======== #
             self.d_optim.zero_grad()
-            ab_fake     = torch.cat((a_real, b_real), 1)
-            pred_fake   = self.d_net.forward(pred_fake.detach()) #  remove gradient references
+            b_fake      = self.g_net.forward(a_real)  # find G(A)
+            ab_fake     = torch.cat((a_real, b_fake), 1)
+            pred_fake   = self.d_net.forward(ab_fake.detach()) #  remove gradient references
             # fake loss
             d_loss_fake = self.gan_criterion(pred_fake, target_real=False)
             ab_real     = torch.cat((a_real, b_read), 1)
@@ -106,7 +109,7 @@ class Pix2PixTrainer(trainer.Trainer):
 
             pred_fake = self.d_net(ab_fake)
             g_loss_gan = self.gan_criterion(pred_fake, True)
-            g_loss_l1  = self.l1_criterion(b_fake, b_real)) * self.l1_lambda
+            g_loss_l1  = self.l1_criterion(b_fake, b_real) * self.l1_lambda
             g_loss     = g_loss_gan + g_loss_l1
             g_loss.backward()
 
@@ -142,13 +145,72 @@ class Pix2PixTrainer(trainer.Trainer):
         pass
 
     def save_checkpoint(self, fname:str) -> None:
-        pass
+        checkpoint_data = {
+            # models
+            'd_net'   : self.d_net.get_params(),
+            'g_net'   : self.g_net.get_params(),
+            # optimizers
+            'd_optim' : self.d_optim.state_dict(),
+            'g_optim' : self.g_optim.state_dict(),
+            'trainer_params' : self.get_trainer_params()
+        }
+        torch.save(checkpoint_data,fname)
+
 
     def load_checkpoint(self, fname:str) -> None:
-        pass
+        checkpoint_data = torch.load(fname)
+        # get generator
+        model_import_path = checkpoint_data['g_net']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['g_net']['model_name'])
+        self.g_net = mod()
+        self.g_net.set_params(checkpoint_data['g_net'])
+        # get discriminator
+        model_import_path = checkpoint_data['d_net']['model_import_path']
+        imp = importlib.import_module(model_import_path)
+        mod = getattr(imp, checkpoint_data['d_net']['model_name'])
+        self.d_net = mod()
+        self.d_net.set_params(checkpoint_data['d_net'])
+
+        # load generator optimizer
+        self._init_optimizer()
+        self.g_optim.load_state_dict(checkpoint_data['g_optim'])
+        # Transfer all the tensors to the current device
+        for state in self.g_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        # load discriminator optimizer
+        self.g_optim.load_state_dict(checkpoint_data['g_optim'])
+        # Transfer all the tensors to the current device
+        for state in self.g_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
+        # restore trainer object info
+        self._send_to_device()
 
     def save_history(self, fname:str) -> None:
-        pass
+        history = dict()
+        history['loss_iter'] = self.loss_iter
+        history['val_loss_iter']  = self.val_loss_iter
+        history['acc_iter']       = self.acc_iter
+
+        if self.train_loader is not None:
+            history['iter_per_epoch'] = self.iter_per_epoch
+            history['g_loss_history'] = self.g_loss_history
+            history['d_loss_history'] = self.d_loss_history
+
+        torch.save(history, fname)
 
     def load_history(self, fname:str) -> None:
-        pass
+        history = torch.load(fname)
+
+        self.loss_iter = history['loss_iter']
+        self.val_loss_iter = history['val_loss_iter']
+        self.acc_iter = history['acc_iter']
+        self.g_loss_history = history['g_loss_history']
+        self.d_loss_history = history['d_loss_history']
+        self.iter_per_epoch = history['iter_per_epoch']

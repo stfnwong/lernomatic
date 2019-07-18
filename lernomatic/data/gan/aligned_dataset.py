@@ -11,42 +11,44 @@ import torch
 from torch.utils.data import Dataset
 
 
+from pudb import set_trace; set_trace()
+
+
 # Aligned dataset from Folders/Paths
 class AlignedDataset(Dataset):
-    def __init__(self, a_data_paths:list, b_data_paths:list, **kwargs) -> None:
-        self.a_data_paths :list = a_data_paths
-        self.b_data_paths :list = b_data_paths
+    def __init__(self, ab_data_paths:list, **kwargs) -> None:
+        self.ab_data_paths:list = ab_data_paths
         self.data_root    :str  = kwargs.pop('data_root', None)
         self.input_nc     :int  = kwargs.pop('input_nc', 3)
         self.output_nc    :int  = kwargs.pop('output_nc', 3)
+        self.do_transpose:bool  = kwargs.pop('do_transpose', True)
         self.transform = kwargs.pop('transform', None)
-
-        # Ensure that we have the same number of A paths as B paths
-        if len(self.a_data_paths) != len(self.b_data_paths):
-            raise ValueError('[%s] num A paths (%d) must equal num B paths (%d)' %\
-                    (repr(self), len(self.a_data_paths), len(self.b_data_paths))
-            )
 
     def __repr__(self) -> str:
         return 'AlignedDataset'
 
     def __len__(self) -> int:
-        return len(self.a_data_paths)
+        return len(self.ab_data_paths)
 
     def __getitem__(self, idx:int) -> tuple:
         if idx > len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
         if self.data_root is None:
-            a_img = cv2.imread(self.a_data_paths[idx])
-            b_img = cv2.imread(self.b_data_paths[idx])
+            ab_img = cv2.imread(self.ab_data_paths[idx])
         else:
-            a_img = cv2.imread(str(self.data_root + self.a_data_paths[idx]))
-            b_img = cv2.imread(str(self.data_root + self.b_data_paths[idx]))
+            ab_img = cv2.imread(str(self.data_root + self.ab_data_paths[idx]))
 
+        # TODO : could have another thing here for grayscale?
         # transpose the image arrays to match the pytorch tensor shape order
-        a_img = a_img.transpose(2, 0, 1)
-        b_img = b_img.transpose(2, 0, 1)
+        if self.do_transpose:
+            ab_img = ab_img.transpose(2, 0, 1)
+
+        # split into two images
+        _, ab_w, ab_h = ab_img.shape
+        w2 = int(ab_w / 2)
+        a_img = ab_img[:, 0: w2, 0 : ab_h]
+        b_img = ab_img[:, w2:ab_w, 0: ab_h]
 
         if self.transform is not None:
             a_img = self.transform(a_img)

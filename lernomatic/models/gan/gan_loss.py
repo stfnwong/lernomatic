@@ -3,6 +3,7 @@ GAN_LOSS
 
 """
 
+import functools
 import torch
 import torch.nn as nn
 
@@ -30,8 +31,8 @@ class GANLoss(nn.Module):
                  target_fake_label:float=0.0) -> None:
         super(GANLoss, self).__init__()
 
-        self.register_buffer('real_label', torch.Tensor(target_real_label))
-        self.register_buffer('fake_label', torch.Tensor(target_fake_label))
+        self.register_buffer('real_label', torch.tensor(target_real_label))
+        self.register_buffer('fake_label', torch.tensor(target_fake_label))
 
         self.gan_mode = mode
         if self.gan_mode == 'lsgan':

@@ -50,13 +50,13 @@ def get_gan_transforms(**kwargs):
         ]
 
     if do_flip:
-        transforms += [transforms.Lambda(
+        transform_list += [transforms.Lambda(
             lambda img: image_util.make_power_2(
                 img, base=4, method=method)
             )
         ]
     else:
-        transforms += [transforms.RandomHorizontalFlip()]
+        transform_list += [transforms.RandomHorizontalFlip()]
 
     if to_tensor:
         transform_list += [transforms.ToTensor()]

@@ -22,9 +22,16 @@ class UnalignedDataset(Dataset):
         self.input_nc:int        = kwargs.pop('input_nc', 3)
         self.output_nc:int       = kwargs.pop('output_nc', 3)
         self.serial_batches:bool = kwargs.pop('serial_batches', False)
+        self.do_transpose:bool   = kwargs.pop('do_transpose', True)
         # TODO: direction?
         self.num_a_elem:int    = len(self.a_data_paths)
         self.num_b_elem:int    = len(self.b_data_paths)
+
+        # Ensure that we have the same number of A paths as B paths
+        if len(self.a_data_paths) != len(self.b_data_paths):
+            raise ValueError('[%s] num A paths (%d) must equal num B paths (%d)' %\
+                    (repr(self), len(self.a_data_paths), len(self.b_data_paths))
+            )
 
     def __repr__(self) -> str:
         return 'UnalignedDataset'
@@ -41,13 +48,16 @@ class UnalignedDataset(Dataset):
             b_idx = np.random.randint(0, self.num_b_elem-1)
         cur_b_path = self.b_data_paths[b_idx]
 
-        a_img = cv2.imread(cur_a_path).transpose(2, 0, 1)
-        b_img = cv2.imread(cur_b_path).transpose(2, 0, 1)
+        # I don't know when you wouldn't do this, but just in case
+        if self.do_transpose:
+            a_img = cv2.imread(cur_a_path).transpose(2, 0, 1)
+            b_img = cv2.imread(cur_b_path).transpose(2, 0, 1)
 
         if self.transform:
             a_img = self.transform(a_img)
             b_img = self.transform(b_img)
 
         return (a_img, b_img)
+
 
 # TODO: HDF5 version
