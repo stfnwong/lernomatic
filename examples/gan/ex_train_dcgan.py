@@ -9,8 +9,8 @@ import argparse
 from torchvision import datasets
 from torchvision import transforms
 from lernomatic.data import hdf5_dataset
-from lernomatic.models import dcgan
-from lernomatic.train import dcgan_trainer
+from lernomatic.models.gan import dcgan
+from lernomatic.train.gan import dcgan_trainer
 from lernomatic.vis import vis_loss_history
 
 # debug
@@ -19,8 +19,7 @@ from lernomatic.vis import vis_loss_history
 GLOBAL_OPTS = dict()
 
 
-def main():
-
+def main() -> None:
     if GLOBAL_OPTS['dataset'] is not None:
         celeba_transform = transforms.Compose([
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -96,7 +95,7 @@ def main():
 
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
@@ -230,6 +229,6 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()

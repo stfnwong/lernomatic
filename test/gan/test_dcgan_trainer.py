@@ -13,8 +13,8 @@ import torch
 import torchvision
 from torchvision import transforms
 # units under test
-from lernomatic.models import dcgan
-from lernomatic.train import dcgan_trainer
+from lernomatic.models.gan import dcgan
+from lernomatic.train.gan import dcgan_trainer
 
 
 # debug

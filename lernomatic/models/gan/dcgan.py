@@ -8,14 +8,17 @@ import torch
 import torch.nn as nn
 from lernomatic.models import common
 
+# This is a pretty basic convolutional gan, I think that I took the structure
+# for this from the pytorch tutorial, so its not an espeically novel or
+# 'sophisiticated' DCGAN architecture
 
 class DCGGenerator(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:
         self.net = DCGGeneratorModule(**kwargs)
         self.model_name = 'DCGGenerator'
         self.module_name = 'DCGGeneratorModule'
-        self.import_path = 'lernomatic.models.dcgan'
-        self.module_import_path = 'lernomatic.models.dcgan'
+        self.import_path = 'lernomatic.models.gan.dcgan'
+        self.module_import_path = 'lernomatic.models.gan.dcgan'
 
     def __repr__(self) -> str:
         return 'DCGGenerator'
@@ -82,8 +85,8 @@ class DCGDiscriminator(common.LernomaticModel):
         # internal bookkeeping
         self.model_name = 'DCGDiscriminator'
         self.module_name = 'DCGDiscriminatorModule'
-        self.import_path = 'lernomatic.models.dcgan'
-        self.module_import_path = 'lernomatic.models.dcgan'
+        self.import_path = 'lernomatic.models.gan.dcgan'
+        self.module_import_path = 'lernomatic.models.gan.dcgan'
 
     def __repr__(self) -> str:
         return 'DCGDiscriminator'
