@@ -15,7 +15,7 @@ GLOBAL_OPTS = dict()
 
 
 def tensor_to_img(X:torch.Tensor) -> None:
-    img = X.numpy()
+    img = X.cpu().numpy()
 
     # get the image in a form suitable for display
     img = img.transpose(1, 2, 0)
