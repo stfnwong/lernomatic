@@ -125,7 +125,7 @@ class Pix2PixTrainer(trainer.Trainer):
             # display training progress
             if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
                 print('[TRAIN] :   Epoch       iteration         G Loss    D Loss     ')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f   %.6f   %.6f' %\
+                print('            [%3d/%3d]   [%6d/%6d]         %.6f   %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader),
                        g_loss.item(), d_loss.item())
                 )

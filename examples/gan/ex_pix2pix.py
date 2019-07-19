@@ -17,6 +17,10 @@ from lernomatic.models import common
 from lernomatic.data.gan import aligned_dataset
 from lernomatic.data.gan import gan_transforms
 
+# measure training time
+import time
+from datetime import timedelta
+
 # debug
 #from pudb import set_trace; set_trace()
 
@@ -143,7 +147,14 @@ def main() -> None:
         print_every = GLOBAL_OPTS['print_every'],
         save_every = GLOBAL_OPTS['save_every'],
     )
+
+    train_start_time = time.time()
     trainer.train()
+    train_end_time = time.time()
+    train_total_time = train_end_time - train_start_time
+    print('Total training time : %s' % \
+          str(timedelta(seconds=run_total_time))
+    )
 
 
 
@@ -157,12 +168,12 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--print-every',
                         type=int,
-                        default=100,
+                        default=10,
                         help='Print output every N epochs'
                         )
     parser.add_argument('--save-every',
                         type=int,
-                        default=1000,
+                        default=-1,
                         help='Save model checkpoint every N epochs'
                         )
     parser.add_argument('--num-workers',
