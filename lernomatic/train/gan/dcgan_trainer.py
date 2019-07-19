@@ -14,7 +14,7 @@ from lernomatic.models import common
 from lernomatic.models.gan import dcgan
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 
 class DCGANTrainer(trainer.Trainer):

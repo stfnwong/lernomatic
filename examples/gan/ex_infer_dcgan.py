@@ -5,19 +5,29 @@ Infer on a DCGAN Model
 Stefan Wong 2019
 """
 
+import torch
 import argparse
+import numpy as np
 import matplotlib.pyplot as plt
 from lernomatic.infer.dcgan import dcgan_inferrer
 
 GLOBAL_OPTS = dict()
 
 
-# debug
-from pudb import set_trace; set_trace()
+def tensor_to_img(X:torch.Tensor) -> None:
+    img = X.numpy()
+
+    # get the image in a form suitable for display
+    img = img.transpose(1, 2, 0)
+    img_min = img.min()
+    img = img + np.abs(img_min)     # get all values positive
+    img_max = img.max()
+    img = img / np.abs(img_max)     # normalize to [0..1]
+
+    return img
 
 
 def main() -> None:
-
     inferrer = dcgan_inferrer.DCGANInferrer(
         None,
         img_size  = GLOBAL_OPTS['image_size'],
@@ -27,11 +37,10 @@ def main() -> None:
 
     # TODO : generate a number of images to file
     img = inferrer.forward()
-    out_img = img.numpy()
-    out_img = out_img.transpose(1, 2, 0)
-
+    out_img = tensor_to_img(img)
     # get figures
     fig, ax = plt.subplots()
+    ax.imshow(out_img)
     fig.tight_layout()
     fig.savefig(GLOBAL_OPTS['img_outfile'])
 
