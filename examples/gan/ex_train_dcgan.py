@@ -5,6 +5,8 @@ Train a DCGAN
 Stefan Wong 2019
 """
 
+import time
+from datetime import timedelta
 import argparse
 from torchvision import datasets
 from torchvision import transforms
@@ -79,7 +81,11 @@ def main() -> None:
         gan_trainer.load_checkpoint(GLOBAL_OPTS['load_checkpoint'])
 
     print(gan_trainer.device)
+    train_start_time = time.time()
     gan_trainer.train()
+    train_end_time = time.time()
+    train_total_time = train_end_time - train_start_time
+    print('Total training time : %s' % str(timedelta(seconds = train_total_time)))
     # show the training results
     dcgan_fig, dcgan_ax = vis_loss_history.get_figure_subplots(1)
     vis_loss_history.plot_train_history_dcgan(
@@ -201,7 +207,7 @@ def get_parser() -> argparse.ArgumentParser:
     # checkpoint options
     parser.add_argument('--checkpoint-dir',
                         type=str,
-                        default='./checkpoint',
+                        default='./checkpoint/',
                         help='Set directory to place training snapshots into'
                         )
     parser.add_argument('--checkpoint-name',

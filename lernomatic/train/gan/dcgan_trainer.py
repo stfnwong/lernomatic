@@ -18,13 +18,17 @@ from lernomatic.models.gan import dcgan
 
 
 class DCGANTrainer(trainer.Trainer):
-    def __init__(self, D, G, **kwargs) -> None:
+    def __init__(self,
+                 D:common.LernomaticModel=None,
+                 G:common.LernomaticModel=None,
+                 **kwargs) -> None:
         self.discriminator = D
         self.generator     = G
         self.beta1         = kwargs.pop('beta1', 0.5)
         self.real_label    = kwargs.pop('real_label', 1)
         self.fake_label    = kwargs.pop('fake_label', 0)
-        self.train_loader  = None        # so that super() does not call _init_history()
+        # option to save a history of generated images each epoch
+
         super(DCGANTrainer, self).__init__(None, **kwargs)
 
         self.train_dataset = kwargs.pop('train_dataset', None)
@@ -56,7 +60,7 @@ class DCGANTrainer(trainer.Trainer):
                 shuffle = self.shuffle,
                 drop_last = True
             )
-        self.test_loader = None     # TODO : clean up references to this later
+        self.test_loader = None
 
     def _init_history(self) -> None:
         self.loss_iter = 0
@@ -202,6 +206,8 @@ class DCGANTrainer(trainer.Trainer):
                     print('\t Saving checkpoint to file [%s]' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+    def val_epoch(self) -> None:
+        pass
 
     def train(self) -> None:
         self._send_to_device()
@@ -218,7 +224,6 @@ class DCGANTrainer(trainer.Trainer):
             self.save_history(hist_name)
 
             self.cur_epoch += 1
-
 
     # also need to overload some of the history functions
     def get_loss_history(self) -> tuple:        # TODO ; more extensive type hint?
