@@ -48,6 +48,7 @@ def get_generator(gen_type:str, input_nc:int=3, output_nc:int=3, img_size:int=25
         gen = resnet_gen.ResnetGenerator(
             input_nc,
             output_nc,
+            num_filters = 64
         )
     elif gen_type == 'unet':
         if img_size == 128:
@@ -60,7 +61,8 @@ def get_generator(gen_type:str, input_nc:int=3, output_nc:int=3, img_size:int=25
         gen = unet_gen.UNETGenerator(
             input_nc,
             output_nc,
-            num_downsamples
+            num_downsamples,
+            num_filters = 64
         )
     else:
         raise ValueError('Generator [%s] not supported' % str(gen_type))
@@ -76,7 +78,7 @@ def get_discriminator(disc_type:str, input_nc:int, num_filters:int=64, num_layer
             num_filters = num_filters,
             num_layers = num_layers
         )
-    elif disc_type == 'pixel':
+    elif disc_type == 'pixel':      # 1x1 PixelGAN discriminator
         disc = pixel_disc.PixelDiscriminator(
             input_nc,
             num_filters
@@ -99,7 +101,7 @@ def main() -> None:
 
     discriminator = get_discriminator(
         GLOBAL_OPTS['disc_type'],
-        3,      # input channels
+        3 + 3,      # input channels + output_channels (when replacing with vars use input_nc + output_nc here)
     )
     if GLOBAL_OPTS['verbose']:
         print('Got discriminator [%s]' % repr(discriminator))
@@ -177,7 +179,7 @@ def get_parser() -> argparse.ArgumentParser:
     # Network options
     parser.add_argument('--gen-type',
                         type=str,
-                        default='unet',
+                        default='resnet',
                         help='Type of generator to use (resnet or unet)'
                         )
     parser.add_argument('--disc-type',

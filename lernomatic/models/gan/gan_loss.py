@@ -27,6 +27,7 @@ class GANLoss(nn.Module):
     """
     def __init__(self,
                  mode:str,
+                 device,
                  target_real_label:float=1.0,
                  target_fake_label:float=0.0) -> None:
         super(GANLoss, self).__init__()
@@ -35,6 +36,7 @@ class GANLoss(nn.Module):
         self.register_buffer('fake_label', torch.tensor(target_fake_label))
 
         self.gan_mode = mode
+        self.device = device
         if self.gan_mode == 'lsgan':
             self.loss = nn.MSELoss()
         elif self.gan_mode == 'vanilla':
@@ -61,7 +63,7 @@ class GANLoss(nn.Module):
         Create label tensors with same size as input
         """
         if target_real:
-            target_tensor = self.real_label
+            target_tensor = self.real_label.to(self.device)
         else:
-            target_tensor = self.fake_label
+            target_tensor = self.fake_label.to(self.device)
         return target_tensor.expand_as(pred)

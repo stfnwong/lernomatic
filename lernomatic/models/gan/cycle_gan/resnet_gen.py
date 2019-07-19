@@ -86,10 +86,10 @@ class ResnetGenerator(common.LernomaticModel):
             input_channels,
             output_channels,
             **kwargs)
-        self.import_path = 'lernomatic.models.gan.cycle_gan.resnet_gen'
+        self.import_path        = 'lernomatic.models.gan.cycle_gan.resnet_gen'
         self.module_import_path = 'lernomatic.models.gan.cycle_gan.resnet_gen'
-        self.model_name = 'ResnetGenerator'
-        self.module_name = 'ResnetGeneratorModule'
+        self.model_name         = 'ResnetGenerator'
+        self.module_name        = 'ResnetGeneratorModule'
 
     def __repr__(self) -> str:
         return 'ResnetGenerator'
@@ -101,7 +101,7 @@ class ResnetGenerator(common.LernomaticModel):
         return self.net.norm_type
 
     def get_params(self) -> dict:
-        params = super(WideResnet, self).get_params()
+        params = super(ResnetGenerator, self).get_params()
         params['gen_params'] = {
             'input_nc'        : self.net.input_nc,
             'output_nc'       : self.net.output_nc,

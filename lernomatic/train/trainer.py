@@ -67,10 +67,10 @@ class Trainer(object):
         if self.save_every > 0:
             self.save_best = True
 
-        # Setup optimizer. If we have no model then assume it will be
-        self._init_optimizer()
         # set up device
         self._init_device()
+        # Setup optimizer. If we have no model then assume it will be
+        self._init_optimizer()
         # Init the internal dataloader options. If nothing provided assume that
         # we will load options in later (eg: from checkpoint)
         self._init_dataloaders()

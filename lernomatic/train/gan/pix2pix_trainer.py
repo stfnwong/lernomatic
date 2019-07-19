@@ -71,7 +71,7 @@ class Pix2PixTrainer(trainer.Trainer):
         else:
             self.g_optim = None
 
-        self.gan_criterion = gan_loss.GANLoss(self.gan_mode)
+        self.gan_criterion = gan_loss.GANLoss(self.gan_mode, self.device)
         self.l1_criterion  = torch.nn.L1Loss()
 
 
@@ -87,19 +87,16 @@ class Pix2PixTrainer(trainer.Trainer):
             a_real = a_real.to(self.device)
             b_real = b_real.to(self.device)
 
-            print('a_real.shape : %s' % str(a_real.shape))
-            print('b_real.shape : %s' % str(b_real.shape))
-
-            b_fake      = self.g_net.forward(a_real)  # find G(A)
+            # Find G(A)  (fake data)
+            b_fake      = self.g_net.forward(a_real)
 
             # ======= Train discriminator ======== #
             self.d_optim.zero_grad()
-            ab_fake     = torch.cat((a_real, b_fake), 1)
-            print('ab_fake.shape : %s' % str(ab_fake.shape))
+            ab_fake     = torch.cat((a_real, b_fake), dim=1)
             pred_fake   = self.d_net.forward(ab_fake.detach()) #  remove gradient references
             # fake loss
             d_loss_fake = self.gan_criterion(pred_fake, target_real=False)
-            ab_real     = torch.cat((a_real, b_read), 1)
+            ab_real     = torch.cat((a_real, b_real), 1)
             pred_real   = self.d_net.forward(ab_real)
             # real loss
             d_loss_real = self.gan_criterion(pred_real, target_real=True)
@@ -112,7 +109,7 @@ class Pix2PixTrainer(trainer.Trainer):
             self.d_net.set_eval()
             self.g_optim.zero_grad()
 
-            pred_fake = self.d_net(ab_fake)
+            pred_fake = self.d_net.forward(ab_fake)
             g_loss_gan = self.gan_criterion(pred_fake, True)
             g_loss_l1  = self.l1_criterion(b_fake, b_real) * self.l1_lambda
             g_loss     = g_loss_gan + g_loss_l1
@@ -122,7 +119,7 @@ class Pix2PixTrainer(trainer.Trainer):
 
             # update loss history
             self.d_loss_history[self.loss_iter] = d_loss.item()
-            self.g_loss_history[self.loss_iter] = loss_g.item()
+            self.g_loss_history[self.loss_iter] = g_loss.item()
             self.loss_iter += 1
 
             # display training progress

@@ -95,9 +95,7 @@ class UNETSkipConnectionBlock(nn.Module):
             down = [downconv]
             up   = [uprelu, upconv, nn.Tanh()]
             model = down + [submodule] + up
-
         elif self.innermost:
-
             upconv = nn.ConvTranspose2d(
                 self.inner_nf,
                 self.outer_nf,
@@ -109,7 +107,6 @@ class UNETSkipConnectionBlock(nn.Module):
             down = [downrelu, downconv]
             up   = [uprelu, upconv, upnorm]
             model = down + up
-
         else:
             upconv = nn.ConvTranspose2d(
                 self.inner_nf * 2,
@@ -134,63 +131,6 @@ class UNETSkipConnectionBlock(nn.Module):
             return self.model(X)
         else:
             return torch.cat([X, self.model(X)], 1)
-
-
-
-class UNETGenerator(common.LernomaticModel):
-    """
-    UNETGenerator
-    LernomaticModel wrapper around a Generator based on the U-NET Architecture
-    """
-    def __init__(self, input_nc:int, output_nc:int, num_downsamples:int,
-                 num_filters:int=64, **kwargs) -> None:
-
-        self.net = UNETGeneratorModule(
-            input_nc,
-            output_nc,
-            num_downsamples,
-            num_filters = num_filters,
-            **kwargs)
-
-        self.import_path        : str = 'lernomatic.model.gan.cycle_gan.unet_gen'
-        self.module_import_path : str = 'lernomatic.model.gan.cycle_gan.unet_gen'
-        self.model_name         : str = 'UNETGenerator'
-        self.module_name        : str = 'UNETGenenratorModule'
-
-    def __repr__(self) -> str:
-        return 'UNETGenerator (%d downsamples)' % self.net.num_downsamples
-
-    def get_num_downsamples(self) -> int:
-        return self.net.num_downsamples
-
-    def get_params(self) -> dict:
-        params = super(WideResnet, self).get_params()
-        params['gen_params'] = {
-            'input_nc'        : self.net.input_nc,
-            'output_nc'       : self.net.output_nc,
-            'num_downsamples' : self.net.num_downsamples,
-            'num_filters'     : self.net.num_filters,
-        }
-
-        return params
-
-    def set_params(self, params : dict) -> None:
-        # regular model stuff
-        self.import_path = params['model_import_path']
-        self.model_name  = params['model_name']
-        self.module_name = params['module_name']
-        self.module_import_path = params['module_import_path']
-        # Import the actual network module
-        imp = importlib.import_module(self.module_import_path)
-        mod = getattr(imp, self.module_name)
-        self.net = mod(
-            params['gen_params']['input_nc'],
-            params['gen_params']['output_nc'],
-            num_filters     = params['gen_params']['num_filters'],
-            num_downsamples = params['gen_params']['num_downsamples'],
-        )
-        self.net.load_state_dict(params['model_state_dict'])
-
 
 
 class UNETGeneratorModule(nn.Module):
@@ -254,3 +194,60 @@ class UNETGeneratorModule(nn.Module):
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:
         return self.model(X)
+
+
+
+class UNETGenerator(common.LernomaticModel):
+    """
+    UNETGenerator
+    LernomaticModel wrapper around a Generator based on the U-NET Architecture
+    """
+    def __init__(self, input_nc:int, output_nc:int, num_downsamples:int,
+                 num_filters:int=64, **kwargs) -> None:
+
+        self.net = UNETGeneratorModule(
+            input_nc,
+            output_nc,
+            num_downsamples,
+            num_filters = num_filters,
+            **kwargs)
+
+        self.import_path        : str = 'lernomatic.model.gan.cycle_gan.unet_gen'
+        self.module_import_path : str = 'lernomatic.model.gan.cycle_gan.unet_gen'
+        self.model_name         : str = 'UNETGenerator'
+        self.module_name        : str = 'UNETGenenratorModule'
+
+    def __repr__(self) -> str:
+        return 'UNETGenerator (%d downsamples)' % self.net.num_downsamples
+
+    def get_num_downsamples(self) -> int:
+        return self.net.num_downsamples
+
+    def get_params(self) -> dict:
+        params = super(UNETGenerator, self).get_params()
+        params['gen_params'] = {
+            'input_nc'        : self.net.input_nc,
+            'output_nc'       : self.net.output_nc,
+            'num_downsamples' : self.net.num_downsamples,
+            'num_filters'     : self.net.num_filters,
+        }
+
+        return params
+
+    def set_params(self, params : dict) -> None:
+        # regular model stuff
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod(
+            params['gen_params']['input_nc'],
+            params['gen_params']['output_nc'],
+            num_filters     = params['gen_params']['num_filters'],
+            num_downsamples = params['gen_params']['num_downsamples'],
+        )
+        self.net.load_state_dict(params['model_state_dict'])
+
