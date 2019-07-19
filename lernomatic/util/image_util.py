@@ -7,12 +7,15 @@ Stefan Wong 2019
 
 import numpy as np
 import cv2
+from PIL import Image
 
+# NOTE: iamges have to be PIL for now due to torchvision internals
 
 def make_power_2(img:np.ndarray,
                  base:int,
-                 interp_method=cv2.INTER_CUBIC) -> np.ndarray:
-    ow, oh = img.shape
+                 interp_method=Image.BICUBIC) -> np.ndarray:
+    #ow, oh = img.shape
+    ow, oh = img.size
     h = int(np.round(oh / base) * base)
     w = int(np.round(ow / base) * base)
     if (h == oh) and (w == ow):
@@ -21,11 +24,13 @@ def make_power_2(img:np.ndarray,
     return img.resize((w, h), interp_method)
 
 
-def scale_width(img:np.ndarray, target_w:int, interp_method=cv2.INTER_CUBIC) -> np.ndarray:
-    if len(img.shape) == 3:
-        _, ow, oh = img.shape
-    else:
-        ow, oh = img.shape
+def scale_width(img:np.ndarray, target_w:int, interp_method=Image.BICUBIC) -> np.ndarray:
+    #if len(img.shape) == 3:
+    #    _, ow, oh = img.shape
+    #else:
+    #    ow, oh = img.shape
+
+    ow, oh = img.size
     if(ow == target_w):
         return img
     w = target_w
@@ -35,15 +40,21 @@ def scale_width(img:np.ndarray, target_w:int, interp_method=cv2.INTER_CUBIC) -> 
 
 
 def crop(img:np.ndarray, x_pos:int, y_pos:int, size:int) -> np.ndarray:
-    if len(img.shape) == 3:
-        _, ow, oh = img.shape
-    else:
-        ow, oh = img.shape
-    if (ow > size or oh > size):
-        return img[:, x_pos : x_pos + size, y_pos : y_pos + size]
+    #if len(img.shape) == 3:
+    #    _, ow, oh = img.size
+    #else:
+    #    ow, oh = img.size
+    #if (ow > size or oh > size):
+    #    return img[:, x_pos : x_pos + size, y_pos : y_pos + size]
+
+    ow, oh = img.size
+    if(ow > size or oh > size):
+        return img.crop((x_pos, y_pos, x_pos + size, y_pos+size))
+
     return img
 
 
+# TODO : this is effectively deprecated until the OpenCV stuff is solved
 def get_random_crop(src_w:int, src_h:int, **kwargs) -> tuple:
     mode:str       = kwargs.pop('mode', 'resize')
     crop_size:int  = kwargs.pop('crop_size', 256)
@@ -74,5 +85,9 @@ def get_random_flip() -> bool:
 
 def flip(img:np.ndarray, flip:bool=False) -> np.ndarray:
     if flip:
-        return cv2.flip(img, 0)     # horizontal flip
+        return img.transpose(Image.FLIP_LEFT_RIGHT)
     return img
+
+    #if flip:
+    #    return cv2.flip(img, 0)     # horizontal flip
+    #return img

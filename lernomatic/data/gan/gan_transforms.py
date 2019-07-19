@@ -21,6 +21,7 @@ def get_gan_transforms(**kwargs):
     grayscale:bool      = kwargs.pop('grayscale', False)
     crop_pos:tuple      = kwargs.pop('crop_pos', None)
     crop_size:int       = kwargs.pop('crop_size', 256)
+    scale_size:int      = kwargs.pop('scale_size', 256)
     method              = kwargs.pop('method', cv2.INTER_CUBIC)
 
     transform_list = []

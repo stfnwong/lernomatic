@@ -4,6 +4,7 @@ UNET GENERATOR
 Stefan Wong 2019
 """
 
+import functools
 import torch
 import torch.nn as nn
 from lernomatic.models import common
@@ -56,21 +57,23 @@ class UNETSkipConnectionBlock(nn.Module):
         self.ksize:int              = kwargs.pop('ksize', 4)
         self.stride:int             = kwargs.pop('stride', 2)
         self.pad_size:int           = kwargs.pop('pad_size', 1)
+        self.use_dropout:bool       = kwargs.pop('use_dropout', False)
 
         super(UNETSkipConnectionBlock, self).__init__()
 
         if self.norm_layer is None:
-            self.norm_layer = nn.BatchNorm2d()
-        if type(norm_layer) == functools.partial:
-            use_bias = norm_layer.func == nn.InstanceNorm2d
+            self.norm_layer = nn.BatchNorm2d
+
+        if type(self.norm_layer) == functools.partial:
+            use_bias = self.norm_layer.func == nn.InstanceNorm2d
         else:
-            use_bias = norm_layer == nn.InstanceNorm2d
+            use_bias = self.norm_layer == nn.InstanceNorm2d
         if self.input_num_channels is None:
             self.input_num_channels = self.outer_nf
 
         downconv = nn.Conv2d(
             self.input_num_channels,
-            self.input_nf,
+            self.inner_nf,
             kernel_size = self.ksize,
             stride      = self.stride,
             padding     = self.pad_size,
@@ -93,7 +96,7 @@ class UNETSkipConnectionBlock(nn.Module):
             up   = [uprelu, upconv, nn.Tanh()]
             model = down + [submodule] + up
 
-        elif self.innnermost:
+        elif self.innermost:
 
             upconv = nn.ConvTranspose2d(
                 self.inner_nf,
@@ -209,7 +212,7 @@ class UNETGeneratorModule(nn.Module):
             self.norm_layer = nn.BatchNorm2d
 
         # generate the UNET structure
-        unet_block = UNETSkipConnection(
+        unet_block = UNETSkipConnectionBlock(
             self.num_filters * 8,
             self.num_filters * 8,
             input_nc = None,
@@ -218,7 +221,7 @@ class UNETGeneratorModule(nn.Module):
             norm_layer = self.norm_layer
         )
         for block in range(num_downsamples - 5):
-            unet_block = UNETSkipConnection(
+            unet_block = UNETSkipConnectionBlock(
                 self.num_filters * 8,
                 self.num_filters * 8,
                 input_nc = None,
@@ -226,7 +229,7 @@ class UNETGeneratorModule(nn.Module):
                 norm_layer = self.norm_layer
             )
         # reduce the number of filters down from 8 * num_filters to num_filters
-        unet_block = UNETSkipConenctionBlock(
+        unet_block = UNETSkipConnectionBlock(
             self.num_filters * 4,
             self.num_filters * 8,
             input_nc = None,
@@ -237,14 +240,16 @@ class UNETGeneratorModule(nn.Module):
             self.num_filters * 2,
             self.num_filters * 4,
             input_nc = None,
-            submodule = self.norm_layer
+            submodule = unet_block,
+            norm_layer = self.norm_layer
         )
         self.model = UNETSkipConnectionBlock(
             self.num_filters,
             self.num_filters * 2,
             input_nc = self.input_nc,
             outermost = True,
-            submodule = self.norm_layer
+            submodule = unet_block,
+            norm_layer = self.norm_layer
         )
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:

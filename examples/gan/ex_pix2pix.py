@@ -51,16 +51,16 @@ def get_generator(gen_type:str, input_nc:int=3, output_nc:int=3, img_size:int=25
         )
     elif gen_type == 'unet':
         if img_size == 128:
-            num_filters = 7
+            num_downsamples = 7
         elif img_size == 256:
-            num_filters = 8
+            num_downsamples = 8
         else:
             raise ValueError('img_size [%d] must be either 128, 256' % int(img_size))
 
         gen = unet_gen.UNETGenerator(
             input_nc,
             output_nc,
-            num_filters = num_filters
+            num_downsamples
         )
     else:
         raise ValueError('Generator [%s] not supported' % str(gen_type))
@@ -127,7 +127,7 @@ def main() -> None:
         generator,
         # dataset
         train_dataset = train_dataset,
-        val_dataset = val_dataset,
+        val_dataset   = val_dataset,
         # training params
         batch_size    = GLOBAL_OPTS['batch_size'],
         learning_rate = GLOBAL_OPTS['learning_rate'],
@@ -177,7 +177,7 @@ def get_parser() -> argparse.ArgumentParser:
     # Network options
     parser.add_argument('--gen-type',
                         type=str,
-                        default='resnet',
+                        default='unet',
                         help='Type of generator to use (resnet or unet)'
                         )
     parser.add_argument('--disc-type',

@@ -6,13 +6,20 @@ Stefan Wong 2019
 """
 
 import cv2
+from PIL import Image
 import h5py
 import torch
 from torch.utils.data import Dataset
 
 
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
+"""
+TODO: The issue here is that if we use the default torchvision package we MUST
+use PIL, since torchvision itself uses PIL. This sucks, but its much simpler to
+do this right now than it is to either modify torchvision myself, or bring in a
+modified form such as the one here (https://github.com/jbohnslav/opencv_transforms)
+"""
 
 # Aligned dataset from Folders/Paths
 class AlignedDataset(Dataset):
@@ -35,20 +42,23 @@ class AlignedDataset(Dataset):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
         if self.data_root is None:
-            ab_img = cv2.imread(self.ab_data_paths[idx])
+            ab_img = Image.open(self.ab_data_paths[idx]).convert('RGB')
         else:
-            ab_img = cv2.imread(str(self.data_root + self.ab_data_paths[idx]))
+            ab_img = Image.open(str(self.data_root + self.ab_data_paths[idx])).convert('RGB')
 
         # TODO : could have another thing here for grayscale?
         # transpose the image arrays to match the pytorch tensor shape order
-        if self.do_transpose:
-            ab_img = ab_img.transpose(2, 0, 1)
+        #if self.do_transpose:
+        #    ab_img = ab_img.transpose(2, 0, 1)
 
         # split into two images
-        _, ab_w, ab_h = ab_img.shape
+        #_, ab_w, ab_h = ab_img.shape
+        ab_w, ab_h = ab_img.size
         w2 = int(ab_w / 2)
-        a_img = ab_img[:, 0: w2, 0 : ab_h]
-        b_img = ab_img[:, w2:ab_w, 0: ab_h]
+        a_img = ab_img.crop((0, 0, w2, ab_h))
+        b_img = ab_img.crop((w2, 0, ab_w, ab_h))
+        #a_img = ab_img[:, 0: w2, 0 : ab_h]
+        #b_img = ab_img[:, w2:ab_w, 0: ab_h]
 
         if self.transform is not None:
             a_img = self.transform(a_img)

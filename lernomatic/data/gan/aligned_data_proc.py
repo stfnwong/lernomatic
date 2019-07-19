@@ -6,7 +6,7 @@ Stefan Wong 2019
 """
 
 import h5py
-import cv2
+from PIL import Image       # TODO : replace with opencv at some point
 import os
 import numpy as np
 from tqdm import tqdm
@@ -139,8 +139,8 @@ class AlignedImageProc(object):
                     invalid_file_list.append((a_img_path, b_img_path))
                     continue
 
-                img_a = cv2.imread(a_img_path)
-                img_b = cv2.imread(b_img_path)
+                img_a = Image.open(a_img_path).convert('RGB')
+                img_b = Image.open(b_img_path).convert('RGB')
                 img_a = img_a.transpose(2, 0, 1)
                 img_b = img_b.transpose(2, 0, 1)
                 img_a, img_b, status_ok = self.check_and_crop(img_a, img_b)
@@ -157,12 +157,12 @@ class AlignedImageProc(object):
 
                 # add image to dataset
                 images[idx] = aligned_image
-                a_id, _ = os.path.splitext(os.path.basename(a_img_path))
-                b_id, _ = os.path.splitext(os.path.basename(b_img_path))
-                a_id    = a_id.encode('ascii')
-                b_id    = b_id.encode('ascii')
-                a_ids[idx] = a_id
-                b_ids[idx] = b_id
+                a_id, _     = os.path.splitext(os.path.basename(a_img_path))
+                b_id, _     = os.path.splitext(os.path.basename(b_img_path))
+                a_id        = a_id.encode('ascii')
+                b_id        = b_id.encode('ascii')
+                a_ids[idx]  = a_id
+                b_ids[idx]  = b_id
 
         # Print stats?
         print('Processed %d images, %s images failed' % (len(a_paths), len(invalid_file_list)))

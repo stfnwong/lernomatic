@@ -87,10 +87,15 @@ class Pix2PixTrainer(trainer.Trainer):
             a_real = a_real.to(self.device)
             b_real = b_real.to(self.device)
 
+            print('a_real.shape : %s' % str(a_real.shape))
+            print('b_real.shape : %s' % str(b_real.shape))
+
+            b_fake      = self.g_net.forward(a_real)  # find G(A)
+
             # ======= Train discriminator ======== #
             self.d_optim.zero_grad()
-            b_fake      = self.g_net.forward(a_real)  # find G(A)
             ab_fake     = torch.cat((a_real, b_fake), 1)
+            print('ab_fake.shape : %s' % str(ab_fake.shape))
             pred_fake   = self.d_net.forward(ab_fake.detach()) #  remove gradient references
             # fake loss
             d_loss_fake = self.gan_criterion(pred_fake, target_real=False)
