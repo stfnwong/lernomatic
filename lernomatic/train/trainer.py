@@ -12,6 +12,10 @@ import numpy as np
 from lernomatic.train import schedule
 from lernomatic.models import common
 
+# timing stuff
+import time
+from datetime import timdelta
+
 # debug
 #from pudb import set_trace; set_trace()
 
@@ -390,7 +394,14 @@ class Trainer(object):
             self.save_every = len(self.train_loader)
 
         for epoch in range(self.cur_epoch, self.num_epochs):
+            epoch_start_time = time.time()
             self.train_epoch()
+            epoch_end_time = time.time()
+            epoch_total_time = epoch_end_time - epoch_start_time
+            if self.verbose:
+                print('Epoch [%s] took %s' %\
+                      (repr(self), str(timedelta(seconds = epoch_total_time)))
+                )
 
             if self.val_loader is not None:
                 self.val_epoch()

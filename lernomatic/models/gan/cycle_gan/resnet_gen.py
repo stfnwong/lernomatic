@@ -103,10 +103,13 @@ class ResnetGenerator(common.LernomaticModel):
     def get_params(self) -> dict:
         params = super(ResnetGenerator, self).get_params()
         params['gen_params'] = {
-            'input_nc'        : self.net.input_nc,
-            'output_nc'       : self.net.output_nc,
-            'num_downsamples' : self.net.num_downsamples,
+            'input_nc'        : self.net.input_channels,
+            'output_nc'       : self.net.output_channels,
             'num_filters'     : self.net.num_filters,
+            'num_blocks'      : self.net.num_blocks,
+            'norm_type'       : self.net.norm_type,
+            'padding_type'    : self.net.padding_type,
+            'use_dropout'     : self.net.use_dropout,
         }
 
         return params
@@ -124,7 +127,10 @@ class ResnetGenerator(common.LernomaticModel):
             params['gen_params']['input_nc'],
             params['gen_params']['output_nc'],
             num_filters     = params['gen_params']['num_filters'],
-            num_downsamples = params['gen_params']['num_downsamples'],
+            num_blocks      = params['gen_params']['num_blocks'],
+            norm_type       = params['gen_params']['norm_type'],
+            padding_type    = params['gen_params']['padding_type'],
+            use_dropout     = params['gen_params']['use_dropout'],
         )
         self.net.load_state_dict(params['model_state_dict'])
 

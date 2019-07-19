@@ -33,7 +33,7 @@ class PixelDiscriminator(common.LernomaticModel):
         return self.net.num_filters
 
     def get_params(self) -> dict:
-        params = super(WideResnet, self).get_params()
+        params = super(PixelDiscriminator, self).get_params()
         params['disc_params'] = {
             'num_filters'        : self.net.num_filters,
             'num_input_channels' : self.net.num_input_channels,
