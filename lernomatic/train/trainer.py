@@ -14,7 +14,7 @@ from lernomatic.models import common
 
 # timing stuff
 import time
-from datetime import timdelta
+from datetime import timedelta
 
 # debug
 #from pudb import set_trace; set_trace()
