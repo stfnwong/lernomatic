@@ -22,8 +22,8 @@ class NLayerDiscriminator(common.LernomaticModel):
             num_filters=num_filtes,
             num_layers = num_layers,
             **kwargs)
-        self.import_path        : str = 'lernomatic.model.gan.cycle_gan.nlayer_disc'
-        self.module_import_path : str = 'lernomatic.model.gan.cycle_gan.nlayer_disc'
+        self.import_path        : str = 'lernomatic.models.gan.cycle_gan.nlayer_disc'
+        self.module_import_path : str = 'lernomatic.models.gan.cycle_gan.nlayer_disc'
         self.model_name         : str = 'NLayerDiscriminator'
         self.module_name        : str = 'NLayerDiscriminatorModule'
 

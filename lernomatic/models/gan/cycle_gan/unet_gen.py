@@ -212,8 +212,8 @@ class UNETGenerator(common.LernomaticModel):
             num_filters = num_filters,
             **kwargs)
 
-        self.import_path        : str = 'lernomatic.model.gan.cycle_gan.unet_gen'
-        self.module_import_path : str = 'lernomatic.model.gan.cycle_gan.unet_gen'
+        self.import_path        : str = 'lernomatic.models.gan.cycle_gan.unet_gen'
+        self.module_import_path : str = 'lernomatic.models.gan.cycle_gan.unet_gen'
         self.model_name         : str = 'UNETGenerator'
         self.module_name        : str = 'UNETGenenratorModule'
 

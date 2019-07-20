@@ -1,5 +1,5 @@
 """
-EX_PIX2PIX
+EX_TRAIN_PIX2PIX
 Example which trains a pix2pix model
 
 Stefan Wong 2019
@@ -127,33 +127,49 @@ def main() -> None:
     )
 
     # get a trainer
-    trainer = pix2pix_trainer.Pix2PixTrainer(
-        # models
-        discriminator,
-        generator,
-        # dataset
-        train_dataset = train_dataset,
-        val_dataset   = val_dataset,
-        # training params
-        batch_size    = GLOBAL_OPTS['batch_size'],
-        learning_rate = GLOBAL_OPTS['learning_rate'],
-        num_epochs    = GLOBAL_OPTS['num_epochs'],
-        # device
-        device_id = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
-        # display,
-        print_every = GLOBAL_OPTS['print_every'],
-        save_every = GLOBAL_OPTS['save_every'],
-    )
+    if GLOBAL_OPTS['load_checkpoint'] is not None:
+        trainer = pix2pix_trainer.Pix2PixTrainer(
+            None,
+            None,
+            # dataset
+            train_dataset = train_dataset,
+            val_dataset   = val_dataset,
+            # checkpoint
+            checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
+            checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
+            # display,
+            print_every = GLOBAL_OPTS['print_every'],
+            save_every = GLOBAL_OPTS['save_every'],
+        )
+        trainer.load_checkpoint(GLOBAL_OPTS['load_checkpoint'])
+    else:
+        trainer = pix2pix_trainer.Pix2PixTrainer(
+            # models
+            discriminator,
+            generator,
+            # dataset
+            train_dataset = train_dataset,
+            val_dataset   = val_dataset,
+            # training params
+            batch_size    = GLOBAL_OPTS['batch_size'],
+            learning_rate = GLOBAL_OPTS['learning_rate'],
+            num_epochs    = GLOBAL_OPTS['num_epochs'],
+            # device
+            device_id = GLOBAL_OPTS['device_id'],
+            # checkpoint
+            checkpoint_dir = GLOBAL_OPTS['checkpoint_dir'],
+            checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
+            # display,
+            print_every = GLOBAL_OPTS['print_every'],
+            save_every = GLOBAL_OPTS['save_every'],
+        )
 
     train_start_time = time.time()
     trainer.train()
     train_end_time = time.time()
     train_total_time = train_end_time - train_start_time
     print('Total training time : %s' % \
-          str(timedelta(seconds=run_total_time))
+          str(timedelta(seconds=train_total_time))
     )
 
 

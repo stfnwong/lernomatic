@@ -21,8 +21,8 @@ class PixelDiscriminator(common.LernomaticModel):
             num_filters = num_filters,
             **kwargs)
 
-        self.import_path        : str = 'lernomatic.model.gan.cycle_gan.pixel_disc'
-        self.module_import_path : str = 'lernomatic.model.gan.cycle_gan.pixel_disc'
+        self.import_path        : str = 'lernomatic.models.gan.cycle_gan.pixel_disc'
+        self.module_import_path : str = 'lernomatic.models.gan.cycle_gan.pixel_disc'
         self.model_name         : str = 'PixelDiscriminator'
         self.module_name        : str = 'PixelDiscriminatorModule'
 

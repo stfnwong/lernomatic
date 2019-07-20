@@ -67,9 +67,6 @@ class Trainer(object):
 
         if self.val_batch_size == 0:
             self.val_batch_size = self.batch_size
-        self.best_acc = 0.0
-        if self.save_every > 0:
-            self.save_best = True
 
         # set up device
         self._init_device()
@@ -82,8 +79,13 @@ class Trainer(object):
         # then we assume that one will be loaded later (eg: in some checkpoint
         # data)
         self._init_history()
-
         self._send_to_device()
+
+        if self.save_every < 0:
+            self.save_every = len(self.train_loader)
+        self.best_acc = 0.0
+        if self.save_every > 0:
+            self.save_best = True
 
     def __repr__(self) -> str:
         return 'Trainer (%d epochs)' % self.num_epochs
