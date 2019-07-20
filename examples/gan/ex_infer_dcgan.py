@@ -8,26 +8,15 @@ Stefan Wong 2019
 import torch
 import argparse
 import numpy as np
+from PIL import Image
 import matplotlib.pyplot as plt
-from lernomatic.infer.dcgan import dcgan_inferrer
+from lernomatic.infer.gan import dcgan_inferrer
+from lernomatic.util import image_util
 
 GLOBAL_OPTS = dict()
 
 
-def tensor_to_img(X:torch.Tensor) -> None:
-    img = X.cpu().numpy()
-
-    # get the image in a form suitable for display
-    img = img.transpose(1, 2, 0)
-    img_min = img.min()
-    img = img + np.abs(img_min)     # get all values positive
-    img_max = img.max()
-    img = img / np.abs(img_max)     # normalize to [0..1]
-
-    return img
-
-
-def main() -> None:
+def generate_image() -> None:
     inferrer = dcgan_inferrer.DCGANInferrer(
         None,
         img_size  = GLOBAL_OPTS['image_size'],
@@ -37,8 +26,27 @@ def main() -> None:
 
     # TODO : generate a number of images to file
     img = inferrer.forward()
-    out_img = tensor_to_img(img)
+    out_img = image_util.tensor_to_img(img)
     # get figures
+    fig, ax = plt.subplots()
+    ax.imshow(out_img)
+    fig.tight_layout()
+    fig.savefig(GLOBAL_OPTS['img_outfile'])
+
+
+def generate_from_seed() -> None:
+    inferrer = dcgan_inferrer.DCGANInferrer(
+        None,
+        img_size  = GLOBAL_OPTS['image_size'],
+        device_id = GLOBAL_OPTS['device_id']
+    )
+    inferrer.load_model(GLOBAL_OPTS['checkpoint_data'])
+
+    img = Image.open(GLOBAL_OPTS['seed_file']).convert('RGB')
+    inp_tensor = image_util.img_to_tensor(img)
+    out_tensor = inferrer.forward(inp_tensor)
+
+    out_img = image_util.tensor_to_img(out_tensor)
     fig, ax = plt.subplots()
     ax.imshow(out_img)
     fig.tight_layout()
@@ -74,6 +82,17 @@ def get_parser() -> argparse.ArgumentParser:
                         default=64,
                         help='Resize all images to this size using a transformer before training'
                         )
+    parser.add_argument('--seed-file',
+                        type=str,
+                        default=None,
+                        help='Use this image as a seed rather than generating a random input vector (default: None)'
+                        )
+    # Output options
+    parser.add_argument('--num-files',
+                        type=int,
+                        default=1,
+                        help='Number of output files to generate (default: 1)'
+                        )
     parser.add_argument('--img-outfile',
                         type=str,
                         default='figures/dcgan_celeba_output.png',
@@ -95,4 +114,7 @@ if __name__ == '__main__':
         for k,v in GLOBAL_OPTS.items():
             print('\t[%s] : %s' % (str(k), str(v)))
 
-    main()
+    if GLOBAL_OPTS['seed_file'] is not None:
+        generate_from_seed()
+    else:
+        generate_image()
