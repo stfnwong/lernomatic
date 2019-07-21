@@ -13,7 +13,7 @@ import torch
 import torchvision
 from torchvision import transforms
 # units under test
-from lernomatic.models.gan import dcgan
+from lernomatic.models.gan import dcgan_basic
 from lernomatic.train.gan import dcgan_trainer
 
 
@@ -52,8 +52,8 @@ class TestDCGANTrainer(unittest.TestCase):
 
         train_dataset = get_dataset()
         # get models
-        discriminator = dcgan.DCGDiscriminator()
-        generator = dcgan.DCGGenerator()
+        discriminator = dcgan_basic.DCGDiscriminator()
+        generator = dcgan_basic.DCGGenerator()
         # get a trainer
         src_trainer = dcgan_trainer.DCGANTrainer(
             D = discriminator,

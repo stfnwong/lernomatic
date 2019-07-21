@@ -11,7 +11,7 @@ import argparse
 from torchvision import datasets
 from torchvision import transforms
 from lernomatic.data import hdf5_dataset
-from lernomatic.models.gan import dcgan
+from lernomatic.models.gan import dcgan_basic
 from lernomatic.train.gan import dcgan_trainer
 from lernomatic.vis import vis_loss_history
 
@@ -46,11 +46,11 @@ def main() -> None:
         )
 
     # get a model
-    generator = dcgan.DCGGenerator(
+    generator = dcgan_basic.DCGGenerator(
         zvec_dim = GLOBAL_OPTS['zvec_dim'],
         num_filters = GLOBAL_OPTS['g_num_filters'],
     )
-    discriminator = dcgan.DCGDiscriminator(
+    discriminator = dcgan_basic.DCGDiscriminator(
         num_filters = GLOBAL_OPTS['d_num_filters']
     )
 

@@ -67,9 +67,7 @@ class Trainer(object):
         self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
         self.early_stop      :dict  = kwargs.pop('early_stop', None)
 
-
         self.start_epoch = 0
-
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()
         # set up device
@@ -87,6 +85,8 @@ class Trainer(object):
         if self.val_batch_size == 0:
             self.val_batch_size = self.batch_size
         self.best_acc = 0.0
+        if self.save_every < 0:
+            self.save_every = len(self.train_loader)
         if self.save_every > 0:
             self.save_best = True
 
@@ -406,10 +406,9 @@ class Trainer(object):
             self.train_epoch()
             epoch_end_time = time.time()
             epoch_total_time = epoch_end_time - epoch_start_time
-            if self.verbose:
-                print('Epoch [%s] took %s' %\
-                      (repr(self), str(timedelta(seconds = epoch_total_time)))
-                )
+            print('Epoch %d [%s] took %s' %\
+                    (epoch+1, repr(self), str(timedelta(seconds = epoch_total_time)))
+            )
 
             if self.val_loader is not None:
                 self.val_epoch()

@@ -17,8 +17,8 @@ class DCGGenerator(common.LernomaticModel):
         self.net = DCGGeneratorModule(**kwargs)
         self.model_name = 'DCGGenerator'
         self.module_name = 'DCGGeneratorModule'
-        self.import_path = 'lernomatic.models.gan.dcgan'
-        self.module_import_path = 'lernomatic.models.gan.dcgan'
+        self.import_path = 'lernomatic.models.gan.dcgan_basic'
+        self.module_import_path = 'lernomatic.models.gan.dcgan_basic'
 
     def __repr__(self) -> str:
         return 'DCGGenerator'
@@ -85,8 +85,8 @@ class DCGDiscriminator(common.LernomaticModel):
         # internal bookkeeping
         self.model_name = 'DCGDiscriminator'
         self.module_name = 'DCGDiscriminatorModule'
-        self.import_path = 'lernomatic.models.gan.dcgan'
-        self.module_import_path = 'lernomatic.models.gan.dcgan'
+        self.import_path = 'lernomatic.models.gan.dcgan_basic'
+        self.module_import_path = 'lernomatic.models.gan.dcgan_basic'
 
     def __repr__(self) -> str:
         return 'DCGDiscriminator'
