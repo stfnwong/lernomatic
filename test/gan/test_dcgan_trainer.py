@@ -23,7 +23,7 @@ from lernomatic.train.gan import dcgan_trainer
 GLOBAL_OPTS = dict()
 
 
-def get_dataset(image_size = 64):
+def get_dataset(image_size:int = 64):
     celeba_transform = transforms.Compose([
            transforms.Resize(image_size),
            transforms.CenterCrop(image_size),

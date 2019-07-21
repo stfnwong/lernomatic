@@ -36,7 +36,6 @@ def get_dataset(ab_path:str, dataset_name:str, data_root:str, transforms=None) -
             to_tensor = True,
             do_scale_width = True
         )
-
     dataset = aligned_dataset.AlignedDataset(
         ab_path,
         data_root = data_root,
@@ -145,8 +144,8 @@ def main() -> None:
     else:
         trainer = pix2pix_trainer.Pix2PixTrainer(
             # models
-            discriminator,
             generator,
+            discriminator,
             # dataset
             train_dataset = train_dataset,
             val_dataset   = val_dataset,

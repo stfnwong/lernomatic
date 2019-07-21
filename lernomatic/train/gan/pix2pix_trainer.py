@@ -5,6 +5,7 @@ Trainer for pix2pix
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import numpy as np
 from lernomatic.models import common
@@ -13,16 +14,16 @@ from lernomatic.models.gan import gan_loss
 
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class Pix2PixTrainer(trainer.Trainer):
     def __init__(self,
-                 d_net:common.LernomaticModel=None,
                  g_net:common.LernomaticModel=None,
+                 d_net:common.LernomaticModel=None,
                  **kwargs) -> None:
-        self.d_net            = d_net
         self.g_net            = g_net
+        self.d_net            = d_net
         self.beta1     :float = kwargs.pop('beta1', 0.5)
         self.l1_lambda :float = kwargs.pop('l1_lambda', 100.0)
         self.gan_mode  :str   = kwargs.pop('gan_mode', 'vanilla')
@@ -74,6 +75,19 @@ class Pix2PixTrainer(trainer.Trainer):
         self.gan_criterion = gan_loss.GANLoss(self.gan_mode, self.device)
         self.l1_criterion  = torch.nn.L1Loss()
 
+    def get_trainer_params(self) -> dict:
+        params = super(Pix2PixTrainer, self).get_trainer_params()
+        params['beta1']     = self.beta1
+        params['l1_lambda'] = self.l1_lambda
+        params['gan_mode']  = self.gan_mode
+
+        return params
+
+    def set_trainer_params(self, params:dict) -> None:
+        self.beta1     = params['beta1']
+        self.l1_lambda = params['l1_lambda']
+        self.gan_mode  = params['gan_mode']
+        super(Pix2PixTrainer, self).set_trainer_params(params)
 
     def train_epoch(self) -> None:
         """
@@ -165,12 +179,15 @@ class Pix2PixTrainer(trainer.Trainer):
         model_import_path = checkpoint_data['g_net']['model_import_path']
         imp = importlib.import_module(model_import_path)
         mod = getattr(imp, checkpoint_data['g_net']['model_name'])
+        # TODO : probably need positional args here, (will be fine with Resnet
+        # generator, but probably not UNET generator)
         self.g_net = mod()
         self.g_net.set_params(checkpoint_data['g_net'])
         # get discriminator
         model_import_path = checkpoint_data['d_net']['model_import_path']
         imp = importlib.import_module(model_import_path)
         mod = getattr(imp, checkpoint_data['d_net']['model_name'])
+        # TODO : need to get positional args here
         self.d_net = mod()
         self.d_net.set_params(checkpoint_data['d_net'])
 

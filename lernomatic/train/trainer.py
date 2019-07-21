@@ -81,7 +81,7 @@ class Trainer(object):
         self._init_history()
         self._send_to_device()
 
-        if self.save_every < 0:
+        if (self.train_loader is not None) and (self.save_every < 0):
             self.save_every = len(self.train_loader)
         self.best_acc = 0.0
         if self.save_every > 0:

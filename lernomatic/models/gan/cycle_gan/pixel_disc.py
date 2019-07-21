@@ -5,6 +5,7 @@ PixelGAN Discriminator (1x1 PatchGAN )
 Stefan Wong 2019
 """
 
+import importlib
 import functools
 import torch
 import torch.nn as nn

@@ -8,6 +8,7 @@ Adapted in large part from models in https://github.com/junyanz/pytorch-CycleGAN
 Stefan Wong 2019
 """
 
+import importlib
 import functools
 import torch
 import torch.nn as nn
