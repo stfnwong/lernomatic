@@ -15,9 +15,9 @@ from lernomatic.models import common
 class DCGGenerator(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:
         self.net = DCGGeneratorModule(**kwargs)
-        self.model_name = 'DCGGenerator'
-        self.module_name = 'DCGGeneratorModule'
-        self.import_path = 'lernomatic.models.gan.dcgan_basic'
+        self.model_name         = 'DCGGenerator'
+        self.module_name        = 'DCGGeneratorModule'
+        self.import_path        = 'lernomatic.models.gan.dcgan_basic'
         self.module_import_path = 'lernomatic.models.gan.dcgan_basic'
 
     def __repr__(self) -> str:
@@ -34,7 +34,7 @@ class DCGGenerator(common.LernomaticModel):
 class DCGGeneratorModule(nn.Module):
     def __init__(self, **kwargs) -> None:
         super(DCGGeneratorModule, self).__init__()
-        self.zvec_dim = kwargs.pop('zvec_dim', 100)
+        self.zvec_dim = kwargs.pop('zvec_dim', 100)         # this is the size of zdim in Metz and Chintala (2016)
         self.num_filters = kwargs.pop('num_filters', 64)
         self.num_channels = kwargs.pop('num_channels', 3)     # number of channels in output image
         self.main = nn.Sequential(

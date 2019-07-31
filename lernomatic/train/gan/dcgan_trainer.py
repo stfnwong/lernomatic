@@ -14,7 +14,7 @@ from lernomatic.models import common
 from lernomatic.models.gan import dcgan_basic
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class DCGANTrainer(trainer.Trainer):
@@ -294,7 +294,8 @@ class DCGANTrainer(trainer.Trainer):
         history = {
             'd_loss_history' : self.d_loss_history,
             'g_loss_history' : self.g_loss_history,
-            'loss_iter'      : self.loss_iter
+            'loss_iter'      : self.loss_iter,
+            'iter_per_epoch' : self.iter_per_epoch
         }
         torch.save(history, fname)
 
@@ -303,4 +304,5 @@ class DCGANTrainer(trainer.Trainer):
         self.d_loss_history = history['d_loss_history']
         self.g_loss_history = history['g_loss_history']
         self.loss_iter      = history['loss_iter']
+        self.iter_per_epoch = history['iter_per_epoch']
         self.cur_epoch = self.start_epoch
