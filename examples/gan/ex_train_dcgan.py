@@ -16,7 +16,7 @@ from lernomatic.train.gan import dcgan_trainer
 from lernomatic.vis import vis_loss_history
 
 # debug
-#from pubd import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -24,6 +24,8 @@ GLOBAL_OPTS = dict()
 def main() -> None:
     if GLOBAL_OPTS['dataset'] is not None:
         celeba_transform = transforms.Compose([
+            transforms.Resize(GLOBAL_OPTS['image_size']),
+            transforms.CenterCrop(GLOBAL_OPTS['image_size']),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ])
 
@@ -48,9 +50,11 @@ def main() -> None:
     # get a model
     generator = dcgan_basic.DCGGenerator(
         zvec_dim = GLOBAL_OPTS['zvec_dim'],
+        #num_filters = GLOBAL_OPTS['image_size']
         num_filters = GLOBAL_OPTS['g_num_filters'],
     )
     discriminator = dcgan_basic.DCGDiscriminator(
+        #num_filters = GLOBAL_OPTS['image_size']
         num_filters = GLOBAL_OPTS['d_num_filters']
     )
 
