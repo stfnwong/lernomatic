@@ -27,7 +27,7 @@ class DCGANTrainer(trainer.Trainer):
         self.beta1         = kwargs.pop('beta1', 0.5)
         self.real_label    = kwargs.pop('real_label', 1)
         self.fake_label    = kwargs.pop('fake_label', 0)
-        # option to save a history of generated images each epoch
+        # option to save a history of generated images each epoch ?
 
         super(DCGANTrainer, self).__init__(None, **kwargs)
         # use CELoss

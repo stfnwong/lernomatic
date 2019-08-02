@@ -55,11 +55,9 @@ def main() -> None:
         zvec_dim = GLOBAL_OPTS['zvec_dim'],
         num_filters = GLOBAL_OPTS['g_num_filters'],
     )
-    generator.init_weights()
     discriminator = dcgan_basic.DCGDiscriminator(
         num_filters = GLOBAL_OPTS['d_num_filters']
     )
-    discriminator.init_weights()
 
     # get a trainer
     gan_trainer = dcgan_trainer.DCGANTrainer(

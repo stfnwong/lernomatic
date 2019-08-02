@@ -16,16 +16,18 @@ from lernomatic.models import common
 # architectures from "Unsupervised Representation Learning..." (ArXiV :
 # 1511.06434v2)
 
-class DCGGenerator(common.LernomaticModel):
+class DCGANGenerator(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:
-        self.net = DCGGeneratorModule(**kwargs)
-        self.model_name         = 'DCGGenerator'
-        self.module_name        = 'DCGGeneratorModule'
+        self.net = DCGANGeneratorModule(**kwargs)
+        self.model_name         = 'DCGANGenerator'
+        self.module_name        = 'DCGANGeneratorModule'
         self.import_path        = 'lernomatic.models.gan.dcgan_basic'
         self.module_import_path = 'lernomatic.models.gan.dcgan_basic'
 
+        self.init_weights()
+
     def __repr__(self) -> str:
-        return 'DCGGenerator'
+        return 'DCGANGenerator'
 
     def get_zvec_dim(self) -> int:
         return self.net.zvec_dim
@@ -44,10 +46,11 @@ class DCGGenerator(common.LernomaticModel):
             self.net.weight.data.normal_(1.0, 0.02)
             self.net.bias.data.fill_(0)
 
+
 # Generator implementation
-class DCGGeneratorModule(nn.Module):
+class DCGANGeneratorModule(nn.Module):
     def __init__(self, **kwargs) -> None:
-        super(DCGGeneratorModule, self).__init__()
+        super(DCGANGeneratorModule, self).__init__()
         self.zvec_dim     = kwargs.pop('zvec_dim', 100)         # this is the size of zdim in Metz and Chintala (2016)
         self.num_filters  = kwargs.pop('num_filters', 64)
         self.num_channels = kwargs.pop('num_channels', 3)     # number of channels in output image
@@ -130,17 +133,19 @@ class DCGGeneratorModule(nn.Module):
         return out
 
 
-class DCGDiscriminator(common.LernomaticModel):
+class DCGANDiscriminator(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:
-        self.net = DCGDiscriminatorModule(**kwargs)
+        self.net = DCGANDiscriminatorModule(**kwargs)
         # internal bookkeeping
-        self.model_name         = 'DCGDiscriminator'
-        self.module_name        = 'DCGDiscriminatorModule'
+        self.model_name         = 'DCGANDiscriminator'
+        self.module_name        = 'DCGANDiscriminatorModule'
         self.import_path        = 'lernomatic.models.gan.dcgan_basic'
         self.module_import_path = 'lernomatic.models.gan.dcgan_basic'
 
+        self.init_weights()
+
     def __repr__(self) -> str:
-        return 'DCGDiscriminator'
+        return 'DCGANDiscriminator'
 
     def get_num_filters(self) -> int:
         return self.net.num_filters
@@ -149,15 +154,18 @@ class DCGDiscriminator(common.LernomaticModel):
         self.net.zero_grad()
 
     def init_weights(self) -> None:
-        pass
+        classname = self.net.__class__.__name__
+        if classname.find('Conv') != -1:
+            self.net.weight.data.normal_(0.0, 0.02)
+        elif classname.find('BatchNorm') != -1:
+            self.net.weight.data.normal_(1.0, 0.02)
+            self.net.bias.data.fill_(0)
 
 
 
-# TODO : split the sequential into distinct layers (so that we can step
-# through with debugger)
-class DCGDiscriminatorModule(nn.Module):
+class DCGANDiscriminatorModule(nn.Module):
     def __init__(self, **kwargs) -> None:
-        super(DCGDiscriminatorModule, self).__init__()
+        super(DCGANDiscriminatorModule, self).__init__()
         self.num_filters  = kwargs.pop('num_filters', 64)
         self.num_channels = kwargs.pop('num_channels', 3)
 
