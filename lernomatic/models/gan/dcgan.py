@@ -27,10 +27,6 @@ class DCGANGenBlock(nn.Module):
         self.stride:int             = kwargs.pop('stride', 2)
         self.padding:int            = kwargs.pop('padding', 0)
 
-        # FIXME: debug (remove)
-        print('num_input_filters  : %d' % self.num_input_filters)
-        print('num_output_filters : %d' % self.num_output_filters)
-
         super(DCGANGenBlock, self).__init__()
         # network structure
         self.convtranspose = nn.ConvTranspose2d(
@@ -45,7 +41,7 @@ class DCGANGenBlock(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:
-        out = self.convtranpose(X)
+        out = self.convtranspose(X)
         out = self.bn(out)
         out = self.relu(out)
 
@@ -75,10 +71,6 @@ class DCGANGeneratorModule(nn.Module):
     """
     def __init__(self, **kwargs) -> None:
         self.num_channels:int = kwargs.pop('num_channels', 3)
-        # TODO : I think its better to compute the number of required blocks
-        # based on the image size. So 64x64 will require 5 blocks, 128x128 will
-        # require 6 blocks, etc
-        #self.num_blocks:int   = kwargs.pop('num_blocks', 4)
         self.num_filters:int  = kwargs.pop('num_filters', 64)
         self.kernel_size:int  = kwargs.pop('kernel_size', 4)
         self.img_size:int     = kwargs.pop('img_size', 64)
@@ -87,34 +79,37 @@ class DCGANGeneratorModule(nn.Module):
         # enforce that image size must be a power of 2
 
         super(DCGANGeneratorModule, self).__init__()
-
         # -2 here since we specify the input vector projection and image output
         # blocks outside of the loop
         self.num_blocks = int(np.ceil(np.log2(self.img_size))) - 2
-        fscale = 2 ** (self.num_blocks)
+        fscale = 2 ** (self.num_blocks-1)
 
-        # TODO : issue here with construction...
         gen_blocks = []
         # Initial projection of Z vector to first conv layer
-        gen_blocks += [DCGANGenBlock(
-            num_input_filters  = self.zvec_dim,
-            num_output_filters = self.num_filters * fscale,
-            kernel_size        = self.kernel_size,
-            stride             = 1,
-            padding            = 0
-            )
-        ]
         for b in range(self.num_blocks):
-            gen_blocks += [
-                DCGANGenBlock(
-                    num_input_filters  = self.num_filters * fscale,
-                    num_output_filters = self.num_filters * (fscale // 2),
+            print(b, fscale)
+            if b == 0:
+                gen_blocks += [DCGANGenBlock(
+                    num_input_filters  = self.zvec_dim,
+                    num_output_filters = self.num_filters * fscale,
+                    kernel_size        = self.kernel_size,
+                    stride             = 1,
+                    padding            = 0
+                    )
+                ]
+            else:
+                gen_blocks += [DCGANGenBlock(
+                    num_input_filters  = self.num_filters * (2 * fscale),
+                    num_output_filters = self.num_filters * fscale,
                     kernel_size        = self.kernel_size,
                     stride             = 2,
                     padding            = 1
-                )
-            ]
+                    )
+                ]
             fscale = fscale // 2
+            # prevent the number of output filters becoming zero
+            if fscale < 1:
+                fscale = 1
 
         self.blocks = nn.Sequential(*gen_blocks)
 
@@ -158,6 +153,12 @@ class DCGANGenerator(common.LernomaticModel):
 
     def zero_grad(self) -> None:
         self.net.zero_grad()
+
+    def get_num_blocks(self) -> int:
+        return self.net.num_blocks
+
+    def get_block_filter_sizes(self) -> list:
+        pass
 
     def init_weights(self) -> None:
         classname = self.net.__class__.__name__
@@ -212,7 +213,7 @@ class DCGANDiscriminatorModule(nn.Module):
 
         super(DCGANDiscriminatorModule, self).__init__()
 
-        self.num_blocks = int(np.ceil(np.log2(self.img_size)))-1
+        self.num_blocks = int(np.ceil(np.log2(self.img_size)))-2
 
         disc_blocks = []
         fscale = 1
@@ -265,8 +266,8 @@ class DCGANDiscriminator(common.LernomaticModel):
         # internal bookkeeping
         self.model_name         = 'DCGANDiscriminator'
         self.module_name        = 'DCGANDiscriminatorModule'
-        self.import_path        = 'lernomatic.models.gan.dcagn'
-        self.module_import_path = 'lernomatic.models.gan.dcagn'
+        self.import_path        = 'lernomatic.models.gan.dcgan'
+        self.module_import_path = 'lernomatic.models.gan.dcgan'
 
         self.init_weights()
 
