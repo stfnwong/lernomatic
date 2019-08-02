@@ -30,23 +30,10 @@ class DCGANTrainer(trainer.Trainer):
         # option to save a history of generated images each epoch
 
         super(DCGANTrainer, self).__init__(None, **kwargs)
-
-        self.train_dataset = kwargs.pop('train_dataset', None)
-        self.test_dataset  = kwargs.pop('test_dataset', None)
-        self.val_dataset   = kwargs.pop('val_dataset', None)
-
         # use CELoss
         self.loss_function = 'BCELoss'
         self.optim_function = 'Adam'
         self.criterion = nn.BCELoss()
-
-        # TODO: needed?
-        # setup internals
-        self._init_device()
-        self._init_dataloaders()
-        self._init_optimizers()
-        self._init_history()
-        self._send_to_device();
 
     def __repr__(self) -> str:
         return 'DCGANTrainer'
@@ -71,7 +58,7 @@ class DCGANTrainer(trainer.Trainer):
         self.d_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
         self.g_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
 
-    def _init_optimizers(self) -> None:
+    def _init_optimizer(self) -> None:
         # generator
         if self.generator is None:
             self.optim_g = None
@@ -271,7 +258,7 @@ class DCGANTrainer(trainer.Trainer):
         self.discriminator.set_params(checkpoint_data['discriminator'])
 
         # Load optimizer
-        self._init_optimizers()  # TODO : should this name always be plural for consistency?
+        self._init_optimizer()
         self.optim_d.load_state_dict(checkpoint_data['optim_d'])
         self.optim_g.load_state_dict(checkpoint_data['optim_g'])
         # transfer tensors to current device

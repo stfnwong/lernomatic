@@ -43,10 +43,11 @@ class ResnetTrainer(trainer.Trainer):
             s.append('Training set size :%d\n' % len(self.train_loader.dataset))
         else:
             s.append('Training set not loaded\n')
-        if self.test_loader is not None:
-            s.append('Test set size :%d\n' % len(self.train_loader.dataset))
+
+        if self.val_loader is not None:
+            s.append('Validation set size :%d\n' % len(self.val_loader.dataset))
         else:
-            s.append('Test set not loaded\n')
+            s.append('Validation set not loaded\n')
 
         return ''.join(s)
 
@@ -101,13 +102,13 @@ class ResnetTrainer(trainer.Trainer):
         self.train_loader = torch.utils.data.DataLoader(
             self.train_dataset,
             batch_size  = self.batch_size,
-            shuffle     =self.shuffle,
+            shuffle     = self.shuffle,
             num_workers = self.num_workers
         )
 
         self.val_loader = torch.utils.data.DataLoader(
             self.val_dataset,
-            batch_size  = self.val_batch_size,
+            batch_size  = self.batch_size,      # <- NOTE: was self.val_batch_size
             shuffle     = self.shuffle,
             num_workers = self.num_workers
         )

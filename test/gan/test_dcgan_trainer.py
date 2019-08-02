@@ -23,7 +23,7 @@ from lernomatic.train.gan import dcgan_trainer
 GLOBAL_OPTS = dict()
 
 
-def get_dataset(image_size = 64):
+def get_dataset(image_size:int = 64):
     celeba_transform = transforms.Compose([
            transforms.Resize(image_size),
            transforms.CenterCrop(image_size),
@@ -39,12 +39,12 @@ def get_dataset(image_size = 64):
 
 
 class TestDCGANTrainer(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.verbose = GLOBAL_OPTS['verbose']
         self.test_num_epochs = 1
         self.test_learning_rate = 2e-4
 
-    def test_save_load_checkpoint(self):
+    def test_save_load_checkpoint(self) -> None:
         print('======== TestDCGANTrainer.test_save_load_checkpoint ')
 
         test_checkpoint = 'checkpoint/dcgan_trainer_test.pkl'
@@ -59,8 +59,8 @@ class TestDCGANTrainer(unittest.TestCase):
             D = discriminator,
             G = generator,
             # device
-            device_id  = GLOBAL_OPTS['device_id'],
-            batch_size = GLOBAL_OPTS['batch_size'],
+            device_id     = GLOBAL_OPTS['device_id'],
+            batch_size    = GLOBAL_OPTS['batch_size'],
             # training params
             train_dataset = train_dataset,
             num_epochs    = self.test_num_epochs,
@@ -69,6 +69,7 @@ class TestDCGANTrainer(unittest.TestCase):
             save_every    = 0,
         )
         src_trainer.train()
+        print('Saving checkpoint data to file [%s]' % str(test_checkpoint))
         src_trainer.save_checkpoint(test_checkpoint)
         src_trainer.save_history(test_history)
 
@@ -160,7 +161,7 @@ if __name__ == '__main__':
                         )
     parser.add_argument('--batch-size',
                         type=int,
-                        default=32,
+                        default=64,
                         help='Batch size to use during training'
                         )
     parser.add_argument('--device-id',
@@ -171,7 +172,7 @@ if __name__ == '__main__':
     # display options
     parser.add_argument('--print-every',
                         type=int,
-                        default=100,
+                        default=10,
                         help='Print output every time this number of iterations has elapsed'
                         )
     # dataset options

@@ -48,15 +48,18 @@ def main() -> None:
         )
 
     # get a model
+    # TODO : once the block-based model is complete, we need a procedure to
+    # work out how many blocks are needed for D and G to generate an image of
+    # the required size
     generator = dcgan_basic.DCGGenerator(
         zvec_dim = GLOBAL_OPTS['zvec_dim'],
-        #num_filters = GLOBAL_OPTS['image_size']
         num_filters = GLOBAL_OPTS['g_num_filters'],
     )
+    generator.init_weights()
     discriminator = dcgan_basic.DCGDiscriminator(
-        #num_filters = GLOBAL_OPTS['image_size']
         num_filters = GLOBAL_OPTS['d_num_filters']
     )
+    discriminator.init_weights()
 
     # get a trainer
     gan_trainer = dcgan_trainer.DCGANTrainer(
@@ -179,7 +182,7 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--learning-rate',
                         type=float,
-                        default=0.0002,
+                        default=0.0002,     # NOTE: this is the rate from Radford, Metz and Chintala
                         help='Learning rate for ADAM optimizer'
                         )
     parser.add_argument('--momentum',
