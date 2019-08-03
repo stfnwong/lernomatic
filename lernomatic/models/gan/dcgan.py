@@ -9,9 +9,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 from lernomatic.models import common
+from lernomatic.util import math_util
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 
@@ -77,6 +78,8 @@ class DCGANGeneratorModule(nn.Module):
         self.zvec_dim:int     = kwargs.pop('zvec_dim', 100)
 
         # enforce that image size must be a power of 2
+        if not math_util.is_pow2_int(self.img_size):
+            raise ValueError('Image size [%d] must be a power of 2' % str(self.img_size))
 
         super(DCGANGeneratorModule, self).__init__()
         # -2 here since we specify the input vector projection and image output
@@ -212,6 +215,9 @@ class DCGANDiscriminatorModule(nn.Module):
         self.num_channels:int = kwargs.pop('num_channels', 3)
         self.kernel_size:int  = kwargs.pop('kernel_size', 4)
         self.img_size:int     = kwargs.pop('img_size', 64)
+
+        if not math_util.is_pow2_int(self.img_size):
+            raise ValueError('Image size [%d] must be a power of 2' % str(self.img_size))
 
         super(DCGANDiscriminatorModule, self).__init__()
 

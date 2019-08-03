@@ -11,7 +11,6 @@ import torch.nn as nn
 import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import common
-from lernomatic.models.gan import dcgan_basic
 
 # debug
 #from pudb import set_trace; set_trace()
