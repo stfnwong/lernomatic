@@ -57,7 +57,7 @@ class TestPix2PixTrainer(unittest.TestCase):
 
         # Get some data
         train_ab_paths = [path for path in os.listdir(self.train_data_root)]
-        val_ab_paths = [path for path in os.listdir(self.val_data_root)]
+        val_ab_paths   = [path for path in os.listdir(self.val_data_root)]
         train_dataset = get_aligned_dataset(
             train_ab_paths,
             'pix2pix_trainer_test_train_data',
@@ -72,8 +72,8 @@ class TestPix2PixTrainer(unittest.TestCase):
         # Get some models - we use resnet and PatchGAN here for now. At some
         # point the bugs in the UnetGenerator also need to be solved and this
         # test should be smaller than a 'real' training run.
-        generator = resnet_gen.ResnetGenerator(3, 3, num_filters=64)
-        discriminator = pixel_disc.PixelDiscriminator(3 + 3, 64)
+        generator     = resnet_gen.ResnetGenerator(3, 3, num_filters=64)
+        discriminator = pixel_disc.PixelDiscriminator(3 + 3, num_filters=64)
 
         test_checkpoint_file = 'checkpoint/pix2pix_trainer_checkpoint_test.pkl'
         test_history_file = 'checkpoint/pix2pix_trainer_history_test.pkl'
@@ -100,7 +100,6 @@ class TestPix2PixTrainer(unittest.TestCase):
         src_trainer.save_history(test_history_file)
 
         # get a new trainer and load
-        # TODO : cpu trainer to test tensor transfer between devices?
         dst_trainer = pix2pix_trainer.Pix2PixTrainer(None, None, device_id=GLOBAL_OPTS['device_id'])
         dst_trainer.load_checkpoint(test_checkpoint_file)
 
@@ -110,15 +109,6 @@ class TestPix2PixTrainer(unittest.TestCase):
         self.assertEqual(repr(src_trainer.g_net), repr(dst_trainer.g_net))
         self.assertEqual(repr(src_trainer.d_net), repr(dst_trainer.d_net))
 
-        # check the various trainer stats
-        self.assertEqual(src_trainer.beta1, dst_trainer.beta1)
-        self.assertEqual(src_trainer.l1_lambda, dst_trainer.l1_lambda)
-        self.assertEqual(src_trainer.gan_mode, dst_trainer.gan_mode)
-        self.assertEqual(src_trainer.num_epochs, dst_trainer.num_epochs)
-        self.assertEqual(src_trainer.learning_rate, dst_trainer.learning_rate)
-        self.assertEqual(src_trainer.batch_size, dst_trainer.batch_size)
-        self.assertEqual(src_trainer.print_every, dst_trainer.gan_mode)
-        self.assertEqual(src_trainer.save_every, dst_trainer.save_every)
 
         # check model params
         src_models = [src_trainer.g_net, src_trainer.d_net]
@@ -146,6 +136,27 @@ class TestPix2PixTrainer(unittest.TestCase):
         self.assertIsNotNone(dst_trainer.d_loss_history)
         self.assertEqual(len(src_trainer.g_loss_history), len(dst_trainer.g_loss_history))
         self.assertEqual(len(src_trainer.d_loss_history), len(dst_trainer.d_loss_history))
+
+        for loss_elem in range(len(src_trainer.g_loss_history)):
+            print('Checking g_loss_history [%d / %d]' % (loss_elem+1, len(src_trainer.g_loss_history)), end='\r')
+            self.assertEqual(src_trainer.g_loss_history[loss_elem], dst_trainer.g_loss_history[loss_elem])
+        print('\n OK')
+
+        for loss_elem in range(len(src_trainer.d_loss_history)):
+            print('Checking d_loss_history [%d / %d]' % (loss_elem+1, len(src_trainer.g_loss_history)), end='\r')
+            self.assertEqual(src_trainer.d_loss_history[loss_elem], dst_trainer.d_loss_history[loss_elem])
+        print('\n OK')
+
+        # check the various trainer stats
+        self.assertEqual(src_trainer.beta1, dst_trainer.beta1)
+        self.assertEqual(src_trainer.l1_lambda, dst_trainer.l1_lambda)
+        self.assertEqual(src_trainer.gan_mode, dst_trainer.gan_mode)
+        self.assertEqual(src_trainer.learning_rate, dst_trainer.learning_rate)
+        self.assertEqual(src_trainer.batch_size, dst_trainer.batch_size)
+        self.assertEqual(src_trainer.print_every, dst_trainer.gan_mode)
+        self.assertEqual(src_trainer.save_every, dst_trainer.save_every)
+        self.assertEqual(src_trainer.cur_epoch, dst_trainer.cur_epoch)
+        #self.assertEqual(src_trainer.num_epochs, dst_trainer.num_epochs)
 
 
         print('======== TestPix2PixTrainer.test_save_load_checkpoint <END>')

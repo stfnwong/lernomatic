@@ -14,8 +14,8 @@ from lernomatic.models import common
 
 class PixelDiscriminator(common.LernomaticModel):
     def __init__(self,
-                 num_input_channels:int,
-                 num_filters:int,
+                 num_input_channels:int=3,
+                 num_filters:int=64,
                  **kwargs) -> None:
         self.net = PixelDiscriminatorModule(
             num_input_channels,
@@ -46,6 +46,10 @@ class PixelDiscriminator(common.LernomaticModel):
         return params
 
     def set_params(self, params : dict) -> None:
+        # FIXME: debug (remove)
+        for k, v in params.items():
+            print('[%s] : %s' % (str(k), type(v)))
+
         # regular model stuff
         self.import_path = params['model_import_path']
         self.model_name  = params['model_name']
@@ -57,10 +61,10 @@ class PixelDiscriminator(common.LernomaticModel):
         self.net = mod(
             params['disc_params']['num_input_channels'],
             num_filters = params['disc_params']['num_filters'],
-            num_layers  = params['disc_params']['num_layers'],
             ksize       = params['disc_params']['ksize'],
             stride      = params['disc_params']['stride'],
             pad_size    = params['disc_params']['pad_size']
+            # TODO : norm layer
         )
         self.net.load_state_dict(params['model_state_dict'])
 

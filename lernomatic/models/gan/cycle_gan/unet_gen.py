@@ -203,12 +203,15 @@ class UNETGenerator(common.LernomaticModel):
     UNETGenerator
     LernomaticModel wrapper around a Generator based on the U-NET Architecture
     """
-    def __init__(self, input_nc:int, output_nc:int, num_downsamples:int,
+    def __init__(self,
+                 num_input_channels:int,
+                 num_output_channels:int,
+                 num_downsamples:int,
                  num_filters:int=64, **kwargs) -> None:
 
         self.net = UNETGeneratorModule(
-            input_nc,
-            output_nc,
+            num_input_channels,
+            num_output_channels,
             num_downsamples,
             num_filters = num_filters,
             **kwargs)
@@ -227,10 +230,10 @@ class UNETGenerator(common.LernomaticModel):
     def get_params(self) -> dict:
         params = super(UNETGenerator, self).get_params()
         params['gen_params'] = {
-            'input_nc'        : self.net.input_nc,
-            'output_nc'       : self.net.output_nc,
-            'num_downsamples' : self.net.num_downsamples,
-            'num_filters'     : self.net.num_filters,
+            'num_input_channels' : self.net.input_nc,
+            'num_output_channels': self.net.output_nc,
+            'num_downsamples'    : self.net.num_downsamples,
+            'num_filters'        : self.net.num_filters,
         }
 
         return params
@@ -245,10 +248,10 @@ class UNETGenerator(common.LernomaticModel):
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
         self.net = mod(
-            params['gen_params']['input_nc'],
-            params['gen_params']['output_nc'],
+            params['gen_params']['num_input_channels'],
+            params['gen_params']['num_output_channels'],
+            params['gen_params']['num_downsamples'],
             num_filters     = params['gen_params']['num_filters'],
             num_downsamples = params['gen_params']['num_downsamples'],
         )
         self.net.load_state_dict(params['model_state_dict'])
-

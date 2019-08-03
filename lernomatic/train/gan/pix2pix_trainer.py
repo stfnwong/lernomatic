@@ -181,14 +181,18 @@ class Pix2PixTrainer(trainer.Trainer):
         mod = getattr(imp, checkpoint_data['g_net']['model_name'])
         # TODO : probably need positional args here, (will be fine with Resnet
         # generator, but probably not UNET generator)
+
         self.g_net = mod()
         self.g_net.set_params(checkpoint_data['g_net'])
         # get discriminator
         model_import_path = checkpoint_data['d_net']['model_import_path']
         imp = importlib.import_module(model_import_path)
         mod = getattr(imp, checkpoint_data['d_net']['model_name'])
-        # TODO : need to get positional args here
-        self.d_net = mod()
+
+        self.d_net = mod(
+            num_input_channels = checkpoint_data['d_net']['disc_params']['num_input_channels'],
+            num_filters = checkpoint_data['d_net']['disc_params']['num_filters']
+        )
         self.d_net.set_params(checkpoint_data['d_net'])
 
         # load generator optimizer
@@ -227,9 +231,9 @@ class Pix2PixTrainer(trainer.Trainer):
     def load_history(self, fname:str) -> None:
         history = torch.load(fname)
 
-        self.loss_iter = history['loss_iter']
-        self.val_loss_iter = history['val_loss_iter']
-        self.acc_iter = history['acc_iter']
+        self.loss_iter      = history['loss_iter']
+        self.val_loss_iter  = history['val_loss_iter']
+        self.acc_iter       = history['acc_iter']
         self.g_loss_history = history['g_loss_history']
         self.d_loss_history = history['d_loss_history']
         self.iter_per_epoch = history['iter_per_epoch']

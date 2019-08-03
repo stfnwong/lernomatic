@@ -18,7 +18,7 @@ from lernomatic.util import image_util
 GLOBAL_OPTS = dict()
 
 
-def translate_dataset() -> None:
+def translate_dataset(max_images:int=128) -> None:
     inferrer = pix2pix_inferrer.Pix2PixInferrer(
         device_id = GLOBAL_OPTS['device_id']
     )
@@ -35,10 +35,25 @@ def translate_dataset() -> None:
         shuffle = False
     )
 
+    # NOTE : for now, we just use the batch index as part of the filename
+    for batch_idx, (data_a, data_b) in enumerate(data_loader):
+        print('Processing image [%d / %d]' % (batch_idx+1, len(data_loader)), end='\r')
+        fake_a = inferrer.forward(data_a)
+        out_img = image_util.tensor_to_img(fake_a)
+
+        fig_filename = 'figures/pix2pix/pix2pix_image_%d.png' % (str(batch_idx))
+        fig, ax = plt.subplots()        # Is it faster to move this out of the loop?
+        ax.imshow(out_img)
+        fig.tight_layout()
+        fig.savefig(fig_filename)
+
+        if batch_idx >= max_images:
+            break
+
+    print('\n done')
 
 
 def translate_image() -> None:
-
     inferrer = pix2pix_inferrer.Pix2PixInferrer(
         device_id = GLOBAL_OPTS['device_id']
     )
