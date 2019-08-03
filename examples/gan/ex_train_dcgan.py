@@ -12,8 +12,10 @@ from torchvision import datasets
 from torchvision import transforms
 from lernomatic.data import hdf5_dataset
 from lernomatic.models.gan import dcgan_basic
+from lernomatic.models.gan import dcgan
 from lernomatic.train.gan import dcgan_trainer
 from lernomatic.vis import vis_loss_history
+from lernomatic.util import math_util
 
 # debug
 from pudb import set_trace; set_trace()
@@ -22,6 +24,11 @@ GLOBAL_OPTS = dict()
 
 
 def main() -> None:
+    # we only allow images sizes that are powers of 2
+    if not math_util.is_pow2_int(GLOBAL_OPTS['image_size']):
+        raise ValueError('Image size (%d) must be a power of 2' % str(GLOBAL_OPTS['image_size']))
+
+
     if GLOBAL_OPTS['dataset'] is not None:
         celeba_transform = transforms.Compose([
             transforms.Resize(GLOBAL_OPTS['image_size']),
@@ -51,12 +58,14 @@ def main() -> None:
     # TODO : once the block-based model is complete, we need a procedure to
     # work out how many blocks are needed for D and G to generate an image of
     # the required size
-    generator = dcgan_basic.DCGGenerator(
+    generator = dcgan.DCGANGenerator(
         zvec_dim = GLOBAL_OPTS['zvec_dim'],
         num_filters = GLOBAL_OPTS['g_num_filters'],
+        img_size = GLOBAL_OPTS['image_size']
     )
-    discriminator = dcgan_basic.DCGDiscriminator(
-        num_filters = GLOBAL_OPTS['d_num_filters']
+    discriminator = dcgan.DCGANDiscriminator(
+        num_filters = GLOBAL_OPTS['d_num_filters'],
+        img_size = GLOBAL_OPTS['image_size']
     )
 
     # get a trainer

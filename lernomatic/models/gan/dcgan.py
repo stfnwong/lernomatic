@@ -85,9 +85,9 @@ class DCGANGeneratorModule(nn.Module):
         fscale = 2 ** (self.num_blocks-1)
 
         gen_blocks = []
+        self.block_filter_sizes = []
         # Initial projection of Z vector to first conv layer
         for b in range(self.num_blocks):
-            print(b, fscale)
             if b == 0:
                 gen_blocks += [DCGANGenBlock(
                     num_input_filters  = self.zvec_dim,
@@ -106,6 +106,7 @@ class DCGANGeneratorModule(nn.Module):
                     padding            = 1
                     )
                 ]
+            self.block_filter_sizes.append(self.num_filters * fscale)
             fscale = fscale // 2
             # prevent the number of output filters becoming zero
             if fscale < 1:
@@ -123,6 +124,7 @@ class DCGANGeneratorModule(nn.Module):
             bias = False
         )
         self.final_tan = nn.Tanh()
+        self.block_filter_sizes.append(self.num_channels)
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:
         out = self.blocks(X)
@@ -158,7 +160,7 @@ class DCGANGenerator(common.LernomaticModel):
         return self.net.num_blocks
 
     def get_block_filter_sizes(self) -> list:
-        pass
+        return self.net.block_filter_sizes
 
     def init_weights(self) -> None:
         classname = self.net.__class__.__name__
@@ -214,6 +216,7 @@ class DCGANDiscriminatorModule(nn.Module):
         super(DCGANDiscriminatorModule, self).__init__()
 
         self.num_blocks = int(np.ceil(np.log2(self.img_size)))-2
+        self.block_filter_sizes = []
 
         disc_blocks = []
         fscale = 1
@@ -228,6 +231,7 @@ class DCGANDiscriminatorModule(nn.Module):
                         padding = 1
                     )
                 ]
+                self.block_filter_sizes.append(self.num_filters)
             else:
                 disc_blocks += [
                     DCGANDiscBlock(
@@ -238,6 +242,7 @@ class DCGANDiscriminatorModule(nn.Module):
                         padding = 1
                     )
                 ]
+                self.block_filter_sizes.append(self.num_filters * (fscale * 2))
                 fscale = fscale * 2
 
         self.blocks = nn.Sequential(*disc_blocks)
@@ -250,6 +255,7 @@ class DCGANDiscriminatorModule(nn.Module):
             bias = False
         )
         self.sigmoid = nn.Sigmoid()
+        self.block_filter_sizes.append(1)
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:
         out = self.blocks(X)
@@ -279,6 +285,12 @@ class DCGANDiscriminator(common.LernomaticModel):
 
     def zero_grad(self) -> None:
         self.net.zero_grad()
+
+    def get_num_blocks(self) -> int:
+        return self.net.num_blocks
+
+    def get_block_filter_sizes(self) -> list:
+        return self.net.block_filter_sizes
 
     def init_weights(self) -> None:
         classname = self.net.__class__.__name__
