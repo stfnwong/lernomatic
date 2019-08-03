@@ -17,7 +17,7 @@ from lernomatic.vis import vis_loss_history
 from lernomatic.util import math_util
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
