@@ -1,10 +1,12 @@
 """
-LEARNING_RATE
+LR_COMMON
 Tools for finding optimal learning rate
 
 Stefan Wong 2018
 """
 
+import importlib
+import pickle
 import numpy as np
 import copy
 import torch
@@ -19,39 +21,45 @@ class LRFinder(object):
     Finds optimal learning rates
     """
     def __init__(self, trainer, **kwargs) -> None:
-        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range')
-        self.trainer        = trainer
+        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range', 'laplace', 'sobel')
+        self.trainer          = trainer
         # learning params
         self.num_epochs       = kwargs.pop('num_epochs', 8)
         # lr params
-        self.lr_mult          :float = kwargs.pop('lr_mult', 0)
+        self.lr_mult          :float = kwargs.pop('lr_mult', 0.0)
         self.lr_min           :float = kwargs.pop('lr_min', 1e-6)
-        self.lr_max           :float = kwargs.pop('lr_max', 10)
+        self.lr_max           :float = kwargs.pop('lr_max', 1.0)
         self.explode_thresh   :float = kwargs.pop('explode_thresh', 4.0)      # fast.ai uses 4 * min_smoothed_loss
         self.beta             :float = kwargs.pop('beta', 0.999)
         self.gamma            :float = kwargs.pop('gamma', 0.999995)
         self.lr_min_factor    :float = kwargs.pop('lr_min_factor', 2.0)
         self.lr_max_scale     :float = kwargs.pop('lr_max_scale', 1.0)
         self.lr_select_method :str   = kwargs.pop('lr_select_method', 'max_acc')
+        self.lr_trunc         :int   = kwargs.pop('lr_trunc', 10)
+        # search time
+        self.max_batches      :int   = kwargs.pop('max_batches', 0)
         # gradient params
         self.grad_thresh      :float = kwargs.pop('grad_thresh', 0.002)
         # other
         self.acc_test         :bool  = kwargs.pop('acc_test', True)
         self.print_every      :int   = kwargs.pop('print_every', 20)
         self.verbose          :bool  = kwargs.pop('verbose', False)
+        # can add some unique id (eg: for comparing states from different
+        # experiments)
+        self.expr_id          :str   = kwargs.pop('expr_id', None)
 
         # trainer and model params
-        self.model_params = None
+        self.model_params   = None
         self.trainer_params = None
         # loss params
-        self.avg_loss = 0.0
-        self.best_loss = 1e6
-        self.best_loss_idx = 0
+        self.avg_loss       = 0.0
+        self.best_loss      = 1e6
+        self.best_loss_idx  = 0
         # acc params
-        self.best_acc = 0.0
-        self.best_acc_idx = 0
+        self.best_acc       = 0.0
+        self.best_acc_idx   = 0
         # learning rate params
-        self.learning_rate = 0.0
+        self.learning_rate  = 0.0
 
         self._init_history()
 
@@ -64,6 +72,21 @@ class LRFinder(object):
         s.append('Method [%s]\n' % str(self.lr_select_method))
         return ''.join(s)
 
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
+        # remove stuff we don't want to save
+        del state['trainer']
+        del state['trainer_params']
+        del state['model_params']
+        # add repr and module path
+        state['module_name'] = repr(self)
+        state['module_path'] = 'lernomatic.param.lr_common'
+
+        return state
+
+    def __setstate__(self, state:dict) -> None:
+        self.__dict__.update(state)
+
     def _print_find(self, epoch: int, batch_idx: int, loss: float) -> None:
         print('[FIND_LR] :  Epoch    iteration         loss    best loss (smooth)  lr')
         print('            [%d/%d]     [%6d/%6d]    %.6f     %.6f     %.6f' %\
@@ -71,9 +94,9 @@ class LRFinder(object):
             loss, self.best_loss, self.learning_rate)
         )
 
-    def _print_acc(self, avg_test_loss: float, correct: int, acc: float, dataset_size: int) -> None:
+    def _print_acc(self, avg_val_loss: float, correct: int, acc: float, dataset_size: int) -> None:
         print('[FIND_LR ACC]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-              (avg_test_loss, correct, dataset_size, 100.0 * acc)
+              (avg_val_loss, correct, dataset_size, 100.0 * acc)
         )
 
     def _init_history(self) -> None:
@@ -88,6 +111,44 @@ class LRFinder(object):
 
         return smooth_loss
 
+    # TODO : need a new algorithm here. I think I want to know
+    # 1) Where all the 'edges' are
+    # 2) What the magnitude of each edge is
+    # I sort of want the highest rate that also has the highest peak. That is,
+    # I want to set lr_max as the right-most tallest peak, then lr_min as the
+    # next right-most tallest peak. I need to sort by position before magnitude
+    # so that I have a 'range' in which the learning rate can vary
+    def _laplace_loss(self) -> tuple:
+        k = np.array([-1, 4, -1])
+        Xs = np.convolve(np.asarray(self.acc_history), k)
+        clip_point = Xs[self.lr_trunc : len(Xs) - self.lr_trunc].max() * 0.9
+        Xc = Xs[Xs < clip_point] = 0
+        idxs = np.argwhere(Xs > 0)
+        lr_max = self.log_lr_history[idxs[0][0]]
+        lr_min = self.log_lr_history[idxs[-2][0]]
+
+        return (lr_min, lr_max)
+
+    def _sobel_loss(self) -> tuple:
+        k = np.array([-1, 0, 1])
+        Xs = np.convolve(np.asarray(self.acc_history), k)
+        clip_point = Xs[self.lr_trunc : len(Xs) - self.lr_trunc].max() * 0.9
+        Xc = Xs[Xs < clip_point] = 0
+        idxs = np.argwhere(Xs > 0)
+        lr_max = self.log_lr_history[idxs[0][0]]
+        lr_min = self.log_lr_history[idxs[-2][0]]
+
+        return (lr_min, lr_max)
+
+    def save(self, filename:str) -> None:
+        with open(filename, 'wb') as fp:
+            pickle.dump(self.__getstate__(), fp)
+
+    def load(self, filename:str) -> None:
+        with open(filename, 'rb') as fp:
+            state = pickle.load(fp)
+        self.__setstate__(state)
+
     def save_model_params(self, params: dict) -> None:
         self.model_params = copy.deepcopy(params)
 
@@ -100,11 +161,14 @@ class LRFinder(object):
     def load_trainer_params(self) -> dict:
         return self.trainer_params
 
+    def get_params(self) -> dict:
+        return self.__getstate__()
+
     def check_loaders(self) -> None:
         if self.trainer.train_loader is None:
             raise ValueError('No train_loader in trainer')
-        if self.trainer.test_loader is None:
-            raise ValueError('No test_loader in trainer')
+        if self.trainer.val_loader is None:
+            raise ValueError('No val_loader in trainer')
 
     def get_lr_history(self) -> list:
         if len(self.log_lr_history) < 1:
@@ -126,10 +190,14 @@ class LRFinder(object):
             lr_min = lr_max * self.lr_min_factor
         elif self.lr_select_method == 'min_range':
             raise NotImplementedError('TODO : min_range method')
+        elif self.lr_select_method == 'laplace':
+            lr_min, lr_max = self._laplace_loss()
+        elif self.lr_select_method == 'sobel':
+            lr_min, lr_max = self._sobel_loss()
         else:
             raise ValueError('Invalid range selection method [%s]' % str(self.lr_select_method))
 
-        return (10 ** lr_min, 10**lr_max)
+        return (10**lr_min, 10**lr_max)
 
     # plotting
     def plot_lr_vs_acc(self, ax, title:str=None, log:bool=False) -> None:
@@ -212,7 +280,7 @@ class LogFinder(LRFinder):
         """
         self.check_loaders()
         # cache parameters for later
-        self.save_model_params(self.trainer.get_model_params())
+        self.save_model_params(self.trainer.model.get_net_state_dict())
         self.save_trainer_params(self.trainer.get_trainer_params())
         self.learning_rate = self.lr_min
         self.lr_mult = (self.lr_max / self.lr_min) ** (1.0 / len(self.trainer.train_loader))
@@ -257,8 +325,8 @@ class LogFinder(LRFinder):
 
                 # accuracy test
                 if self.acc_test is True:
-                    if self.trainer.test_loader is not None:
-                        self.acc(self.trainer.test_loader, batch_idx)
+                    if self.trainer.val_loader is not None:
+                        self.acc(self.trainer.val_loader, batch_idx)
                     else:
                         self.acc(self.trainer.train_loader, batch_idx)
                     # keep a record of the best acc
@@ -276,6 +344,7 @@ class LogFinder(LRFinder):
                 self.learning_rate *= self.lr_mult
                 self.trainer.set_learning_rate(self.learning_rate)
 
+                # break if the loss gets too large
                 if smooth_loss > self.explode_thresh * self.best_loss:
                     explode = True
                     print('[FIND_LR] loss hit explode threshold [%.3f x best (%f)]' %\
@@ -283,6 +352,11 @@ class LogFinder(LRFinder):
                     )
                     break
 
+                # break if we've seen enough batches
+                if self.max_batches > 0 and batch_idx >= self.max_batches:
+                    break
+
+            # need to also break out of the outer loop
             if explode is True:
                 break
 
@@ -294,33 +368,48 @@ class LogFinder(LRFinder):
 
         return self.get_lr_range()
 
-
     def acc(self, data_loader, batch_idx) -> None:
         """
         acc()
         Collect accuracy stats while finding learning rate
         """
-        test_loss = 0.0
+        val_loss = 0.0
         correct = 0
         self.trainer.model.set_eval()
-        for n, (data, labels) in enumerate(data_loader):
-            data = data.to(self.trainer.device)
-            labels = labels.to(self.trainer.device)
+        with torch.no_grad():
+            for n, (data, labels) in enumerate(data_loader):
+                data = data.to(self.trainer.device)
+                labels = labels.to(self.trainer.device)
 
-            with torch.no_grad():
                 output = self.trainer.model.forward(data)
-            loss = self.trainer.criterion(output, labels)
-            test_loss += loss.item()
+                loss = self.trainer.criterion(output, labels)
+                val_loss += loss.item()
 
-            # accuracy
-            pred = output.data.max(1, keepdim=True)[1]
-            correct += pred.eq(labels.data.view_as(pred)).sum().item()
+                # accuracy
+                pred = output.data.max(1, keepdim=True)[1]
+                correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
-        avg_test_loss = test_loss / len(data_loader)
+        avg_val_loss = val_loss / len(data_loader)
         acc = correct / len(data_loader.dataset)
         self.acc_history.append(acc)
         if batch_idx % self.print_every == 0:
             print('[FIND_LR ACC]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
-                (avg_test_loss, correct, len(data_loader.dataset),
+                (avg_val_loss, correct, len(data_loader.dataset),
                 100.0 * acc)
             )
+
+
+
+# Rather than try to have the LFFinder promote itself to the correct class when
+# load() is called, this function wraps the class instantiation and then
+# returns  an object of the original type with the correct state parameters
+def lr_finder_auto_load(filename:str) -> LRFinder:
+    with open(filename, 'rb') as fp:
+        state = pickle.load(fp)
+    imp = importlib.import_module(state['module_path'])
+    mod = getattr(imp, state['module_name'])
+
+    lr_finder = mod(None)
+    lr_finder.load(filename)
+
+    return lr_finder
