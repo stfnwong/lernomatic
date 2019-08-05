@@ -35,11 +35,10 @@ class DCGANInferrer(inferrer.Inferrer):
         fake = self.generate(X)
         return fake.squeeze(0)
 
-    def load_model(self, fname:str) -> None:
+    def load_model(self, fname:str, model_key:str='generator') -> None:
         self.model = common.LernomaticModel()
         checkpoint_data = torch.load(fname)
 
-        model_key = 'generator'
         if model_key not in checkpoint_data:
             raise ValueError('No [%s] key in checkpoint data [%s]' % (str(model_key), str(fname)))
 
@@ -55,3 +54,6 @@ class DCGANInferrer(inferrer.Inferrer):
         self.model = mod()
         self.model.set_params(model_params)
         self._send_to_device()
+
+
+# TODO : DCGAN inferrer that can interpolate?

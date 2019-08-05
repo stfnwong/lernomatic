@@ -183,7 +183,7 @@ class DCGANTrainer(trainer.Trainer):
                       (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), err_d.item(), err_g.item())
                 )
                 print('[TRAIN] : D(x)     D(G(z)) [1/2]')
-                print('          %.4f   %.4f / %.4f' % (d_x, dg_z2, dg_z1))
+                print('          %.4f      %.4f / %.4f' % (d_x, dg_z2, dg_z1))
 
             # save
             if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
@@ -211,6 +211,15 @@ class DCGANTrainer(trainer.Trainer):
             self.save_history(hist_name)
 
             self.cur_epoch += 1
+
+            # TODO : maybe factor this differently - the issue is that the
+            # first epoch doesn't get saved correctly
+            if self.save_every == len(self.train_loader):
+                ck_name = self.checkpoint_dir + self.checkpoint_name + '_iter_' + str(self.loss_iter) +\
+                    '_epoch_' + str(self.cur_epoch) + '.pkl'
+                if self.verbose:
+                    print('\t Saving checkpoint to file [%s]' % str(ck_name))
+                self.save_checkpoint(ck_name)
 
     # also need to overload some of the history functions
     def get_loss_history(self) -> tuple:        # TODO ; more extensive type hint?

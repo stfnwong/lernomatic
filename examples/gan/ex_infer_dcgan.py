@@ -16,6 +16,10 @@ from lernomatic.util import image_util
 GLOBAL_OPTS = dict()
 
 
+# TODO : does the image_size parameter have any effect in the inferrer module
+# itself?
+
+# NOTE: in effect this is using a new (unique) noise vector for each image.
 def generate_image() -> None:
     inferrer = dcgan_inferrer.DCGANInferrer(
         None,
@@ -30,6 +34,8 @@ def generate_image() -> None:
     # get figures
     fig, ax = plt.subplots()
     ax.imshow(out_img)
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
     fig.tight_layout()
     fig.savefig(GLOBAL_OPTS['img_outfile'])
 
@@ -49,6 +55,8 @@ def generate_from_seed() -> None:
     out_img = image_util.tensor_to_img(out_tensor)
     fig, ax = plt.subplots()
     ax.imshow(out_img)
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
     fig.tight_layout()
     fig.savefig(GLOBAL_OPTS['img_outfile'])
 

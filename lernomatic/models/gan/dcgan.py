@@ -5,6 +5,7 @@ A more flexible DCGAN implementation
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import torch.nn as nn
 import numpy as np
@@ -12,8 +13,7 @@ from lernomatic.models import common
 from lernomatic.util import math_util
 
 # debug
-#from pudb import set_trace; set_trace()
-
+from pudb import set_trace; set_trace()
 
 
 class DCGANGenBlock(nn.Module):
@@ -137,6 +137,7 @@ class DCGANGeneratorModule(nn.Module):
         return out
 
 
+
 class DCGANGenerator(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:
         self.net = DCGANGeneratorModule(**kwargs)
@@ -172,6 +173,34 @@ class DCGANGenerator(common.LernomaticModel):
         elif classname.find('BatchNorm') != -1:
             self.net.weight.data.normal_(1.0, 0.02)
             self.net.bias.data.fill_(0)
+
+    def get_params(self) -> dict:
+        params = super(DCGANGenerator, self).get_params()
+        params['gen_params'] = {
+            'num_input_filters'  : self.net.num_input_filters,
+            'num_output_filters' : self.net.num_output_filters,
+            'kernel_size'        : self.net.kernel_size,
+            'img_size'           : self.net.img_size
+        }
+
+        return params
+
+    def set_params(self, params : dict) -> None:
+        # regular model stuff
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod(
+            num_input_filters  = params['gen_params']['num_input_filters'],
+            num_output_filters = params['gen_params']['num_output_filters '],
+            kernel_size        = params['gen_params']['kernel_size '],
+            img_size           = params['gen_params']['img_size '],
+        )
+        self.net.load_state_dict(params['model_state_dict'])
 
 
 class DCGANDiscBlock(nn.Module):
@@ -305,3 +334,31 @@ class DCGANDiscriminator(common.LernomaticModel):
         elif classname.find('BatchNorm') != -1:
             self.net.weight.data.normal_(1.0, 0.02)
             self.net.bias.data.fill_(0)
+
+    def get_params(self) -> dict:
+        params = super(DCGANDiscriminator, self).get_params()
+        params['disc_params'] = {
+            'num_filters'  : self.net.num_filters,
+            'num_channels' : self.net.num_channels,
+            'kernel_size'  : self.net.kernel_size,
+            'img_size'     : self.net.img_size
+        }
+
+        return params
+
+    def set_params(self, params : dict) -> None:
+        # regular model stuff
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod(
+            num_filters  = params['disc_params']['num_filters'],
+            num_channels = params['disc_params']['num_filters'],
+            kernel_size  = params['disc_params']['kernel_size'],
+            img_size     = params['disc_params']['img_size'],
+        )
+        self.net.load_state_dict(params['model_state_dict'])
