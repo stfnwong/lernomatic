@@ -36,8 +36,8 @@ class TestResnetTrainer(unittest.TestCase):
         test_history_name    = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_history.pkl'
         # get a model
         model = resnets.WideResnet(
-            self.resnet_depth,
-            10,     # using CIFAR-10 data
+            depth = self.resnet_depth,
+            num_classes = 10,     # using CIFAR-10 data
             input_channels=3,
             w_factor = 1
         )
@@ -79,7 +79,6 @@ class TestResnetTrainer(unittest.TestCase):
         self.assertEqual(src_tr.weight_decay, dst_tr.weight_decay)
         self.assertEqual(src_tr.print_every, dst_tr.print_every)
         self.assertEqual(src_tr.save_every, dst_tr.save_every)
-        self.assertEqual(src_tr.device_id, dst_tr.device_id)
 
         print('\t Comparing model parameters ')
         src_model_params = src_tr.get_model_params()
@@ -105,10 +104,10 @@ class TestResnetTrainer(unittest.TestCase):
             self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
 
         # test loss history
-        self.assertEqual(len(src_tr.test_loss_history), len(dst_tr.test_loss_history))
-        self.assertEqual(src_tr.test_loss_iter, dst_tr.test_loss_iter)
-        for n in range(len(src_tr.test_loss_history)):
-            self.assertEqual(src_tr.test_loss_history[n], dst_tr.test_loss_history[n])
+        self.assertEqual(len(src_tr.val_loss_history), len(dst_tr.val_loss_history))
+        self.assertEqual(src_tr.val_loss_iter, dst_tr.val_loss_iter)
+        for n in range(len(src_tr.val_loss_history)):
+            self.assertEqual(src_tr.val_loss_history[n], dst_tr.val_loss_history[n])
 
         # test acc history
         self.assertEqual(len(src_tr.acc_history), len(dst_tr.acc_history))
@@ -137,8 +136,8 @@ class TestResnetTrainer(unittest.TestCase):
         train_batch_size = 128
         # get a model
         model = resnets.WideResnet(
-            self.resnet_depth,
-            10,     # using CIFAR-10 data
+            depth = self.resnet_depth,
+            num_classes = 10,     # using CIFAR-10 data
             input_channels=3,
             w_factor=1
         )
