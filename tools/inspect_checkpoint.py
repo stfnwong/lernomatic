@@ -13,7 +13,10 @@ GLOBAL_OPTS = dict()
 TOOL_MODES = ()
 
 
-def dump_items(data:dict, level:int = 0, max_level:int=5,) -> None:
+def dump_items(data:dict,
+               level:int = 0,
+               max_level:int=5,
+               show_str:bool=False) -> None:
     if level >= max_level:
         return
     if level > 0:
@@ -21,17 +24,22 @@ def dump_items(data:dict, level:int = 0, max_level:int=5,) -> None:
     else:
         tab_chars = ""
     for k, v in data.items():
-        print('%s[%s] : %s' % (tab_chars, str(k), type(v)))
+        if show_str is True and isinstance(v, str):
+            print('%s[%s] : %s (%s)' % (tab_chars, str(k), type(v), str(v)))
+        else:
+            print('%s[%s] : %s' % (tab_chars, str(k), type(v)))
         if type(v) is dict:
-            dump_items(v, level+1, max_level)
+            dump_items(v, level+1, max_level, show_str)
 
 
 def main() -> None:
     checkpoint_data = torch.load(GLOBAL_OPTS['input'])
     dump_items(
         checkpoint_data,
-        level=0,
-        max_level=GLOBAL_OPTS['max_level'])
+        level     = 0,
+        max_level = GLOBAL_OPTS['max_level'],
+        show_str  = GLOBAL_OPTS['show_str']
+    )
 
 
 def arg_parser() -> argparse.ArgumentParser:
@@ -40,12 +48,6 @@ def arg_parser() -> argparse.ArgumentParser:
                         type=str,
                         help='Input file'
                         )
-    # TODO : there might be modes later, but for now we just dump the keys
-    #parser.add_argument('--mode',
-    #                    choices=['inspect',  'load', 'find'],
-    #                    default='inspect',
-    #                    help='Select the tool mode from one of inspect, load, find'
-    #                    )
     parser.add_argument('--max-level',
                         type=int,
                         default=3,
@@ -55,6 +57,11 @@ def arg_parser() -> argparse.ArgumentParser:
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
+                        )
+    parser.add_argument('--show-str',
+                        action='store_true',
+                        default=False,
+                        help='Print the value of checkpoint items whose data type is str'
                         )
 
     return parser
