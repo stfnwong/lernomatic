@@ -13,7 +13,7 @@ from lernomatic.models import common
 from lernomatic.util import math_util
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class DCGANGenBlock(nn.Module):
@@ -177,10 +177,11 @@ class DCGANGenerator(common.LernomaticModel):
     def get_params(self) -> dict:
         params = super(DCGANGenerator, self).get_params()
         params['gen_params'] = {
-            'num_input_filters'  : self.net.num_input_filters,
-            'num_output_filters' : self.net.num_output_filters,
-            'kernel_size'        : self.net.kernel_size,
-            'img_size'           : self.net.img_size
+            'num_filters'  : self.net.num_filters,
+            'num_channels' : self.net.num_channels,
+            'kernel_size'  : self.net.kernel_size,
+            'img_size'     : self.net.img_size,
+            'zvec_dim'     : self.net.zvec_dim
         }
 
         return params
@@ -195,10 +196,11 @@ class DCGANGenerator(common.LernomaticModel):
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
         self.net = mod(
-            num_input_filters  = params['gen_params']['num_input_filters'],
-            num_output_filters = params['gen_params']['num_output_filters '],
-            kernel_size        = params['gen_params']['kernel_size '],
-            img_size           = params['gen_params']['img_size '],
+            num_channels = params['gen_params']['num_channels'],
+            num_filters  = params['gen_params']['num_filters'],
+            kernel_size  = params['gen_params']['kernel_size'],
+            img_size     = params['gen_params']['img_size'],
+            zvec_dim     = params['gen_params']['zvec_dim'],
         )
         self.net.load_state_dict(params['model_state_dict'])
 
@@ -357,7 +359,7 @@ class DCGANDiscriminator(common.LernomaticModel):
         mod = getattr(imp, self.module_name)
         self.net = mod(
             num_filters  = params['disc_params']['num_filters'],
-            num_channels = params['disc_params']['num_filters'],
+            num_channels = params['disc_params']['num_channels'],
             kernel_size  = params['disc_params']['kernel_size'],
             img_size     = params['disc_params']['img_size'],
         )

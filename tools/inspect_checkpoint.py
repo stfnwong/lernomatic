@@ -8,11 +8,10 @@ import argparse
 import sys
 import torch
 
-
 GLOBAL_OPTS = dict()
-TOOL_MODES = ()
 
 
+# Recursively dump data from checkpoint
 def dump_items(data:dict,
                level:int = 0,
                max_level:int=5,
@@ -32,6 +31,7 @@ def dump_items(data:dict,
             dump_items(v, level+1, max_level, show_str)
 
 
+# Program entry
 def main() -> None:
     checkpoint_data = torch.load(GLOBAL_OPTS['input'])
     dump_items(
