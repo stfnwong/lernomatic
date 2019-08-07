@@ -15,7 +15,7 @@ GLOBAL_OPTS = dict()
 def dump_items(data:dict,
                level:int = 0,
                max_level:int=5,
-               show_str:bool=False) -> None:
+               show_data:bool=False) -> None:
     if level >= max_level:
         return
     if level > 0:
@@ -23,12 +23,12 @@ def dump_items(data:dict,
     else:
         tab_chars = ""
     for k, v in data.items():
-        if show_str is True and isinstance(v, str):
+        if show_data is True and (isinstance(v, str) or isinstance(v, int) or isinstance(v, float)):
             print('%s[%s] : %s (%s)' % (tab_chars, str(k), type(v), str(v)))
         else:
             print('%s[%s] : %s' % (tab_chars, str(k), type(v)))
         if type(v) is dict:
-            dump_items(v, level+1, max_level, show_str)
+            dump_items(v, level+1, max_level, show_data)
 
 
 # Program entry
@@ -38,7 +38,7 @@ def main() -> None:
         checkpoint_data,
         level     = 0,
         max_level = GLOBAL_OPTS['max_level'],
-        show_str  = GLOBAL_OPTS['show_str']
+        show_data  = GLOBAL_OPTS['show_data']
     )
 
 
@@ -58,10 +58,10 @@ def arg_parser() -> argparse.ArgumentParser:
                         default=False,
                         help='Set verbose mode'
                         )
-    parser.add_argument('--show-str',
+    parser.add_argument('--show-data',
                         action='store_true',
                         default=False,
-                        help='Print the value of checkpoint items whose data type is str'
+                        help='Print the value of checkpoint items with simple datatypes (int, str, float, etc)'
                         )
 
     return parser

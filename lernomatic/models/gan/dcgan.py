@@ -306,7 +306,6 @@ class DCGANDiscriminatorModule(nn.Module):
 class DCGANDiscriminator(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:
         self.net = DCGANDiscriminatorModule(**kwargs)
-        # internal bookkeeping
         self.model_name         = 'DCGANDiscriminator'
         self.module_name        = 'DCGANDiscriminatorModule'
         self.import_path        = 'lernomatic.models.gan.dcgan'

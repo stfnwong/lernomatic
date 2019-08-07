@@ -35,7 +35,7 @@ class DCGANInferrer(inferrer.Inferrer):
         fake = self.generate(X)
         return fake.squeeze(0)
 
-    def load_model(self, fname:str, model_key:str='generator') -> None:
+    def load_model(self, fname:str, model_key:str='generator', param_key:str='gen_params') -> None:
         self.model = common.LernomaticModel()
         checkpoint_data = torch.load(fname)
 
@@ -48,6 +48,7 @@ class DCGANInferrer(inferrer.Inferrer):
         model_params.update({'model_import_path' : checkpoint_data[model_key]['model_import_path']})
         model_params.update({'module_import_path' : checkpoint_data[model_key]['module_import_path']})
         model_params.update({'model_state_dict' : checkpoint_data[model_key]['model_state_dict']})
+        model_params.update({str(param_key) : checkpoint_data[model_key][str(param_key)]})
 
         imp = importlib.import_module(checkpoint_data[model_key]['model_import_path'])
         mod = getattr(imp, checkpoint_data[model_key]['model_name'])
