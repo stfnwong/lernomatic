@@ -12,6 +12,9 @@ import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import common
 
+# type stuff
+from typing import Tuple
+
 # debug
 #from pudb import set_trace; set_trace()
 
@@ -157,7 +160,7 @@ class DCGANTrainer(trainer.Trainer):
             # compute gradients for this batch
             dg_z1 = disc_output.mean().item()
             err_d = errd_real + errd_fake
-
+            # optimize discriminator
             self.optim_d.step()
 
             # Update the Generator network
@@ -212,17 +215,8 @@ class DCGANTrainer(trainer.Trainer):
 
             self.cur_epoch += 1
 
-            # TODO : maybe factor this differently - the issue is that the
-            # first epoch doesn't get saved correctly
-            if self.save_every == len(self.train_loader):
-                ck_name = self.checkpoint_dir + self.checkpoint_name + '_iter_' + str(self.loss_iter) +\
-                    '_epoch_' + str(self.cur_epoch) + '.pkl'
-                if self.verbose:
-                    print('\t Saving checkpoint to file [%s]' % str(ck_name))
-                self.save_checkpoint(ck_name)
-
     # also need to overload some of the history functions
-    def get_loss_history(self) -> tuple:        # TODO ; more extensive type hint?
+    def get_loss_history(self) -> Tuple[np.ndarray, np.ndarray]:
         return (self.g_loss_history[0 : self.loss_iter], self.d_loss_history[0 : self.loss_iter])
 
     def get_g_loss_history(self) -> np.ndarray:

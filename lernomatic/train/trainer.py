@@ -86,7 +86,7 @@ class Trainer(object):
             self.val_batch_size = self.batch_size
         self.best_acc = 0.0
         if self.save_every < 0:
-            self.save_every = len(self.train_loader)
+            self.save_every = len(self.train_loader)-1
         if self.save_every > 0:
             self.save_best = True
 
@@ -330,7 +330,7 @@ class Trainer(object):
             # save checkpoints
             if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
                 ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                    '_epoch_' + str(self.cur_epoch) + '_iter_' + str(self.loss_iter) + '.pkl'
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)

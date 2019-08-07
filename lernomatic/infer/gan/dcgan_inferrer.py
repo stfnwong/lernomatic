@@ -16,11 +16,17 @@ class DCGANInferrer(inferrer.Inferrer):
                  model:common.LernomaticModel,
                  **kwargs) -> None:
 
-        self.img_size:int = kwargs.pop('img_size', 64)
         super(DCGANInferrer, self).__init__(model, **kwargs)
 
     def __repr__(self) -> str:
         return 'DCGANInferrer'
+
+    def get_random_zvec(self) -> torch.Tensor:
+        # get a random Z vector scaled according to the model size
+        return torch.randn(1, self.model.get_zvec_dim(), 1, 1)
+
+    def get_img_size(self) -> int:
+        return self.model.img_size
 
     def generate(self, X:torch.Tensor) -> torch.Tensor:
         self.model.set_eval()
@@ -30,7 +36,7 @@ class DCGANInferrer(inferrer.Inferrer):
 
     def forward(self, X:torch.Tensor=None) -> torch.Tensor:
         if X is None:
-            X = torch.randn(1, self.model.get_zvec_dim(), 1, 1)
+            X = self.get_random_zvec()
 
         fake = self.generate(X)
         return fake.squeeze(0)
