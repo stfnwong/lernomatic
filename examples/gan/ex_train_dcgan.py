@@ -24,20 +24,21 @@ GLOBAL_OPTS = dict()
 
 def main() -> None:
     if GLOBAL_OPTS['dataset'] is not None:
-        celeba_transform = transforms.Compose([
+        gan_data_transform = transforms.Compose([
             transforms.Resize(GLOBAL_OPTS['image_size']),
             transforms.CenterCrop(GLOBAL_OPTS['image_size']),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            transforms.ToTensor()
         ])
 
         train_dataset = hdf5_dataset.HDF5Dataset(
             GLOBAL_OPTS['dataset'],
             feature_name = 'images',
             label_name = 'labels',
-            transform = celeba_transform
+            transform = gan_data_transform
         )
     else:
-        celeba_transform = transforms.Compose([
+        gan_data_transform = transforms.Compose([
             transforms.Resize(GLOBAL_OPTS['image_size']),
             transforms.CenterCrop(GLOBAL_OPTS['image_size']),
             transforms.ToTensor(),
@@ -45,7 +46,7 @@ def main() -> None:
         ])
         train_dataset = datasets.ImageFolder(
             root=GLOBAL_OPTS['dataset_root'],
-            transform = celeba_transform
+            transform = gan_data_transform
         )
 
     # get some models
