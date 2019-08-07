@@ -35,7 +35,7 @@ def main() -> None:
             GLOBAL_OPTS['dataset'],
             feature_name = 'images',
             label_name = 'labels',
-            transform = gan_data_transform
+            #transform = gan_data_transform
         )
     else:
         gan_data_transform = transforms.Compose([

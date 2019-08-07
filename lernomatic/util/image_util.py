@@ -67,7 +67,7 @@ def scale_width(img:np.ndarray, target_w:int, interp_method=Image.BICUBIC) -> np
     w = target_w
     h = int(target_w * oh / ow)
 
-    return img.resize((w, b), interp_method)
+    return img.resize((w, h), interp_method)
 
 
 def crop(img:np.ndarray, x_pos:int, y_pos:int, size:int) -> np.ndarray:

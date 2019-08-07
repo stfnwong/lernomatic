@@ -31,7 +31,7 @@ def main() -> None:
     num_err = 0
     for n, path in enumerate(img_paths):
         if GLOBAL_OPTS['verbose']:
-            print('Checking file [%d / %d] [%s]' % (n+1, len(img_paths), str(path)), end='\r')
+            print('Checking file [%d / %d] ' % (n+1, len(img_paths)), end='\r')
 
         # If there are any exceptions then just remove the file that caused
         # them and continue
@@ -56,6 +56,7 @@ def main() -> None:
     proc = image_proc.ImageDataProc(
         label_dataset_size = 1,
         image_dataset_size = (3, GLOBAL_OPTS['image_size'], GLOBAL_OPTS['image_size']),
+        to_tensor = True,
         verbose = GLOBAL_OPTS['verbose']
     )
     proc.proc(s, GLOBAL_OPTS['outfile'])
