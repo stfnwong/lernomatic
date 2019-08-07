@@ -116,12 +116,12 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--print-every',
                         type=int,
-                        default=100,
+                        default=20,
                         help='Print output every N epochs'
                         )
     parser.add_argument('--save-every',
                         type=int,
-                        default=1000,
+                        default=-1,
                         help='Save model checkpoint every N epochs'
                         )
     parser.add_argument('--num-workers',

@@ -16,9 +16,9 @@ class Inferrer(object):
     """
     Inferrer
 
-    Wraps the forward pass of a model. This is the counterpart to
-    the Trainer module. This does the forward pass, handles devices,
-    and so on
+    Base class of an Inferrer object. Wraps the forward pass of a model.
+    This is the counterpart to the Trainer module. This does the forward
+    pass, handles devices, and so on.
     """
     def __init__(self, model=None, **kwargs) -> None:
         self.model = model
@@ -51,11 +51,11 @@ class Inferrer(object):
         self.model = common.LernomaticModel()
         checkpoint_data = torch.load(fname)
         model_params = dict()
-        model_params.update({'model_name' : checkpoint_data[model_key]['model_name']})
-        model_params.update({'module_name' : checkpoint_data[model_key]['module_name']})
-        model_params.update({'model_import_path' : checkpoint_data[model_key]['model_import_path']})
+        model_params.update({'model_name'         : checkpoint_data[model_key]['model_name']})
+        model_params.update({'module_name'        : checkpoint_data[model_key]['module_name']})
+        model_params.update({'model_import_path'  : checkpoint_data[model_key]['model_import_path']})
         model_params.update({'module_import_path' : checkpoint_data[model_key]['module_import_path']})
-        model_params.update({'model_state_dict' : checkpoint_data[model_key]['model_state_dict']})
+        model_params.update({'model_state_dict'   : checkpoint_data[model_key]['model_state_dict']})
 
         imp = importlib.import_module(checkpoint_data[model_key]['model_import_path'])
         mod = getattr(imp, checkpoint_data[model_key]['model_name'])
