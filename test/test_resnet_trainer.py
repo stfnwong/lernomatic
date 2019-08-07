@@ -15,8 +15,6 @@ from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
 from lernomatic.vis import vis_loss_history
 
-# debug
-#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -45,15 +43,15 @@ class TestResnetTrainer(unittest.TestCase):
         src_tr = resnet_trainer.ResnetTrainer(
             model,
             # training parameters
-            batch_size = self.test_batch_size,
-            num_epochs = self.test_num_epochs,
+            batch_size    = self.test_batch_size,
+            num_epochs    = self.test_num_epochs,
             learning_rate = self.test_learning_rate,
             # device
-            device_id = GLOBAL_OPTS['device_id'],
+            device_id     = GLOBAL_OPTS['device_id'],
             # display,
-            print_every = GLOBAL_OPTS['print_every'],
-            save_every = 0,
-            verbose = self.verbose
+            print_every   = GLOBAL_OPTS['print_every'],
+            save_every    = 0,
+            verbose       = self.verbose
         )
 
         if self.verbose:
@@ -145,8 +143,8 @@ class TestResnetTrainer(unittest.TestCase):
         trainer = resnet_trainer.ResnetTrainer(
             model,
             # training parameters
-            batch_size = train_batch_size,
-            num_epochs = train_num_epochs,
+            batch_size    = train_batch_size,
+            num_epochs    = train_num_epochs,
             learning_rate = self.test_learning_rate,
             # device
             device_id = GLOBAL_OPTS['device_id'],

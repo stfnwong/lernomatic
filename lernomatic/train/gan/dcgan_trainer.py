@@ -10,38 +10,32 @@ import torch
 import torch.nn as nn
 import numpy as np
 from lernomatic.train import trainer
-from lernomatic.models import dcgan
 from lernomatic.models import common
+
+# type stuff
+from typing import Tuple
 
 # debug
 #from pudb import set_trace; set_trace()
 
 
 class DCGANTrainer(trainer.Trainer):
-    def __init__(self, D, G, **kwargs) -> None:
+    def __init__(self,
+                 D:common.LernomaticModel=None,
+                 G:common.LernomaticModel=None,
+                 **kwargs) -> None:
         self.discriminator = D
         self.generator     = G
         self.beta1         = kwargs.pop('beta1', 0.5)
         self.real_label    = kwargs.pop('real_label', 1)
         self.fake_label    = kwargs.pop('fake_label', 0)
-        self.train_loader  = None        # so that super() does not call _init_history()
+        # option to save a history of generated images each epoch ?
+
         super(DCGANTrainer, self).__init__(None, **kwargs)
-
-        self.train_dataset = kwargs.pop('train_dataset', None)
-        self.test_dataset  = kwargs.pop('test_dataset', None)
-        self.val_dataset   = kwargs.pop('val_dataset', None)
-
         # use CELoss
         self.loss_function = 'BCELoss'
         self.optim_function = 'Adam'
         self.criterion = nn.BCELoss()
-
-        # setup internals
-        self._init_device()
-        self._init_dataloaders()
-        self._init_optimizers()
-        self._init_history()
-        self._send_to_device();
 
     def __repr__(self) -> str:
         return 'DCGANTrainer'
@@ -56,7 +50,7 @@ class DCGANTrainer(trainer.Trainer):
                 shuffle = self.shuffle,
                 drop_last = True
             )
-        self.test_loader = None     # TODO : clean up references to this later
+        self.test_loader = None
 
     def _init_history(self) -> None:
         self.loss_iter = 0
@@ -66,7 +60,7 @@ class DCGANTrainer(trainer.Trainer):
         self.d_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
         self.g_loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
 
-    def _init_optimizers(self) -> None:
+    def _init_optimizer(self) -> None:
         # generator
         if self.generator is None:
             self.optim_g = None
@@ -166,7 +160,7 @@ class DCGANTrainer(trainer.Trainer):
             # compute gradients for this batch
             dg_z1 = disc_output.mean().item()
             err_d = errd_real + errd_fake
-
+            # optimize discriminator
             self.optim_d.step()
 
             # Update the Generator network
@@ -192,16 +186,18 @@ class DCGANTrainer(trainer.Trainer):
                       (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), err_d.item(), err_g.item())
                 )
                 print('[TRAIN] : D(x)     D(G(z)) [1/2]')
-                print('          %.4f   %.4f / %.4f' % (d_x, dg_z2, dg_z1))
+                print('          %.4f      %.4f / %.4f' % (d_x, dg_z2, dg_z1))
 
             # save
             if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
-                ck_name = self.checkpoint_dir + self.checkpoint_name + '_iter_' + str(self.loss_iter) +\
-                    '_epoch_' + str(self.cur_epoch) + '.pkl'
+                ck_name = self.checkpoint_dir + self.checkpoint_name + \
+                    '_epoch_' + str(self.cur_epoch) + '_iter_' + str(self.loss_iter) + '.pkl'
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s]' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+    def val_epoch(self) -> None:
+        pass
 
     def train(self) -> None:
         self._send_to_device()
@@ -219,9 +215,8 @@ class DCGANTrainer(trainer.Trainer):
 
             self.cur_epoch += 1
 
-
     # also need to overload some of the history functions
-    def get_loss_history(self) -> tuple:        # TODO ; more extensive type hint?
+    def get_loss_history(self) -> Tuple[np.ndarray, np.ndarray]:
         return (self.g_loss_history[0 : self.loss_iter], self.d_loss_history[0 : self.loss_iter])
 
     def get_g_loss_history(self) -> np.ndarray:
@@ -265,7 +260,7 @@ class DCGANTrainer(trainer.Trainer):
         self.discriminator.set_params(checkpoint_data['discriminator'])
 
         # Load optimizer
-        self._init_optimizers()  # TODO : should this name always be plural for consistency?
+        self._init_optimizer()
         self.optim_d.load_state_dict(checkpoint_data['optim_d'])
         self.optim_g.load_state_dict(checkpoint_data['optim_g'])
         # transfer tensors to current device
@@ -288,7 +283,8 @@ class DCGANTrainer(trainer.Trainer):
         history = {
             'd_loss_history' : self.d_loss_history,
             'g_loss_history' : self.g_loss_history,
-            'loss_iter'      : self.loss_iter
+            'loss_iter'      : self.loss_iter,
+            'iter_per_epoch' : self.iter_per_epoch
         }
         torch.save(history, fname)
 
@@ -297,4 +293,5 @@ class DCGANTrainer(trainer.Trainer):
         self.d_loss_history = history['d_loss_history']
         self.g_loss_history = history['g_loss_history']
         self.loss_iter      = history['loss_iter']
+        self.iter_per_epoch = history['iter_per_epoch']
         self.cur_epoch = self.start_epoch

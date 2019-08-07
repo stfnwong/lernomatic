@@ -175,7 +175,7 @@ class WideResnetModule(nn.Module):
     def __str__(self) -> str:
         s = []
         s.append('WideResnet-%d\n' % self.depth)
-        s.append(str(self))
+        s.append(repr(self))
 
         return ''.join(s)
 

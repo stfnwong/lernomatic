@@ -6,12 +6,12 @@ Stefan Wong 2019
 """
 
 import h5py
-import cv2
+import cv2   # Should be PIL for consistency, but cv2 is actually the better choice overall
 import numpy as np
 from tqdm import tqdm
 
-# debug
-#from pudb import set_trace; set_trace()
+from lernomatic.data import data_split as lm_data_split
+
 
 class ImageDataProc(object):
     def __init__(self, **kwargs) -> None:
@@ -32,7 +32,7 @@ class ImageDataProc(object):
     def __len__(self) -> int:
         return self.dataset_size
 
-    def proc(self, data_split, outfile) -> None:
+    def proc(self, data_split:lm_data_split.DataSplit, outfile:str) -> None:
         with h5py.File(outfile, 'w') as fp:
             images = fp.create_dataset(
                 self.image_dataset_name,
@@ -53,6 +53,7 @@ class ImageDataProc(object):
             invalid_file_list = []
             for n, (img_path, img_id, label) in enumerate(tqdm(data_split, unit='images')):
                 img = cv2.imread(img_path)
+                #img = Image.open(img_path).convert('RGB')
 
                 if img is None:
                     invalid_file_list.append(img_path)

@@ -5,35 +5,40 @@ Train a DCGAN
 Stefan Wong 2019
 """
 
+import time
+from datetime import timedelta
 import argparse
 from torchvision import datasets
 from torchvision import transforms
 from lernomatic.data import hdf5_dataset
-from lernomatic.models import dcgan
-from lernomatic.train import dcgan_trainer
+from lernomatic.models.gan import dcgan
+from lernomatic.train.gan import dcgan_trainer
 from lernomatic.vis import vis_loss_history
+from lernomatic.util import math_util
 
 # debug
-#from pubd import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
 
-def main():
-
+def main() -> None:
     if GLOBAL_OPTS['dataset'] is not None:
-        celeba_transform = transforms.Compose([
+        gan_data_transform = transforms.Compose([
+            transforms.Resize(GLOBAL_OPTS['image_size']),
+            transforms.CenterCrop(GLOBAL_OPTS['image_size']),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            transforms.ToTensor()
         ])
 
         train_dataset = hdf5_dataset.HDF5Dataset(
             GLOBAL_OPTS['dataset'],
             feature_name = 'images',
             label_name = 'labels',
-            transform = celeba_transform
+            #transform = gan_data_transform
         )
     else:
-        celeba_transform = transforms.Compose([
+        gan_data_transform = transforms.Compose([
             transforms.Resize(GLOBAL_OPTS['image_size']),
             transforms.CenterCrop(GLOBAL_OPTS['image_size']),
             transforms.ToTensor(),
@@ -41,16 +46,18 @@ def main():
         ])
         train_dataset = datasets.ImageFolder(
             root=GLOBAL_OPTS['dataset_root'],
-            transform = celeba_transform
+            transform = gan_data_transform
         )
 
-    # get a model
-    generator = dcgan.DCGGenerator(
+    # get some models
+    generator = dcgan.DCGANGenerator(
         zvec_dim = GLOBAL_OPTS['zvec_dim'],
         num_filters = GLOBAL_OPTS['g_num_filters'],
+        img_size = GLOBAL_OPTS['image_size']
     )
-    discriminator = dcgan.DCGDiscriminator(
-        num_filters = GLOBAL_OPTS['d_num_filters']
+    discriminator = dcgan.DCGANDiscriminator(
+        num_filters = GLOBAL_OPTS['d_num_filters'],
+        img_size = GLOBAL_OPTS['image_size']
     )
 
     # get a trainer
@@ -80,7 +87,11 @@ def main():
         gan_trainer.load_checkpoint(GLOBAL_OPTS['load_checkpoint'])
 
     print(gan_trainer.device)
+    train_start_time = time.time()
     gan_trainer.train()
+    train_end_time = time.time()
+    train_total_time = train_end_time - train_start_time
+    print('Total training time : %s' % str(timedelta(seconds = train_total_time)))
     # show the training results
     dcgan_fig, dcgan_ax = vis_loss_history.get_figure_subplots(1)
     vis_loss_history.plot_train_history_dcgan(
@@ -96,7 +107,7 @@ def main():
 
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
@@ -106,12 +117,12 @@ def get_parser():
                         )
     parser.add_argument('--print-every',
                         type=int,
-                        default=100,
+                        default=20,
                         help='Print output every N epochs'
                         )
     parser.add_argument('--save-every',
                         type=int,
-                        default=1000,
+                        default=-1,
                         help='Save model checkpoint every N epochs'
                         )
     parser.add_argument('--num-workers',
@@ -170,7 +181,7 @@ def get_parser():
                         )
     parser.add_argument('--learning-rate',
                         type=float,
-                        default=0.0002,
+                        default=0.0002,     # NOTE: this is the rate from Radford, Metz and Chintala
                         help='Learning rate for ADAM optimizer'
                         )
     parser.add_argument('--momentum',
@@ -202,7 +213,7 @@ def get_parser():
     # checkpoint options
     parser.add_argument('--checkpoint-dir',
                         type=str,
-                        default='./checkpoint',
+                        default='./checkpoint/',
                         help='Set directory to place training snapshots into'
                         )
     parser.add_argument('--checkpoint-name',
@@ -230,6 +241,6 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()
