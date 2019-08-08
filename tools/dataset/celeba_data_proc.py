@@ -6,7 +6,7 @@ Stefan Wong 2019
 """
 
 import os
-import cv2
+from PIL import Image       # using PIL instead of cv2 due to torchvision
 import argparse
 #from tqdm import tqdm
 from lernomatic.data import data_split
@@ -25,10 +25,15 @@ def main():
     if img_paths is None or len(img_paths) < 1:
         raise ValueError('No files in directory [%s]' % GLOBAL_OPTS['dataset_root'])
 
+    if GLOBAL_OPTS['verbose']:
+        print('Found %d files in path [%s]' % (src_len, str(GLOBAL_OPTS['dataset_root'])))
+
     print('Checking files in path [%s]' % GLOBAL_OPTS['dataset_root'])
     num_err = 0
     for n, path in enumerate(img_paths):
-        img = cv2.imread(path)
+        if GLOBAL_OPTS['verbose']:
+            print('Checking file [%d / %d]' % (n+1, len(img_paths)), end='\r')
+        img = Image.open(GLOBAL_OPTS['dataset_root'] + str(path)).convert('RGB')
         if img is None:
             print('Failed to load image [%d/%d] <%s>' % (n, len(img_paths), str(path)), end='\r')
             img_paths.pop(n)

@@ -9,6 +9,7 @@ import json
 import os
 import numpy as np
 
+
 class DataSplit(object):
     """
     DATASPLIT
@@ -83,6 +84,10 @@ class DataSplit(object):
         self.data_paths.append(p)
         self.elem_ids.append(i)
         self.data_labels.append(l)
+
+    def init_labels_ids(self) -> None:
+        self.elem_ids    = [int(0) for _ in range(len(self.data_paths))]
+        self.data_labels = [int(0) for _ in range(len(self.data_paths))]
 
     def save(self, fname:str) -> None:
         param = self.get_param_dict()

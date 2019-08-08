@@ -6,48 +6,21 @@ Stefan Wong 2019
 """
 
 import h5py
-import cv2
+import cv2   # Should be PIL for consistency, but cv2 is actually the better choice overall
 import numpy as np
 from tqdm import tqdm
-from lernomatic.data import data_split as lm_data_split
+from lernomatic.data import data_split
+
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
+
 
 class ImageDataProc(object):
-    """
-    ImageDataProc
-    Process a generic image dataset
-
-    Arguments:
-        image_dataset_name: (str)
-            Name of image dataset in output HDF5 file (default: 'images')
-
-        image_dataset_size: (tuple)
-            Shape of a single image in the image dataset (default: (3, 224, 224))
-
-        label_dataset_name: (str)
-            Name of label dataset in output HDF5 file (default: 'labels')
-
-        label_dataset_size: (tuple)
-            Shape of a single label in the image dataset (default: 1)
-
-        label_dataset_dtype: (int)
-            Datatype of the labels in the label dataset
-
-        id_dataset_name: (str)
-            Name of id dataset in output HDF5 file (default: 'ids')
-
-        id_dtype:
-            Datatype of the ids in the id dataset
-
-        verbose: (bool)
-            Set verbose mode
-
-    """
     def __init__(self, **kwargs) -> None:
         self.verbose = kwargs.pop('verbose', False)
         # dataset options
+        #self.dataset_size       = kwargs.pop('dataset_size', 1000)
         self.image_dataset_name  : str   = kwargs.pop('image_dataset_name', 'images')
         self.image_dataset_size  : tuple = kwargs.pop('image_dataset_size', (3, 224, 224))
         self.label_dataset_name  : str   = kwargs.pop('label_dataset_name', 'labels')
@@ -62,31 +35,28 @@ class ImageDataProc(object):
     def __len__(self) -> int:
         return self.dataset_size
 
-    def proc(self, data_split:lm_data_split.DataSplit, outfile:str) -> None:
-        """
-        proc()
-        Process a split into an HDF5 file
-        """
+    def proc(self, split_data:data_split.DataSplit, outfile:str) -> None:
         with h5py.File(outfile, 'w') as fp:
             images = fp.create_dataset(
                 self.image_dataset_name,
-                (len(data_split),) + self.image_dataset_size,
+                (len(split_data),) + self.image_dataset_size,
                 dtype=np.uint8
             )
             ids = fp.create_dataset(
                 self.id_dataset_name,
-                (len(data_split), self.label_dataset_size),
+                (len(split_data), self.label_dataset_size),
                 dtype=int
             )
             labels = fp.create_dataset(
                 self.label_dataset_name,
-                (len(data_split), self.label_dataset_size),
+                (len(split_data), self.label_dataset_size),
                 dtype=int
             )
 
             invalid_file_list = []
-            for n, (img_path, img_id, label) in enumerate(tqdm(data_split, unit='images')):
+            for n, (img_path, img_id, label) in enumerate(tqdm(split_data, unit='images')):
                 img = cv2.imread(img_path)
+                #img = Image.open(img_path).convert('RGB')
 
                 if img is None:
                     invalid_file_list.append(img_path)
@@ -108,5 +78,5 @@ class ImageDataProc(object):
 
         if self.verbose:
             print('%d invalid files found out of %d total (%.3f %%)' %\
-                  (len(invalid_file_list), len(data_split), 100 * (len(invalid_file_list) + 1e-8) / len(data_split))
+                  (len(invalid_file_list), len(split_data), 100 * (len(invalid_file_list) + 1e-8) / len(split_data))
             )

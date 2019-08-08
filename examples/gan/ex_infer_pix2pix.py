@@ -10,6 +10,7 @@ import argparse
 from PIL import Image       # would be nice to have cv2 here...
 import matplotlib.pyplot as plt
 import torch
+from torchvision import datasets
 from torch.utils.data import Dataset
 from lernomatic.infer.gan import pix2pix_inferrer
 from lernomatic.models import common
@@ -25,7 +26,7 @@ def translate_dataset(max_images:int=128) -> None:
     inferrer.load_model(GLOBAL_OPTS['checkpoint'])
 
     # Just assume for now that an ImageFolder dataset is fine
-    dataset = Dataset.ImageFolder(
+    dataset = datasets.ImageFolder(
         GLOBAL_OPTS['dataset_path'],
     )
 
