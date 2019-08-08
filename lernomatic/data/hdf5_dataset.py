@@ -6,6 +6,7 @@ Dataset for an HDF5 file
 import h5py
 import torch
 import numpy as np
+import PIL
 from torch.utils.data import Dataset
 
 from typing import Tuple
@@ -123,4 +124,48 @@ class HDF5RawDataset(Dataset):
         return (feature, label)
 
 
-# HDF5 PIL?
+
+# Almost the same thing again, but converts to PIL.Image
+class HDF5PILDataset(Dataset):
+    """
+    HDF5PILDataset
+
+    Same an an HDF5Dataset, but performs a conversion to a PIL.Image for the
+    elements of the feature dataset.
+
+    Arguments:
+        filename (str) :
+            Name of input file.
+
+        feature_name (str) :
+            Name of feature key. (default: features)
+
+        label_name (str) :
+            Name of label key (default: labels)
+    """
+    def __init__(self, filename: str, **kwargs) -> None:
+        self.fp = h5py.File(filename, 'r')
+        # set dataset names
+        self.feature_name  = kwargs.pop('feature_name', 'features')
+        self.label_name    = kwargs.pop('label_name', 'labels')
+
+    def __repr__(self) -> str:
+        return 'HDF5PILDataset'
+
+    def __del__(self) -> None:
+        self.fp.close()
+
+    def __len__(self) -> int:
+        return len(self.fp[self.feature_name])
+
+    # NOTE : even thought the type hint says ndarray, this could actually be
+    # anything
+    def __getitem__(self, idx: int) -> Tuple[PIL.Image.Image, np.ndarray]:
+        if idx > len(self)-1:
+            raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
+
+        feature = PIL.Image.fromarray(self.fp[self.feature_name][idx][:].astype('uint8'))
+        label   = self.fp[self.label_name][idx][:]
+
+        return (feature, label)
+

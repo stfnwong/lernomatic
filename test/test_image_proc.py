@@ -137,7 +137,7 @@ class TestImageProc(unittest.TestCase):
 
         print('Processed file [%s], checking...' % str(self.pil_test_outfile))
         # Now read back the data and check
-        test_data = hdf5_dataset.HDF5RawDataset(
+        test_data = hdf5_dataset.HDF5PILDataset(
             self.pil_test_outfile,
             feature_name = 'images',
             label_name = 'labels'
@@ -147,8 +147,8 @@ class TestImageProc(unittest.TestCase):
         # we ought to convert when reading...
         for idx, (image, label) in enumerate(test_data):
             print('Checking element [%d / %d]' % (idx+1, len(test_data)), end='\r')
-            self.assertEqual(self.expected_pil_shape, image.shape)
-            #self.assertTrue(isinstance(image, PIL.Image.Image))
+            self.assertEqual(self.expected_pil_shape[0:2], image.size)
+            self.assertTrue(isinstance(image, PIL.Image.Image))
 
         print('\n OK')
 
