@@ -11,11 +11,14 @@ import argparse
 from lernomatic.data import data_split
 from lernomatic.data import image_proc
 
+# debug
+#from pudb import set_trace; set_trace()
+
 GLOBAL_OPTS = dict()
 
 
-def main() -> None:
 
+def main() -> None:
     if GLOBAL_OPTS['outfile'] is None:
         raise ValueError('No outfile specified (use --outfile=OUTFILE)')
 
@@ -49,8 +52,10 @@ def main() -> None:
     # get a split
     s = data_split.DataSplit(split_name=GLOBAL_OPTS['split_name'])
     s.data_paths  = [GLOBAL_OPTS['dataset_root'] + str(path) for path in img_paths]
-    s.data_labels = [0 for x in range(len(img_paths))]
-    s.elem_ids    = [0 for x in range(len(img_paths))]
+    s.data_labels = [int(0) for _ in range(len(img_paths))]
+    s.elem_ids    = [int(0) for _ in range(len(img_paths))]
+    s.has_labels  = True
+    s.has_ids     = True
 
     # process the data
     proc = image_proc.ImageDataProc(

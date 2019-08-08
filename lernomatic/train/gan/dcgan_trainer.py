@@ -24,11 +24,11 @@ class DCGANTrainer(trainer.Trainer):
                  D:common.LernomaticModel=None,
                  G:common.LernomaticModel=None,
                  **kwargs) -> None:
-        self.discriminator = D
-        self.generator     = G
-        self.beta1         = kwargs.pop('beta1', 0.5)
-        self.real_label    = kwargs.pop('real_label', 1)
-        self.fake_label    = kwargs.pop('fake_label', 0)
+        self.discriminator :common.LernomaticModel = D
+        self.generator     :common.LernomaticModel = G
+        self.beta1         :float = kwargs.pop('beta1', 0.5)
+        self.real_label    :int   = kwargs.pop('real_label', 1)
+        self.fake_label    :int   = kwargs.pop('fake_label', 0)
         # option to save a history of generated images each epoch ?
 
         super(DCGANTrainer, self).__init__(None, **kwargs)
@@ -51,6 +51,7 @@ class DCGANTrainer(trainer.Trainer):
                 drop_last = True
             )
         self.test_loader = None
+        self.val_loader = None
 
     def _init_history(self) -> None:
         self.loss_iter = 0
@@ -118,9 +119,6 @@ class DCGANTrainer(trainer.Trainer):
         self.fake_label = params['fake_label']
         self.real_label = params['real_label']
         self.beta1      = params['beta1']
-
-    def gen_fixed_noise_vector(self, vec_dim:int) -> None:
-        self.fixed_noise = torch.randn(64, vec_dim, 1, 1, device=self.device)
 
     # ==== TRAINING ==== #
     def train_epoch(self) -> None:
@@ -198,22 +196,6 @@ class DCGANTrainer(trainer.Trainer):
 
     def val_epoch(self) -> None:
         pass
-
-    def train(self) -> None:
-        self._send_to_device()
-        self.gen_fixed_noise_vector(self.generator.get_zvec_dim())
-
-        for n in range(self.cur_epoch, self.num_epochs):
-            self.train_epoch()
-            # since this is an unsupervised task we don't have a good notion of
-            # 'accuracy', therefore no test phase
-            # save history at the end of each epoch
-            hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
-            if self.verbose:
-                print('\t Saving history to file [%s] ' % str(hist_name))
-            self.save_history(hist_name)
-
-            self.cur_epoch += 1
 
     # also need to overload some of the history functions
     def get_loss_history(self) -> Tuple[np.ndarray, np.ndarray]:
