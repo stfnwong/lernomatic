@@ -10,8 +10,6 @@ import importlib
 from lernomatic.models import common
 from lernomatic.infer import inferrer
 
-# debug
-#from pudb import set_trace; set_trace()
 
 class Pix2PixInferrer(inferrer.Inferrer):
     """
@@ -29,7 +27,7 @@ class Pix2PixInferrer(inferrer.Inferrer):
 
     def forward(self, X:torch.Tensor) -> torch.Tensor:
         self.model.set_eval()
-        return self.model.forward(X)
+        return self.model.forward(X).detach()
 
     def load_model(self, fname:str, model_key:str='g_net')-> None:
         self.model = common.LernomaticModel()
@@ -66,3 +64,5 @@ class Pix2PixInferrer(inferrer.Inferrer):
         self.model.set_params(model_params)
         self._send_to_device()
 
+    def get_input_dims(self) -> tuple:
+        pass

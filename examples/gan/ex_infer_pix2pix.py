@@ -12,11 +12,27 @@ import matplotlib.pyplot as plt
 import torch
 from torchvision import datasets
 from torch.utils.data import Dataset
+
+from lernomatic.data import hdf5_dataset
 from lernomatic.infer.gan import pix2pix_inferrer
 from lernomatic.models import common
 from lernomatic.util import image_util
 
 GLOBAL_OPTS = dict()
+
+# debug
+#from pudb import set_trace; set_trace()
+
+
+def write_img_tensor(fig, ax, fname:str, img_tensor:torch.Tensor) -> None:
+    out_img = image_util.tensor_to_img(img_tensor)
+    # get figures
+    ax.imshow(out_img)
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    fig.tight_layout()
+    fig.savefig(fname)
+
 
 
 def translate_dataset(max_images:int=128) -> None:
@@ -26,8 +42,11 @@ def translate_dataset(max_images:int=128) -> None:
     inferrer.load_model(GLOBAL_OPTS['checkpoint'])
 
     # Just assume for now that an ImageFolder dataset is fine
-    dataset = datasets.ImageFolder(
+    #dataset = datasets.ImageFolder(
+    dataset = hdf5_dataset.HDF5Dataset(
         GLOBAL_OPTS['dataset_path'],
+        feature_name = 'images',
+        label_name = 'labels'
     )
 
     data_loader = torch.utils.data.DataLoader(
@@ -37,18 +56,24 @@ def translate_dataset(max_images:int=128) -> None:
     )
 
     # NOTE : for now, we just use the batch index as part of the filename
+    fig, ax = plt.subplots()        # Is it faster to move this out of the loop?
+    img_idx = 0
     for batch_idx, (data_a, data_b) in enumerate(data_loader):
-        print('Processing image [%d / %d]' % (batch_idx+1, len(data_loader)), end='\r')
+        print('Processing image [%d / %d]' % (batch_idx+1, data_loader.batch_size * len(data_loader)), end='\r')
         fake_a = inferrer.forward(data_a)
-        out_img = image_util.tensor_to_img(fake_a)
 
-        fig_filename = 'figures/pix2pix/pix2pix_image_%d.png' % (str(batch_idx))
-        fig, ax = plt.subplots()        # Is it faster to move this out of the loop?
-        ax.imshow(out_img)
-        fig.tight_layout()
-        fig.savefig(fig_filename)
+        if data_loader.batch_size > 1:
+            for n in range(fake_a.shape[0]):
+                fname = os.path.splitext(GLOBAL_OPTS['outfile'])[0] + '_' + str(img_idx) + '.png'
+                write_img_tensor(fig, ax, fname, fake_a[n])
+                img_idx += 1
 
-        if batch_idx >= max_images:
+        else:
+            fname = os.path.splitext(GLOBAL_OPTS['outfile'])[0] + '_' + str(img_idx) + '.png'
+            write_img_tensor(fig, ax, fname, fake_a)
+            img_idx += 1
+
+        if img_idx >= max_images:
             break
 
     print('\n done')
@@ -60,17 +85,15 @@ def translate_image() -> None:
     )
     inferrer.load_model(GLOBAL_OPTS['checkpoint'])
 
+    # NOTE: for this experiment we know the image size is 512x256
     img = Image.open(GLOBAL_OPTS['input_file']).convert('RGB')
+    img = image_util.crop(img, 0, 0, 256)
     img_tensor = image_util.img_to_tensor(img)
     out_tensor = inferrer.forward(img_tensor)
 
     # convert back to an image for display
-    out_img = image_util.tensor_to_img(out_tensor)
-
     fig, ax = plt.subplots()
-    ax.imshow(out_img)
-    fig.tight_layout()
-    fig.savefig(GLOBAL_OPTS['img_outfile'])
+    write_img_tensor(fig, ax, GLOBAL_OPTS['outfile'], out_tensor)
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -104,7 +127,7 @@ def get_parser() -> argparse.ArgumentParser:
                         help='Path to a single file to evaluate (default: None)'
                         )
     # Output options
-    parser.add_argument('--img-outfile',
+    parser.add_argument('--outfile',
                         type=str,
                         default='pix2pix_out.png',
                         help='Name of output file for a single image'

@@ -8,14 +8,25 @@ Stefan Wong 2019
 import torch
 import numpy as np
 import cv2
+import PIL
 from PIL import Image
 
-# NOTE: iamges have to be PIL for now due to torchvision internals
+# debug
+#from pudb import set_trace; set_trace()
+
+
 
 def tensor_to_img(X:torch.Tensor) -> np.ndarray:
-    img = X.cpu().numpy()
+    # NOTE: this is dumb.... why does pix2xpix put out ndarray's?
+    if isinstance(X, torch.Tensor):
+        img = X.cpu().numpy()
+    elif isinstance(X, np.ndarray):
+        img = X
 
     # get the image in a form suitable for display
+    if len(img.shape) == 4:
+        img = img.squeeze(0)
+
     img = img.transpose(1, 2, 0)
     img_min = img.min()
     img = img + np.abs(img_min)     # get all values positive
@@ -25,27 +36,25 @@ def tensor_to_img(X:torch.Tensor) -> np.ndarray:
     return img
 
 
-# TODO : actually implement all the details and test them
-def img_to_tensor(img:np.ndarray, tensor_dtype:str='float') -> torch.Tensor:
-
+def img_to_tensor(img:PIL.Image.Image, tensor_dtype:str='float') -> torch.Tensor:
+    img = np.asarray(img)
     img = img.transpose(2, 1, 0)
+    img = np.expand_dims(img, 0)     # NOTE: should we check shape?
     if tensor_dtype == 'float':
         t = torch.FloatTensor(img)
     elif tensor_type == 'double':
         t = torch.DoubleTensor(img)
     elif tensor_type == 'long':
         t = torch.LongTensor(img)
-        # TODO :ETC
     else:
         raise ValueError('Unsupported dtype [%s]' % str(tensor_dtype))
 
     return t
 
 
-def make_power_2(img:np.ndarray,
+def make_power_2(img:PIL.Image.Image,
                  base:int,
                  interp_method=Image.BICUBIC) -> np.ndarray:
-    #ow, oh = img.shape
     ow, oh = img.size
     h = int(np.round(oh / base) * base)
     w = int(np.round(ow / base) * base)

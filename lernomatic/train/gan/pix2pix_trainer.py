@@ -110,7 +110,7 @@ class Pix2PixTrainer(trainer.Trainer):
             pred_fake   = self.d_net.forward(ab_fake.detach()) #  remove gradient references
             # fake loss
             d_loss_fake = self.gan_criterion(pred_fake, target_real=False)
-            ab_real     = torch.cat((a_real, b_real), 1)
+            ab_real     = torch.cat((a_real, b_real), dim=1)
             pred_real   = self.d_net.forward(ab_real)
             # real loss
             d_loss_real = self.gan_criterion(pred_real, target_real=True)
