@@ -130,7 +130,7 @@ class TestResnetTrainer(unittest.TestCase):
 
         test_checkpoint_name = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_train_checkpoint.pkl'
         test_history_name    = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_train_history.pkl'
-        train_num_epochs = 10
+        train_num_epochs = 4
         train_batch_size = 128
         # get a model
         model = resnets.WideResnet(

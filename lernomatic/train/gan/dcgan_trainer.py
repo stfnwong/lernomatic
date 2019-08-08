@@ -11,6 +11,7 @@ import torch.nn as nn
 import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import common
+from lernomatic.models.gan import dcgan
 
 # type stuff
 from typing import Tuple
@@ -275,5 +276,4 @@ class DCGANTrainer(trainer.Trainer):
         self.d_loss_history = history['d_loss_history']
         self.g_loss_history = history['g_loss_history']
         self.loss_iter      = history['loss_iter']
-        self.iter_per_epoch = history['iter_per_epoch']
         self.cur_epoch = self.start_epoch

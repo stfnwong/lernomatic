@@ -14,8 +14,8 @@ from lernomatic.models import resnets
 
 GLOBAL_OPTS = dict()
 
-def main():
 
+def main() -> None:
     # Get a model
     model = resnets.WideResnet(
         depth=GLOBAL_OPTS['num_layers'],
@@ -46,7 +46,7 @@ def main():
 
     trainer.train()
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',

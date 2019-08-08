@@ -44,11 +44,10 @@ def show() -> None:
     else:
         test_loss_history = None
 
-    #if GLOBAL_OPTS['verbose']:
-    #    print('Checkpoint [%s] current epoch : %d' % (str(GLOBAL_OPTS['input']), t.cur_epoch))
-    if GLOBAL_OPTS['verbose']:
-        print('%d training iterations in loss history file [%s]' %\
-              (int(history['loss_iter']), str(GLOBAL_OPTS['input'])))
+    if acc_history is not None:
+        fig, ax = vis_loss_history.get_figure_subplots(2)
+    else:
+        fig, ax = vis_loss_history.get_figure_subplots(1)
 
     vis_loss_history.plot_train_history_2subplots(
         ax,

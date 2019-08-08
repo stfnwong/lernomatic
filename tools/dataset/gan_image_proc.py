@@ -17,7 +17,6 @@ from lernomatic.data import image_proc
 GLOBAL_OPTS = dict()
 
 
-
 def main() -> None:
     if GLOBAL_OPTS['outfile'] is None:
         raise ValueError('No outfile specified (use --outfile=OUTFILE)')
@@ -62,6 +61,7 @@ def main() -> None:
         label_dataset_size = 1,
         image_dataset_size = (3, GLOBAL_OPTS['image_size'], GLOBAL_OPTS['image_size']),
         to_tensor = True,
+        to_pil = GLOBAL_OPTS['to_pil'],
         verbose = GLOBAL_OPTS['verbose']
     )
     proc.proc(s, GLOBAL_OPTS['outfile'])
@@ -89,6 +89,11 @@ def arg_parser() -> argparse.ArgumentParser:
                         type=str,
                         default='GANDATA',
                         help='Name for data split (default: GANDATA)'
+                        )
+    parser.add_argument('--to-pil',
+                        action='store_true',
+                        default=False,
+                        help='Set verbose mode'
                         )
     parser.add_argument('-v', '--verbose',
                         action='store_true',

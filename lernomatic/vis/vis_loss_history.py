@@ -21,7 +21,7 @@ def get_figure_subplots(num_subplots:int=2) -> tuple:
     return (fig, ax)
 
 
-def smooth_loss(loss_history:np.ndarray, beta=0.98) -> np.ndarray:
+def smooth_loss(loss_history:np.ndarray, beta:float=0.98) -> np.ndarray:
     avg_loss = 0.0
     smoothed_loss = np.zeros(len(loss_history))
     for n, loss in enumerate(loss_history):

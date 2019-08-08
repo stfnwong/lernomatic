@@ -5,6 +5,7 @@ PixelGAN Discriminator (1x1 PatchGAN )
 Stefan Wong 2019
 """
 
+import importlib
 import functools
 import torch
 import torch.nn as nn
@@ -13,8 +14,8 @@ from lernomatic.models import common
 
 class PixelDiscriminator(common.LernomaticModel):
     def __init__(self,
-                 num_input_channels:int,
-                 num_filters:int,
+                 num_input_channels:int=3,
+                 num_filters:int=64,
                  **kwargs) -> None:
         self.net = PixelDiscriminatorModule(
             num_input_channels,
@@ -56,7 +57,6 @@ class PixelDiscriminator(common.LernomaticModel):
         self.net = mod(
             params['disc_params']['num_input_channels'],
             num_filters = params['disc_params']['num_filters'],
-            num_layers  = params['disc_params']['num_layers'],
             ksize       = params['disc_params']['ksize'],
             stride      = params['disc_params']['stride'],
             pad_size    = params['disc_params']['pad_size']

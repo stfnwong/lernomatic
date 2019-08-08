@@ -25,7 +25,7 @@ from lernomatic.vis import vis_loss_history
 
 GLOBAL_OPTS = dict()
 
-def get_figure_subplots(num_subplots=2) -> tuple:
+def get_figure_subplots(num_subplots:int=2) -> tuple:
     fig = plt.figure()
     ax = []
     for p in range(num_subplots):
@@ -184,11 +184,93 @@ class TestTrainer(unittest.TestCase):
         # Test loss history
         dst_tr.load_history(test_history)
         self.assertIsNot(None, dst_tr.acc_history)
+
         print('\t Comparing loss history....')
         self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
         for n in range(src_tr.loss_iter):
             print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
             self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
+
+        os.remove(test_checkpoint)
+        os.remove(test_history)
+
+        print('======== TestTrainer.test_save_load_acc <END>')
+
+    def test_save_load_device_map(self):
+        print('======== TestTrainer.test_save_load_device_map ')
+
+        test_checkpoint = 'checkpoint/trainer_save_load_device_map.pkl'
+        test_history = 'checkpoint/trainer_save_load_device_map_history.pkl'
+
+        model = cifar.CIFAR10Net()
+        # Get trainer object
+        test_num_epochs = 10
+        src_tr = cifar_trainer.CIFAR10Trainer(
+            model,
+            save_every  = 0,
+            print_every = 50,
+            device_id   = GLOBAL_OPTS['device_id'],
+            # loader options,
+            num_epochs  = self.test_num_epochs,
+            batch_size  = self.test_batch_size,
+            num_workers = self.test_num_workers,
+        )
+
+        if self.verbose:
+            print('Created trainer object')
+            print(src_tr)
+
+        # train for one epoch
+        src_tr.train()
+        src_tr.save_checkpoint(test_checkpoint)
+        self.assertIsNot(None, src_tr.acc_history)
+        src_tr.save_history(test_history)
+
+        # Now try to load a checkpoint and ensure that there is an
+        # acc history attribute that is not None
+        dst_tr = cifar_trainer.CIFAR10Trainer(
+            model,
+            device_id = -1,
+            verbose = self.verbose
+        )
+        dst_tr.load_checkpoint(test_checkpoint)
+
+        # Test object parameters
+        self.assertEqual(src_tr.num_epochs, dst_tr.num_epochs)
+        self.assertEqual(src_tr.learning_rate, dst_tr.learning_rate)
+        self.assertEqual(src_tr.weight_decay, dst_tr.weight_decay)
+        self.assertEqual(src_tr.print_every, dst_tr.print_every)
+        self.assertEqual(src_tr.save_every, dst_tr.save_every)
+
+        print('\t Comparing model parameters ')
+        src_model_params = src_tr.get_model_params()
+        dst_model_params = dst_tr.get_model_params()
+        self.assertEqual(len(src_model_params.items()), len(dst_model_params.items()))
+
+        print('\t Comparing model parameters ')
+        src_model_params = src_tr.get_model_params()
+        dst_model_params = dst_tr.get_model_params()
+        self.assertEqual(len(src_model_params.items()), len(dst_model_params.items()))
+
+        # p1, p2 are k,v tuple pairs of each model parameters
+        # k = str
+        # v = torch.Tensor
+        print('Checking that tensors from checkpoint have been tranferred to new device')
+        for n, (p1, p2) in enumerate(zip(src_model_params.items(), dst_model_params.items())):
+            self.assertEqual(p1[0], p2[0])
+            print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n, len(src_model_params.items())), end='\r')
+            self.assertEqual('cpu', p2[1].device.type)
+        print('\n ...done')
+
+        # Test loss history
+        dst_tr.load_history(test_history)
+        self.assertIsNot(None, dst_tr.acc_history)
+        print('\t Comparing loss history....')
+        self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
+        for n in range(src_tr.loss_iter):
+            print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
+            self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
+        print('======== TestTrainer.test_save_load_device_map <END>')
 
         os.remove(test_checkpoint)
         os.remove(test_history)

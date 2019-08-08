@@ -9,17 +9,18 @@ import torch
 import random
 import torch.nn as nn
 
+
 class ImagePool():
     """
     Implements an image buffer that stores previously generated images.
     """
-    def __init__(self, pool_size):
+    def __init__(self, pool_size) -> None:
         self.pool_size = pool_size
         if self.pool_size > 0:      # create an empty pool
             self.num_imgs = 0
             self.images = []
 
-    def query(self, images):
+    def query(self, images) -> list:
         """
         QUERY
         Return an image from the pool
@@ -59,8 +60,3 @@ class ImagePool():
                     out_images.append(img)
         out_images = torch.cat(out_images, 0)
         return out_images
-
-
-class ResnetGenerator(nn.Module):
-    def __init__(self, in_planes, out_planes, **kwargs):
-        pass

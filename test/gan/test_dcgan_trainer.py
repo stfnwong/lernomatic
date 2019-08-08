@@ -161,7 +161,7 @@ if __name__ == '__main__':
                         )
     parser.add_argument('--batch-size',
                         type=int,
-                        default=64,
+                        default=32,
                         help='Batch size to use during training'
                         )
     parser.add_argument('--device-id',
@@ -189,7 +189,7 @@ if __name__ == '__main__':
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='resnet-trainer-test',
+                        default='dcgan-trainer-test',
                         help='String to prefix to checkpoint files'
                         )
     parser.add_argument('unittest_args', nargs='*')

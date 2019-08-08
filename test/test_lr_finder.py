@@ -56,11 +56,11 @@ GLOBAL_TEST_PARAMS = {
         'test_lr_num_epochs'     : 4,            # number of epochs to run test for
         'test_print_every'       : 20,
         # options for learning rate finder
-        'test_lr_min'            : 1e-6,
+        'test_lr_min'            : 1e-8,
         'test_lr_max'            : 1.0,
         'test_num_iter'          : 5000,
         'test_lr_explode_thresh' : 4.5,
-        'train_num_epochs'       : 4,
+        'train_num_epochs'       : 80,
 }
 
 
