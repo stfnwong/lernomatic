@@ -17,7 +17,6 @@ from torchvision import transforms
 from lernomatic.models.gan.cycle_gan import resnet_gen
 from lernomatic.models.gan.cycle_gan import pixel_disc
 from lernomatic.train.gan import pix2pix_trainer
-
 from lernomatic.data.gan import aligned_dataset
 from lernomatic.data.gan import gan_transforms
 
@@ -27,7 +26,11 @@ from lernomatic.data.gan import gan_transforms
 GLOBAL_OPTS = dict()
 
 
-def get_aligned_dataset(ab_path:str, dataset_name:str, data_root:str, transforms=None) -> aligned_dataset.AlignedDatasetHDF5:
+def get_aligned_dataset(
+    ab_path:str,
+    dataset_name:str,
+    data_root:str,
+    transforms=None) -> aligned_dataset.AlignedDatasetHDF5:
 
     if transforms is None:
         transforms = gan_transforms.get_gan_transforms(
@@ -42,7 +45,6 @@ def get_aligned_dataset(ab_path:str, dataset_name:str, data_root:str, transforms
     )
 
     return dataset
-
 
 
 class TestPix2PixTrainer(unittest.TestCase):
@@ -109,7 +111,6 @@ class TestPix2PixTrainer(unittest.TestCase):
         self.assertEqual(repr(src_trainer.g_net), repr(dst_trainer.g_net))
         self.assertEqual(repr(src_trainer.d_net), repr(dst_trainer.d_net))
 
-
         # check model params
         src_models = [src_trainer.g_net, src_trainer.d_net]
         dst_models = [dst_trainer.g_net, dst_trainer.d_net]
@@ -147,19 +148,16 @@ class TestPix2PixTrainer(unittest.TestCase):
             self.assertEqual(src_trainer.d_loss_history[loss_elem], dst_trainer.d_loss_history[loss_elem])
         print('\n OK')
 
-        # TODO : at some point, solve this odd issue with the default batch
-        # size
         # check the various trainer stats
         self.assertEqual(src_trainer.beta1, dst_trainer.beta1)
         self.assertEqual(src_trainer.l1_lambda, dst_trainer.l1_lambda)
         self.assertEqual(src_trainer.gan_mode, dst_trainer.gan_mode)
         self.assertEqual(src_trainer.learning_rate, dst_trainer.learning_rate)
-        #self.assertEqual(src_trainer.batch_size, dst_trainer.batch_size)
-        self.assertEqual(src_trainer.print_every, dst_trainer.gan_mode)
+        self.assertEqual(src_trainer.batch_size, dst_trainer.batch_size)
+        self.assertEqual(src_trainer.print_every, dst_trainer.print_every)
         self.assertEqual(src_trainer.save_every, dst_trainer.save_every)
         self.assertEqual(src_trainer.cur_epoch, dst_trainer.cur_epoch)
-        #self.assertEqual(src_trainer.num_epochs, dst_trainer.num_epochs)
-
+        self.assertEqual(src_trainer.num_epochs, dst_trainer.num_epochs)
 
         print('======== TestPix2PixTrainer.test_save_load_checkpoint <END>')
 
