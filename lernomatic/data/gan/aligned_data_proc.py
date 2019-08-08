@@ -141,6 +141,7 @@ class AlignedImageProc(object):
 
                 img_a = Image.open(a_img_path).convert('RGB')
                 img_b = Image.open(b_img_path).convert('RGB')
+                # TODO : does this work?
                 img_a = img_a.transpose(2, 0, 1)
                 img_b = img_b.transpose(2, 0, 1)
                 img_a, img_b, status_ok = self.check_and_crop(img_a, img_b)

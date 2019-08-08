@@ -4,4 +4,10 @@ unittest
 h5py
 pudb
 argparse
-cv2
+matplotlib
+numpy
+time
+datetime
+matplotlib
+numpy
+pillow

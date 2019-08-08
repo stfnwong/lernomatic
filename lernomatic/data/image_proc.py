@@ -6,10 +6,12 @@ Stefan Wong 2019
 """
 
 import h5py
-import cv2   # Should be PIL for consistency, but cv2 is actually the better choice overall
+#import cv2   # Should be PIL for consistency, but cv2 is actually the better choice overall
+from PIL import Image
 import numpy as np
 from tqdm import tqdm
 from lernomatic.data import data_split
+from lernomatic.util import image_util
 
 
 # debug
@@ -28,6 +30,8 @@ class ImageDataProc(object):
         self.label_dataset_dtype         = kwargs.pop('label_dataset_dtype', int)
         self.id_dataset_name     : str   = kwargs.pop('id_dataset_name', 'ids')
         self.id_dtype                    = kwargs.pop('id_dtype', int)
+        # format options
+        self.to_ndarray          :bool   = kwargs.pop('to_ndarray', True)
 
     def __repr__(self) -> str:
         return 'ImageDataProc'
@@ -55,8 +59,8 @@ class ImageDataProc(object):
 
             invalid_file_list = []
             for n, (img_path, img_id, label) in enumerate(tqdm(split_data, unit='images')):
-                img = cv2.imread(img_path)
-                #img = Image.open(img_path).convert('RGB')
+                #img = cv2.imread(img_path)
+                img = Image.open(img_path).convert('RGB')
 
                 if img is None:
                     invalid_file_list.append(img_path)
@@ -65,12 +69,16 @@ class ImageDataProc(object):
                     labels[n] = -1
                     continue
 
-                img = cv2.resize(img, self.image_dataset_size[1:], interpolation=cv2.INTER_CUBIC)
-                if len(img.shape) != self.image_dataset_size[0]:
-                    print('img channels (%d) != required (%d)' % (len(img.shape), self.image_dataset_size[0]))
+                #img = cv2.resize(img, self.image_dataset_size[1:], interpolation=cv2.INTER_CUBIC)
+                img = image_util.resize_to(img, self.image_dataset_size[-1])
 
-                if img.shape[-1] == self.image_dataset_size[0]:
-                    img = img.transpose(2,0,1)
+                if self.to_ndarray:
+                    img = np.array(img)
+                    if len(img.shape) != self.image_dataset_size[0]:
+                        print('img channels (%d) != required (%d)' % (len(img.shape), self.image_dataset_size[0]))
+
+                    if img.shape[-1] == self.image_dataset_size[0]:
+                        img = img.transpose(2,0,1)
 
                 images[n] = img
                 ids[n]    = img_id

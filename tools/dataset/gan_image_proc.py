@@ -62,6 +62,7 @@ def main() -> None:
         label_dataset_size = 1,
         image_dataset_size = (3, GLOBAL_OPTS['image_size'], GLOBAL_OPTS['image_size']),
         to_tensor = True,
+        to_ndarray = False,
         verbose = GLOBAL_OPTS['verbose']
     )
     proc.proc(s, GLOBAL_OPTS['outfile'])
