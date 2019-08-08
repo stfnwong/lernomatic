@@ -12,14 +12,13 @@ import numpy as np
 from lernomatic.train import schedule
 from lernomatic.models import common
 
-# timing stuff
-import time
-from datetime import timedelta
-
 # debug
 #from pudb import set_trace; set_trace()
 
 
+# TODO : detach model loading from trainer so that models can be attached,
+# detached, re-attached, etc.
+# TODO : automatically expand history if checkpoint is loaded
 class Trainer(object):
     """
     Trainer
@@ -58,7 +57,6 @@ class Trainer(object):
         self.val_dataset            = kwargs.pop('val_dataset', None)
         self.shuffle         :float = kwargs.pop('shuffle', True)
         self.num_workers     :int   = kwargs.pop('num_workers' , 1)
-        self.drop_last       :bool  = kwargs.pop('drop_last', True)
         # parameter scheduling
         self.lr_scheduler           = kwargs.pop('lr_scheduler', None)
         self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
@@ -67,25 +65,25 @@ class Trainer(object):
 
         if self.val_batch_size == 0:
             self.val_batch_size = self.batch_size
+        self.best_acc = 0.0
+        if self.save_every > 0:
+            self.save_best = True
+        self.start_epoch = 0
 
-        # set up device
-        self._init_device()
         # Setup optimizer. If we have no model then assume it will be
         self._init_optimizer()
+        # set up device
+        self._init_device()
         # Init the internal dataloader options. If nothing provided assume that
         # we will load options in later (eg: from checkpoint)
         self._init_dataloaders()
         # Init the loss and accuracy history. If no train_loader is provided
         # then we assume that one will be loaded later (eg: in some checkpoint
         # data)
-        self._init_history()
-        self._send_to_device()
+        if self.train_loader is not None:
+            self._init_history()
 
-        if (self.train_loader is not None) and (self.save_every < 0):
-            self.save_every = len(self.train_loader)
-        self.best_acc = 0.0
-        if self.save_every > 0:
-            self.save_best = True
+        self._send_to_device()
 
     def __repr__(self) -> str:
         return 'Trainer (%d epochs)' % self.num_epochs
@@ -120,16 +118,11 @@ class Trainer(object):
             raise ValueError('Cannot find loss function [%s]' % str(self.loss_function))
 
     def _init_history(self) -> None:
-        self.loss_iter      = 0
-        self.val_loss_iter  = 0
-        self.acc_iter       = 0
+        self.loss_iter = 0
+        self.val_loss_iter = 0
+        self.acc_iter = 0
         self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
-
-        if self.train_loader is not None:
-            self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
-        else:
-            self.loss_history = None
-
+        self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
         if self.val_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)
             self.acc_history = np.zeros(len(self.val_loader) * self.num_epochs)
@@ -144,28 +137,25 @@ class Trainer(object):
             self.train_loader = torch.utils.data.DataLoader(
                 self.train_dataset,
                 batch_size = self.batch_size,
-                drop_last = self.drop_last,
                 shuffle = self.shuffle
             )
 
         if self.test_dataset is None:
             self.test_loader = None
         else:
-            self.test_loader = torch.utils.data.DataLoader(
+            self.test_loader = torch.utils.data.Dataloader(
                 self.test_dataset,
                 batch_size = self.val_batch_size,
-                drop_last = self.drop_last,
                 shuffle    = self.shuffle
             )
 
         if self.val_dataset is None:
             self.val_loader = None
         else:
-            self.val_loader = torch.utils.data.DataLoader(
+            self.val_loader = torch.utils.data.Dataloader(
                 self.val_dataset,
                 batch_size = self.val_batch_size,
-                drop_last = self.drop_last,
-                shuffle    = False
+                shuffle    = self.shuffle
             )
 
     def _init_device(self) -> None:
@@ -176,6 +166,12 @@ class Trainer(object):
 
     def _send_to_device(self) -> None:
         self.model.send_to(self.device)
+
+    def save_checkpoint(self, fname: str) -> None:
+        raise NotImplementedError
+
+    def load_checkpoint(self, fname: str) -> None:
+        raise NotImplementedError
 
     def set_num_epochs(self, num_epochs:int) -> None:
         if num_epochs > self.num_epochs:
@@ -301,7 +297,7 @@ class Trainer(object):
         """
         self.model.set_train()
         # training loop
-        for batch_idx, (data, target) in enumerate(self.train_loader):
+        for n, (data, target) in enumerate(self.train_loader):
             # move data
             data = data.to(self.device)
             target = target.to(self.device)
@@ -313,10 +309,10 @@ class Trainer(object):
             loss.backward()
             self.optimizer.step()
 
-            if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
+            if (n > 0) and (n % self.print_every) == 0:
                 print('[TRAIN] :   Epoch       iteration         Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
 
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
@@ -341,14 +337,14 @@ class Trainer(object):
 
     def val_epoch(self) -> None:
         """
-        VAL_EPOCH
+        TEST_EPOCH
         Run a single epoch on the test dataset
         """
         self.model.set_eval()
         val_loss = 0.0
         correct = 0
 
-        for batch_idx, (data, labels) in enumerate(self.val_loader):
+        for n, (data, labels) in enumerate(self.val_loader):
             data = data.to(self.device)
             labels = labels.to(self.device)
 
@@ -361,10 +357,10 @@ class Trainer(object):
             pred = output.data.max(1, keepdim=True)[1]
             correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
-            if (batch_idx % self.print_every) == 0:
-                print('[VAL ]  :   Epoch       iteration         Test Loss')
+            if (n % self.print_every) == 0:
+                print('[TEST]  :   Epoch       iteration         Test Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
-                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
+                      (self.cur_epoch+1, self.num_epochs, n, len(self.val_loader), loss.item()))
 
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
@@ -373,7 +369,7 @@ class Trainer(object):
         acc = correct / len(self.val_loader.dataset)
         self.acc_history[self.acc_iter] = acc
         self.acc_iter += 1
-        print('[VAL ]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+        print('[TEST]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
               (avg_val_loss, correct, len(self.val_loader.dataset),
                100.0 * acc)
         )
@@ -395,15 +391,8 @@ class Trainer(object):
         if self.save_every == -1:
             self.save_every = len(self.train_loader)
 
-        for epoch in range(self.cur_epoch, self.num_epochs):
-            epoch_start_time = time.time()
+        for n in range(self.cur_epoch, self.num_epochs):
             self.train_epoch()
-            epoch_end_time = time.time()
-            epoch_total_time = epoch_end_time - epoch_start_time
-            if self.verbose:
-                print('Epoch [%s] took %s' %\
-                      (repr(self), str(timedelta(seconds = epoch_total_time)))
-                )
 
             if self.val_loader is not None:
                 self.val_epoch()
@@ -416,7 +405,7 @@ class Trainer(object):
                 self.save_history(hist_name)
 
             # check we have reached the required accuracy and can stop early
-            if self.stop_when_acc > 0.0 and self.val_loader is not None:
+            if self.stop_when_acc > 0.0 and self.test_loader is not None:
                 if self.acc_history[self.acc_iter] >= self.stop_when_acc:
                     return
 
