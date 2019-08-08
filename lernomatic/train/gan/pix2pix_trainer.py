@@ -147,7 +147,7 @@ class Pix2PixTrainer(trainer.Trainer):
             # save checkpoints during training
             if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
                 ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                     '_epoch_' + str(self.cur_epoch) + '_iter_' + str(self.loss_iter) + '.pkl'
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
