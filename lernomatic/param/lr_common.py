@@ -24,9 +24,8 @@ class LRFinder(object):
         valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range', 'laplace', 'sobel')
         self.trainer          = trainer
         # learning params
-        self.num_epochs       = kwargs.pop('num_epochs', 8)
+        self.num_epochs       :int   = kwargs.pop('num_epochs', 8)
         # lr params
-        self.lr_mult          :float = kwargs.pop('lr_mult', 0.0)
         self.lr_min           :float = kwargs.pop('lr_min', 1e-6)
         self.lr_max           :float = kwargs.pop('lr_max', 1.0)
         self.explode_thresh   :float = kwargs.pop('explode_thresh', 4.0)      # fast.ai uses 4 * min_smoothed_loss
@@ -61,6 +60,7 @@ class LRFinder(object):
         self.best_acc_idx   = 0
         # learning rate params
         self.learning_rate  = 0.0
+        self.lr_mult        = 0.0
 
         self._init_history()
 
