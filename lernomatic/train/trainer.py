@@ -12,6 +12,10 @@ import numpy as np
 from lernomatic.train import schedule
 from lernomatic.models import common
 
+# timing stuff
+import time
+from datetime import timedelta
+
 # debug
 #from pudb import set_trace; set_trace()
 
@@ -61,16 +65,13 @@ class Trainer(object):
         self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
         self.early_stop      :dict  = kwargs.pop('early_stop', None)
 
+        self.start_epoch = 0
         if self.val_batch_size == 0:
             self.val_batch_size = self.batch_size
-        self.best_acc = 0.0
-        if self.save_every > 0:
-            self.save_best = True
-
-        # Setup optimizer. If we have no model then assume it will be
-        self._init_optimizer()
         # set up device
         self._init_device()
+        # Setup optimizer. If we have no model then assume it will be
+        self._init_optimizer()
         # Init the internal dataloader options. If nothing provided assume that
         # we will load options in later (eg: from checkpoint)
         self._init_dataloaders()
@@ -78,8 +79,13 @@ class Trainer(object):
         # then we assume that one will be loaded later (eg: in some checkpoint
         # data)
         self._init_history()
-
         self._send_to_device()
+
+        self.best_acc = 0.0
+        if (self.train_loader is not None) and (self.save_every < 0):
+            self.save_every = len(self.train_loader)-1
+        if self.save_every > 0:
+            self.save_best = True
 
     def __repr__(self) -> str:
         return 'Trainer (%d epochs)' % self.num_epochs
@@ -145,7 +151,7 @@ class Trainer(object):
         if self.test_dataset is None:
             self.test_loader = None
         else:
-            self.test_loader = torch.utils.data.DataLoader(
+            self.test_loader = torch.utils.data.Dataloader(
                 self.test_dataset,
                 batch_size = self.val_batch_size,
                 drop_last = self.drop_last,
@@ -324,7 +330,7 @@ class Trainer(object):
             # save checkpoints
             if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
                 ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '.pkl'
+                    '_epoch_' + str(self.cur_epoch) + '_iter_' + str(self.loss_iter) + '.pkl'
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
@@ -362,7 +368,7 @@ class Trainer(object):
             correct += pred.eq(labels.data.view_as(pred)).sum().item()
 
             if (batch_idx % self.print_every) == 0:
-                print('[VAL ]  :   Epoch       iteration         Test Loss')
+                print('[VAL ]  :   Epoch       iteration         Val Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
 
@@ -373,7 +379,7 @@ class Trainer(object):
         acc = correct / len(self.val_loader.dataset)
         self.acc_history[self.acc_iter] = acc
         self.acc_iter += 1
-        print('[VAL ]  : Avg. Test Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
+        print('[VAL ]  : Avg. Val Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
               (avg_val_loss, correct, len(self.val_loader.dataset),
                100.0 * acc)
         )
@@ -393,10 +399,16 @@ class Trainer(object):
         Standard training routine
         """
         if self.save_every == -1:
-            self.save_every = len(self.train_loader)
+            self.save_every = len(self.train_loader)-1
 
         for epoch in range(self.cur_epoch, self.num_epochs):
+            epoch_start_time = time.time()
             self.train_epoch()
+            epoch_end_time = time.time()
+            epoch_total_time = epoch_end_time - epoch_start_time
+            print('Epoch %d [%s] took %s' %\
+                    (epoch+1, repr(self), str(timedelta(seconds = epoch_total_time)))
+            )
 
             if self.val_loader is not None:
                 self.val_epoch()

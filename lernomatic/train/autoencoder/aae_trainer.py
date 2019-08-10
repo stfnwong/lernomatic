@@ -12,6 +12,9 @@ import numpy as np
 from lernomatic.models import common
 from lernomatic.train import trainer
 
+import time
+from datetime import timedelta
+
 #debug
 #from pudb import set_trace; set_trace()
 
@@ -177,13 +180,7 @@ class AAETrainer(trainer.Trainer):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
-                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
-                self.save_history(hist_name)
 
-
-            # TODO : scheduling? Usually scheduling doesn't work well on these
-            # GAN-type networks
 
     # Don't do anything for validation
     def val_epoch(self) -> None:
@@ -203,11 +200,19 @@ class AAETrainer(trainer.Trainer):
         if self.d_net is None:
             raise ValueError('No D net specified in trainer')
 
+        # NOTE: this should be redundant since this is now fixed in ctor?
         if self.save_every == -1:
-            self.save_every = len(self.train_loader)
+            self.save_every = len(self.train_loader)-1
 
-        for n in range(self.cur_epoch, self.num_epochs):
+        for epoch in range(self.cur_epoch, self.num_epochs):
+            epoch_start_time = time.time()
             self.train_epoch()
+            epoch_end_time = time.time()
+            epoch_total_time = epoch_end_time - epoch_start_time
+
+            print('Epoch %d [%s] took %s' %\
+                    (epoch+1, repr(self), str(timedelta(seconds = epoch_total_time)))
+            )
 
             # save history at the end of each epoch
             if self.save_hist:
