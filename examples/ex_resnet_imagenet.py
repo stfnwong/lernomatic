@@ -8,10 +8,13 @@ Stefan Wong 2019
 
 import sys
 import argparse
+import time
+from datetime import timedelta
 import matplotlib.pyplot as plt
 from torchvision import datasets
 from torchvision import transforms
 
+from lernomatic.options import options
 from lernomatic.train import schedule
 from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
@@ -19,12 +22,11 @@ from lernomatic.param import learning_rate
 # vis stuff
 from lernomatic.vis import vis_loss_history
 
-# debug
-from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-def main():
+
+def main() -> None:
     # Transforms for Imagenet
     normalize = transforms.Normalize(
         mean = [0.485, 0.456, 0.406],
@@ -125,7 +127,7 @@ def main():
 
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
