@@ -15,8 +15,6 @@ import torch
 from lernomatic.train import mnist_trainer
 from lernomatic.models import mnist as mnist_net
 
-# debug
-#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 

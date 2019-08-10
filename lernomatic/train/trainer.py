@@ -16,9 +16,6 @@ from lernomatic.models import common
 import time
 from datetime import timedelta
 
-# debug
-#from pudb import set_trace; set_trace()
-
 
 class Trainer(object):
     """
@@ -334,9 +331,6 @@ class Trainer(object):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
-                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
-                self.save_history(hist_name)
 
             # perform any scheduling
             if self.lr_scheduler is not None:
