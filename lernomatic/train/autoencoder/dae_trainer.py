@@ -5,6 +5,7 @@ Trainer for a Denoising Autoencoder
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import torch.nn as nn
 import numpy as np
@@ -24,6 +25,7 @@ class DAETrainer(trainer.Trainer):
         # TODO : options for noise?
 
         super(DAETrainer, self).__init__(None, **kwargs)
+        self.loss_function = 'MSELoss'
 
     def __repr__(self) -> str:
         return 'DAETrainer'
@@ -101,6 +103,9 @@ class DAETrainer(trainer.Trainer):
             if self.mtm_scheduler is not None:
                 self.apply_mtm_schedule()
 
+    def val_epoch(self) -> None:
+        # no validation for this trainer
+        pass
 
     def save_checkpoint(self, fname:str) -> None:
         checkpoint_data = {
@@ -122,15 +127,15 @@ class DAETrainer(trainer.Trainer):
         model_import_path = checkpoint_data['encoder']['model_import_path']
         imp = importlib.import_module(model_import_path)
         mod = getattr(imp, checkpoint_data['encoder']['model_name'])
-        self.model = mod()
-        self.model.set_params(checkpoint_data['encoder'])
+        self.encoder = mod()
+        self.encoder.set_params(checkpoint_data['encoder'])
 
         # load decoder
         model_import_path = checkpoint_data['decoder']['model_import_path']
         imp = importlib.import_module(model_import_path)
         mod = getattr(imp, checkpoint_data['decoder']['model_name'])
-        self.model = mod()
-        self.model.set_params(checkpoint_data['decoder'])
+        self.decoder = mod()
+        self.decoder.set_params(checkpoint_data['decoder'])
 
         # Set up optimizer
         self._init_optimizer()
@@ -143,3 +148,19 @@ class DAETrainer(trainer.Trainer):
 
         # restore trainer object info
         self._send_to_device()
+
+    def save_history(self, filename:str) -> None:
+        history = dict()
+        history['loss_iter']      = self.loss_iter
+        history['cur_epoch']      = self.cur_epoch
+        history['iter_per_epoch'] = self.iter_per_epoch
+        history['loss_history']   = self.loss_history
+
+        torch.save(history, filename)
+
+    def load_history(self, filename:str) -> None:
+        history = torch.load(filename)
+        self.loss_iter          = history['loss_iter']
+        self.cur_epoch          = history['cur_epoch']
+        self.iter_per_epoch     = history['iter_per_epoch']
+        self.loss_history       = history['loss_history']

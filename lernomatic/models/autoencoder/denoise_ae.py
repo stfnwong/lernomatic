@@ -11,7 +11,6 @@ import torch
 import torch.nn as nn
 from lernomatic.models import common
 
-from pudb import set_trace; set_trace()
 
 
 # ======== ENCODER SIDE ======== #
@@ -56,7 +55,6 @@ class DAEEncoderModule(nn.Module):
         # "Input" half of encoder
         in_blocks = []
         cur_channel_size = self.start_size
-        print('DAEEncoder')
         for n in range(self.num_blocks):
             if n == 0:
                 block = DAEEncoderBlock(
@@ -79,7 +77,6 @@ class DAEEncoderModule(nn.Module):
                 cur_channel_size = 2 * cur_channel_size
 
             in_blocks += [block]
-            print(n, block.in_channels, block.out_channels)
 
         # "output" half. This is one block shorter than input size
         out_blocks = []
@@ -101,8 +98,6 @@ class DAEEncoderModule(nn.Module):
             out_blocks += [block]
             if n == (self.num_blocks - 2):
                 out_blocks += [nn.MaxPool2d(2, 2)]
-
-            print(n, block.in_channels, block.out_channels)
 
         self.in_blocks = nn.Sequential(*in_blocks)
         self.pool = nn.MaxPool2d(2, 2)
@@ -198,7 +193,6 @@ class DAEDecoderModule(nn.Module):
 
         in_blocks = []
         cur_channel_size = self.start_size
-        print('DAEDecoder')
         for n in range(self.num_blocks):
             if (n > 0) and (n % 2 != 0):
                 block = DAEDecoderBlock(
@@ -217,7 +211,6 @@ class DAEDecoderModule(nn.Module):
                 cur_channel_size = cur_channel_size // 2
 
             in_blocks += [block]
-            print(n, block.in_channels, block.out_channels)
 
         out_blocks = []
         for n in range(self.num_blocks-2):
@@ -235,8 +228,6 @@ class DAEDecoderModule(nn.Module):
                 )
                 cur_channel_size = cur_channel_size // 2
             out_blocks += [block]
-            print(n, block.in_channels, block.out_channels)
-
 
         final_block = [
             nn.ConvTranspose2d(
@@ -249,7 +240,6 @@ class DAEDecoderModule(nn.Module):
             ),
             nn.ReLU()
         ]
-        print(n+1, cur_channel_size, 1)
 
         self.in_blocks   = nn.Sequential(*in_blocks)
         self.out_blocks  = nn.Sequential(*out_blocks)

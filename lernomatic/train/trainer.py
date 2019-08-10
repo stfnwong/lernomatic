@@ -121,12 +121,13 @@ class Trainer(object):
         self.loss_iter      = 0
         self.val_loss_iter  = 0
         self.acc_iter       = 0
-        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
 
         if self.train_loader is not None:
             self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+            self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
         else:
             self.loss_history = None
+            self.iter_per_epoch = 0
 
         if self.val_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)

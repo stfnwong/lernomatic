@@ -8,8 +8,9 @@ Stefan Wong 2019
 import sys
 import argparse
 import unittest
-import time
+import torch
 import torchvision
+import time
 from datetime import timedelta
 
 from lernomatic.models.autoencoder import denoise_ae
@@ -78,7 +79,7 @@ class TestDAETrainer(unittest.TestCase):
         train_end_time = time.time()
         train_total_time = train_end_time - train_start_time
 
-        print('Trainer %s trained %d epochs in %s'
+        print('Trainer %s trained %d epochs in %s' %\
                 (repr(self), src_trainer.cur_epoch, str(timedelta(seconds = train_total_time)))
         )
 
