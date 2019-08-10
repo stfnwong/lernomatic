@@ -82,7 +82,7 @@ def plot_train_history(ax, loss_history: np.ndarray, **kwargs) -> None:
     ax.legend(legend_entries)
 
 
-def plot_train_history_2subplots(ax, loss_history: np.ndarray, **kwargs) -> None:
+def plot_train_history_2subplots(ax, loss_history:np.ndarray, **kwargs) -> None:
     if type(ax) is not list:
         raise ValueError('ax must be a list of axes handles')
     if len(ax) < 2:

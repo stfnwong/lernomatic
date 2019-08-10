@@ -1,88 +1,35 @@
 """
-CHEKPOINT
-Plot data from a checkpoint
+GAN_LOSS_HISTORY
+Plot loss history of a GAN model
 
-Stefan Wong 2018
+Stefan Wong 2019
 """
 
 import argparse
 import torch
 import matplotlib.pyplot as plt
-from lernomatic.vis import vis_loss_history
-
-# debug
-#from pudb import set_trace; set_trace()
+from lernomatic.vis.gan import vis_gan_loss
 
 GLOBAL_OPTS = dict()
-VALID_TOOL_MODES = ('show', 'probe', 'gan')
+VALID_TOOL_MODES = ('show', 'probe')
+
 
 
 def show() -> None:
     fig, ax = plt.subplots()
     history = torch.load(GLOBAL_OPTS['input'])
 
-    if GLOBAL_OPTS['loss_history_key'] not in history:
-        raise ValueError('No key [%s] in history file [%s] (try using --mode=probe)' %\
-                         (str(GLOBAL_OPTS['loss_history_key']), str(GLOBAL_OPTS['input']))
-        )
-
-    loss_history = history[GLOBAL_OPTS['loss_history_key']][0 : history['loss_iter']]
-
-    if GLOBAL_OPTS['acc_history_key'] in history:
-        acc_history = history[GLOBAL_OPTS['acc_history_key']][0 : history['loss_iter']]
-    else:
-        acc_history = None
-    if 'test_loss_history' in history:
-        test_loss_history = history['test_loss_history'][0 : history['test_loss_iter']]
-        if GLOBAL_OPTS['verbose']:
-            print('%d test loss iterations' % history['test_loss_iter'])
-    else:
-        test_loss_history = None
-
-    if GLOBAL_OPTS['test_loss_history_key'] in history:
-        test_loss_history = history[GLOBAL_OPTS['test_loss_history_key']][0 : history['test_loss_iter']]
-    else:
-        test_loss_history = None
-
-    if acc_history is not None:
-        fig, ax = vis_loss_history.get_figure_subplots(2)
-    else:
-        fig, ax = vis_loss_history.get_figure_subplots(1)
-
-    vis_loss_history.plot_train_history_2subplots(
-        ax,
-        loss_history,
-        test_loss_curve = test_loss_history,
-        acc_curve = acc_history,
-        title = GLOBAL_OPTS['title'],
-        iter_per_epoch = history['iter_per_epoch'],
-        cur_epoch = history['cur_epoch']
-    )
-
-    if GLOBAL_OPTS['print_loss']:
-        print(str(loss_history))
-
-    if GLOBAL_OPTS['print_acc']:
-        print(str(acc_history))
-
-    if GLOBAL_OPTS['plot_filename'] is not None:
-        fig.savefig(GLOBAL_OPTS['plot_filename'])
-    else:
-        plt.show()
 
 
-# The idea of this mode is just to print the contents (keys, really) in
-# the history file
+
 def probe() -> None:
-    history = torch.load(GLOBAL_OPTS['input'])
-    for k, v in history.items():
-        print('[%s] : %s' % (str(k), type(v)))
+    pass
 
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
-    parser.add_argument('input',
+    parser.add_argument('checkpoint',
                         type=str,
                         default=None,
                         help='Checkpoint file to read'
@@ -101,6 +48,17 @@ def get_parser() -> argparse.ArgumentParser:
                         type=str,
                         default=None,
                         help='Title for plot output'
+                        )
+    # names of the models in checkpoint
+    parser.add_argument('--generator-key',
+                        type=str,
+                        default='generator',
+                        help='Name of generator model (default: generator)'
+                        )
+    parser.add_argument('--discriminator-key',
+                        type=str,
+                        default='discriminator',
+                        help='Name of discriminator model (default: discriminator)'
                         )
     # names of loss keys
     parser.add_argument('--loss-history-key',
@@ -133,7 +91,7 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# Entry point
+
 if __name__ == '__main__':
     parser = get_parser()
     opts   = vars(parser.parse_args())
@@ -141,15 +99,13 @@ if __name__ == '__main__':
     for k, v in opts.items():
         GLOBAL_OPTS[k] = v
 
-    # TODO : probably should make this positional later
     if GLOBAL_OPTS['input'] is None:
         raise ValueError('No input file specified')
 
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('\t[%s] : %s' % (str(k), str(v)))
-    print('')
+            print('%s : %s' % (str(k), str(v)))
 
     if GLOBAL_OPTS['mode'] == 'show':
         show()

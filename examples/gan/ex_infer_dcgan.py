@@ -95,8 +95,9 @@ def generate_history() -> None:
     for n, (out_img, out_file) in enumerate(zip(out_img_set, out_img_filenames)):
         write_img(fig, ax, out_file, out_img)
         if GLOBAL_OPTS['verbose']:
-            print('Wrote file [%3d / %3d] [%s]' % (n+1, len(out_img_set), str(out_file)))
+            print('Wrote file [%3d / %3d] [%s]' % (n+1, len(out_img_set), str(out_file)), end='\r')
 
+    print('\n done')
 
 
 def get_parser() -> argparse.ArgumentParser:

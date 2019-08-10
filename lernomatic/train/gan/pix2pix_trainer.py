@@ -151,9 +151,6 @@ class Pix2PixTrainer(trainer.Trainer):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
-                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
-                self.save_history(hist_name)
 
 
     def val_epoch(self) -> None:
