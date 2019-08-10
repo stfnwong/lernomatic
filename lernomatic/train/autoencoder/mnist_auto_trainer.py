@@ -29,7 +29,7 @@ class MNISTAutoTrainer(trainer.Trainer):
     """
     def __init__(self, model: common.LernomaticModel, **kwargs) -> None:
         self.save_img_every = kwargs.pop('save_img_every', 10)
-        self.save_img_dir   = kwargs.pop('save_img_dir', 'examples/')
+        self.save_img_dir   = kwargs.pop('save_img_dir', './figures/')
         self.data_dir       = kwargs.pop('data_dir', 'data/')
         super(MNISTAutoTrainer, self).__init__(model, **kwargs)
         # AutoTrainer specific keywords
@@ -71,14 +71,14 @@ class MNISTAutoTrainer(trainer.Trainer):
             shuffle = self.shuffle
         )
         # validation data
-        self.test_loader = torch.utils.data.DataLoader(
+        self.val_loader = torch.utils.data.DataLoader(
             torchvision.datasets.MNIST(
                 self.data_dir,
                 train = False,
                 download = True,
                 transform = dataset_transform
             ),
-            batch_size = self.test_batch_size,
+            batch_size = self.val_batch_size,
             num_workers = self.num_workers,
             shuffle = self.shuffle
         )

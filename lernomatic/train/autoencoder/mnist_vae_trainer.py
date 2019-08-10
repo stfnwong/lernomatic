@@ -54,16 +54,16 @@ class MNISTVAETrainer(trainer.Trainer):
             shuffle = self.shuffle
         )
         # validation data
-        self.test_loader = torch.utils.data.DataLoader(
+        self.val_loader = torch.utils.data.DataLoader(
             torchvision.datasets.MNIST(
                 self.data_dir,
                 train = False,
                 download = True,
                 transform = dataset_transform
             ),
-            batch_size = self.test_batch_size,
+            batch_size  = self.val_batch_size,
             num_workers = self.num_workers,
-            shuffle = self.shuffle
+            shuffle     = self.shuffle
         )
 
     def save_history(self, fname: str) -> None:
