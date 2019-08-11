@@ -8,7 +8,6 @@ Stefan Wong 2019
 # TODO : extend this to also use imagenet, COCO, etc
 
 import time
-from datetime import timedelta
 import argparse
 from lernomatic.models import common
 from lernomatic.models import cifar
@@ -30,9 +29,6 @@ def get_model(model_type:str,
               num_classes:int=10,
               input_channels:int=3,
               depth:int=58) -> common.LernomaticModel:
-    """
-    Get new model objects
-    """
     if model_type == 'resnet':
         model = resnets.WideResnet(
             depth=depth,
@@ -52,13 +48,9 @@ def get_lr_finder(trainer:trainer.Trainer,
                   lr_max:float,
                   lr_select_method:str='max_acc',
                   find_num_epochs:int=4,
-                  explode_thresh:float=8.0,
+                  explode_thresh:float=6.0,
                   print_every:int=100,
-                  max_batches:int=0,
                   find_type:str='LogFinder') -> lr_common.LRFinder:
-    """
-    Get new learning rate finder objects
-    """
     if not hasattr(lr_common, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
@@ -70,7 +62,6 @@ def get_lr_finder(trainer:trainer.Trainer,
         lr_select_method = lr_select_method,
         num_epochs       = find_num_epochs,
         explode_thresh   = explode_thresh,
-        max_batches      = max_batches,
         print_every      = print_every
     )
 
@@ -81,9 +72,6 @@ def get_scheduler(lr_min:float,
                   lr_max:float,
                   stepsize:int,
                   sched_type:str='TriangularScheduler') -> schedule.LRScheduler:
-    """
-    Get new scheduler objects
-    """
     if sched_type is None:
         return None
 
@@ -103,9 +91,6 @@ def get_scheduler(lr_min:float,
 def get_trainer(model:common.LernomaticModel,
                 checkpoint_name:str,
                 trainer_type:str='cifar') -> trainer.Trainer:
-    """
-    Get new trainer objects
-    """
     if trainer_type == 'cifar':
         t = cifar_trainer.CIFAR10Trainer(
             model,
@@ -132,25 +117,17 @@ def get_trainer(model:common.LernomaticModel,
         raise ValueError("Trainer type [%s] not implemented" % str(trainer_type))
 
 
-# ======== Superconvergence example ======== #
-# TODO : need to compare against a version that doesn't use this technique
 def main() -> None:
     model = get_model(GLOBAL_OPTS['model'])
     t = get_trainer(model, "superconverge_cifar10_", trainer_type="cifar")
-    lr_finder = get_lr_finder(
-        t,
-        1e-6,
-        1.0,
-        find_num_epochs = GLOBAL_OPTS['find_num_epochs'],
-        max_batches=GLOBAL_OPTS['lr_max_batches']
-    )
+    lr_finder = get_lr_finder(t, 1e-7, 1.0)
     find_start_time = time.time()
     lr_finder.find()
     lr_min, lr_max = lr_finder.get_lr_range()
     find_end_time = time.time()
     find_total_time = find_end_time - find_start_time
     print('Found learning rate range as %.4f -> %.4f' % (lr_min, lr_max))
-    print('Learnig rate search took %s' % str(timedelta(seconds=find_total_time)))
+    print('Learning rate search took %s' % str(find_total_time))        # TODO : better string format
 
     if GLOBAL_OPTS['sched_stepsize'] > 0:
         stepsize = GLOBAL_OPTS['sched_stepsize']
@@ -166,11 +143,8 @@ def main() -> None:
     )
     # get a scheduler for momentum
     mtm_scheduler = get_scheduler(
-        #lr_min,
-        #lr_max,
-        # TODO : can we find these values by some procedure?
-        0.80,
-        0.95,
+        lr_min,
+        lr_max,
         stepsize,
         sched_type='InvTriangularScheduler'
     )
@@ -180,17 +154,7 @@ def main() -> None:
     t.train()
     train_end_time = time.time()
     train_total_time = train_end_time - train_start_time
-    run_total_time = train_end_time - find_start_time
-    print('Total training time (exclusive of find) : %s' %\
-          str(timedelta(seconds=train_total_time))
-    )
-    print('Total training time (inclusive of find) : %s' %\
-          str(timedelta(seconds=run_total_time))
-    )
-    max_acc, max_idx = t.get_max_acc()
-    print('Maximum accuracy was %f at epoch %d' % (max_acc, max_idx))
-    min_loss, min_idx = t.get_min_loss()
-    print('Minimum loss was %f at batch %d' % (min_loss, min_idx))
+    print('Training time : %s' % str(train_total_time))     # TODO: check string formatting
 
     # plot outputs
     loss_title   = 'CIFAR10 Superconvergence Loss'
@@ -210,7 +174,7 @@ def main() -> None:
     train_fig.savefig(fig_filename)
 
 
-def get_parser() -> argparse.ArgumentParser:
+def get_parser():
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',
@@ -225,7 +189,7 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--print-every',
                         type=int,
-                        default=20,
+                        default=100,
                         help='Print output every N epochs'
                         )
     parser.add_argument('--save-every',
@@ -284,12 +248,6 @@ def get_parser() -> argparse.ArgumentParser:
                         type=str,
                         default='min_loss',
                         help='Method to use for selecting LR range'
-                        )
-    parser.add_argument('--lr-max-batches',
-                        type=int,
-                        default=0,
-                        help='Only run learning rate search for this many batches \
-                        0 runs over all batches in dataset (default: 0)'
                         )
     parser.add_argument('--stop-when-acc',
                         type=float,
@@ -373,6 +331,7 @@ def get_parser() -> argparse.ArgumentParser:
                         )
 
     return parser
+
 
 
 if __name__ == '__main__':
