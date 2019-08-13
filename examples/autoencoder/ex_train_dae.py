@@ -112,7 +112,7 @@ def main() -> None:
         subplot_square = 8
         trainer.set_batch_size(subplot_square * subplot_square)      # So that we have an NxN grid of outputs
         # Get some figure stuff
-        out_fig, out_ax_list = vis_img.get_grid_subplots(subplot_square)
+        out_fig, out_ax_list     = vis_img.get_grid_subplots(subplot_square)
         noise_fig, noise_ax_list = vis_img.get_grid_subplots(subplot_square)
 
         # Get an inferrer
@@ -127,6 +127,8 @@ def main() -> None:
             print('Created [%s] object and attached models [%s], [%s]' %\
                   (repr(trainer), repr(trainer.encoder), repr(trainer.decoder))
             )
+
+        infer_start_time = time.time()
         for batch_idx, (data, _) in enumerate(trainer.val_loader):
             print('Inferring batch [%d / %d]' % (batch_idx+1, len(trainer.val_loader)), end='\r')
             noise_batch = inferrer.get_noise(data)
@@ -145,6 +147,12 @@ def main() -> None:
             out_fig.savefig(out_fig_fname)
 
         print('\n OK')
+        infer_end_time = time.time()
+        infer_total_time = infer_end_time - infer_start_time
+        print('Inferrer [%s] inferrer %d batches of size %d, total time : %s' %\
+            (repr(inferrer), len(trainer.val_loader), trainer.batch_size, str(timedelta(seconds = infer_total_time)))
+        )
+
 
 
     # Plot the loss history

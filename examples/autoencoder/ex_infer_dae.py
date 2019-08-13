@@ -9,10 +9,11 @@ import argparse
 import torch
 import torchvision
 import matplotlib.pyplot as plt
-
-# inferrers, etc
+# timing
+import time
+from datetime import timedelta
+# inferrer
 from lernomatic.infer.autoencoder import dae_inferrer
-
 # vis options
 from lernomatic.vis import vis_loss_history
 from lernomatic.vis import vis_img
@@ -21,9 +22,8 @@ from lernomatic.util import image_util
 
 GLOBAL_OPTS = dict()
 
-from pudb import set_trace; set_trace()
 
-
+# TODO : generalize this function
 def plot_denoise(
     ax,
     image_batch:torch.Tensor) -> None:
@@ -84,8 +84,11 @@ def main() -> None:
     out_fig, out_ax_list = vis_img.get_grid_subplots(GLOBAL_OPTS['subplot_size'])
     noise_fig, noise_ax_list = vis_img.get_grid_subplots(GLOBAL_OPTS['subplot_size'])
 
+    infer_start_time = time.time()
     for batch_idx, (data, _) in enumerate(val_loader):
-        print('Inferring batch [%d / %d]' % (batch_idx+1, len(val_loader)), end='\r')
+        print('Inferring batch [%d / %d] (batch size = %d)' %\
+              (batch_idx+1, len(val_loader), batch_size), end='\r'
+        )
         noise_batch = inferrer.get_noise(data)
         out_batch = inferrer.forward(data)
 
@@ -100,6 +103,14 @@ def main() -> None:
         out_fig_fname = 'figures/dae/mnist_dae_batch_%d_output.png' % int(batch_idx)
         out_fig.tight_layout()
         out_fig.savefig(out_fig_fname)
+
+    print('\n done')
+    infer_end_time = time.time()
+    infer_total_time = infer_end_time - infer_start_time
+
+    print('Inferrer [%s] inferrer %d batches of size %d, total time : %s' %\
+          (repr(inferrer), len(val_loader), batch_size, str(timedelta(seconds = infer_total_time)))
+    )
 
 
 
