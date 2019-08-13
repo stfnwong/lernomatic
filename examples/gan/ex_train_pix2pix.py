@@ -151,7 +151,8 @@ def main() -> None:
             train_dataset = train_dataset,
             val_dataset   = val_dataset,
             # training params
-            batch_size    = GLOBAL_OPTS['batch_size'],
+            #batch_size    = GLOBAL_OPTS['batch_size'],
+            batch_size    = 1,
             learning_rate = GLOBAL_OPTS['learning_rate'],
             num_epochs    = GLOBAL_OPTS['num_epochs'],
             # device
