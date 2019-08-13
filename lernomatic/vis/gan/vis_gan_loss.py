@@ -17,14 +17,13 @@ def plot_gan_loss(ax, gen_loss:np.ndarray, disc_loss:np.ndarray, **kwargs) -> No
     loss_title        : str        = kwargs.pop('loss_title', None)
 
     # plot the loss
+    legend_entries = []
     ax.plot(np.arange(len(gen_loss)), gen_loss)
+    legend_entries.append('Generator Loss')
     ax.plot(np.arange(len(disc_loss)), disc_loss)
+    legend_entries.append('Discriminator Loss')
     ax.set_xlabel('Iteration')
     ax.set_ylabel('Loss')
-    if loss_title is None:
-        ax.set_title('Loss history')
-    else:
-        ax.set_title(loss_title)
 
     gen_epoch_ticks = (cur_epoch > 0) and (iter_per_epoch != 0)
     if gen_epoch_ticks:
@@ -35,3 +34,10 @@ def plot_gan_loss(ax, gen_loss:np.ndarray, disc_loss:np.ndarray, **kwargs) -> No
         epoch_axis.set_xlim([0, cur_epoch])
         epoch_axis.set_xticks(epoch_ticks)
         epoch_axis.set_xlabel('Epochs')
+
+    if loss_title is None:
+        ax.set_title('Loss history')
+    else:
+        ax.set_title(loss_title)
+
+    ax.legend(legend_entries)

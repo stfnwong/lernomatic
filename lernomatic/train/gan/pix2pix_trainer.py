@@ -218,6 +218,7 @@ class Pix2PixTrainer(trainer.Trainer):
         history['loss_iter'] = self.loss_iter
         history['val_loss_iter']  = self.val_loss_iter
         history['acc_iter']       = self.acc_iter
+        history['cur_epoch']      = self.cur_epoch
 
         if self.train_loader is not None:
             history['iter_per_epoch'] = self.iter_per_epoch
@@ -235,3 +236,4 @@ class Pix2PixTrainer(trainer.Trainer):
         self.g_loss_history = history['g_loss_history']
         self.d_loss_history = history['d_loss_history']
         self.iter_per_epoch = history['iter_per_epoch']
+        self.cur_epoch      = history['cur_epoch']
