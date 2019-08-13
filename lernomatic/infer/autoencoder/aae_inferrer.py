@@ -38,7 +38,6 @@ class AAEInferrer(inferrer.Inferrer):
         Load model data from checkpoint
         """
         checkpoint_data = torch.load(fname)
-        self.set_trainer_params(checkpoint_data['trainer_params'])
 
         # Load the models
         # P-Net

@@ -10,12 +10,17 @@ import torchvision
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+# timing stuff
+import time
+from datetime import timedelta
 
 from lernomatic.infer.autoencoder import aae_inferrer
 from lernomatic.train.autoencoder import aae_trainer
 from lernomatic.train.autoencoder import aae_semisupervised_trainer
 from lernomatic.models.autoencoder import aae_common
 from lernomatic.models import common        # mainly for type hints
+# command line options
+from lernomatic.options import options
 
 # MNIST subsample
 from lernomatic.data.mnist import mnist_sub
@@ -52,6 +57,7 @@ def recon_to_plt(ax:list,
                  ) -> None:
     if len(ax) < 2:
         raise ValueError('This method requires a list of at least 2 axis')
+
     ax[0].clear()
     ax[1].clear()
 
@@ -186,7 +192,13 @@ def unsupervised() -> None:
     # We would do parameter search and scheduling here, but I will leave these
     # for now since I need to read more about how to train effectively with
     # GANs
+    train_start_time = time.time()
     trainer.train()
+    train_end_time = time.time()
+    train_total_time = train_end_time - train_start_time
+    print('Trained [%s] for %d epochs, total time : %s' %\
+          (repr(trainer), trainer.cur_epoch, str(timedelta(seconds = train_total_time)))
+    )
 
     infer_aae(
         q_net,
@@ -258,7 +270,7 @@ def supervised() -> None:
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
+    parser = options.get_trainer_options()
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
@@ -274,54 +286,6 @@ def get_parser() -> argparse.ArgumentParser:
                         type=str,
                         default='./data',
                         help='Path to location where data will be downloaded (default: ./data)'
-                        )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=10,
-                        help='Print output every N epochs'
-                        )
-    # TODO: should -2 be every 2 epochs, -3 every 3 epochs, etc?
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=-1,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
-                        )
-    # Training options
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--val-batch-size',
-                        type=int,
-                        default=0,
-                        help='Batch size to use during testing'
-                        )
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=40,
-                        help='Epoch to stop training at'
-                        )
-
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=1e-3,
-                        help='Learning rate for optimizer'
                         )
     # Data options
     parser.add_argument('--checkpoint-dir',

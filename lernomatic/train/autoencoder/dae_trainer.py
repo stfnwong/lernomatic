@@ -12,7 +12,7 @@ import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import common
 
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class DAETrainer(trainer.Trainer):

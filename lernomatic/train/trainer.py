@@ -245,6 +245,11 @@ class Trainer(object):
             for g in self.optimizer.param_groups:
                 g['momentum'] = momentum
 
+    # Update batch size
+    def set_batch_size(self, batch_size:int) -> None:
+        self.batch_size = batch_size
+        self._init_dataloaders()
+
     def set_lr_scheduler(self, lr_scheduler: schedule.LRScheduler) -> None:
         self.lr_scheduler = lr_scheduler
 
