@@ -5,6 +5,7 @@ Forward pass wrapper for De-noising Autoencoder models
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 from lernomatic.models import common
 from lernomatic.infer import inferrer
@@ -42,7 +43,7 @@ class DAEInferrer(inferrer.Inferrer):
         output = self.encoder.forward(X_noise)
         output = self.decoder.forward(output)
 
-        return output
+        return output.detach()
 
     def load_model(self, fname:str) -> None:
         """

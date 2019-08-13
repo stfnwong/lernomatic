@@ -105,8 +105,6 @@ def main() -> None:
           (repr(trainer), trainer.cur_epoch, str(timedelta(seconds = train_total_time)))
     )
 
-    # Create a loss history figure
-
     # Take the models and load them into an inferrer
     if GLOBAL_OPTS['infer']:
         trainer.drop_last = True

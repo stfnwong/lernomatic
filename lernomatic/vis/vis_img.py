@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 
 
-def get_grid_subplot(num_x:int, num_y:int=0) -> tuple:
+def get_grid_subplots(num_x:int, num_y:int=0) -> tuple:
     if num_y == 0:
         num_y = num_x
 
