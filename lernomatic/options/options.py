@@ -144,6 +144,11 @@ def get_lr_finder_options(parser:argparse.ArgumentParser=None) -> argparse.Argum
                         default='max_acc',
                         help='Method to use when choosing learning rate (default: max_acc)'
                         )
+    parser.add_argument('--find-sched-stepsize',
+                        type=int,
+                        default=4000,
+                        help='Size of step for learning rate scheduler'
+                        )
 
 
     return parser

@@ -38,7 +38,6 @@ def plot_lr_find_results(ax,
 
 
 def plot_lr_vs_loss(ax, lr_history:np.ndarray, loss_history:np.ndarray) -> None:
-
     ax.plot(lr_history, loss_history)
     ax.set_title('Learning rate vs Loss')
     ax.set_xlabel('(Log) learning rate')
