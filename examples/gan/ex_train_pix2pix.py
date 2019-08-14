@@ -7,6 +7,7 @@ Stefan Wong 2019
 
 import os
 import argparse
+from lernomatic.train import schedule
 from lernomatic.train.gan import pix2pix_trainer
 from lernomatic.models.gan.cycle_gan import pixel_disc
 from lernomatic.models.gan.cycle_gan import nlayer_disc
@@ -164,13 +165,26 @@ def main() -> None:
             print_every = GLOBAL_OPTS['print_every'],
             save_every = GLOBAL_OPTS['save_every'],
         )
+    # Get a scheduler. In the original paper the model is trained for 100
+    # epochs with a fixed learning rate, then for another 100 epochs with a
+    # learning rate that linearly decays to zero.
+    lr_scheduler = schedule.DecayToEpoch(
+        non_decay_time = int(GLOBAL_OPTS['num_epochs'] // 2),
+        decay_length   = int(GLOBAL_OPTS['num_epochs'] // 2),
+        initial_lr     = GLOBAL_OPTS['learning_rate'],
+        final_lr       = 0.0
+    )
+    print('Created scheduler')
+    print(lr_scheduler)
+    trainer.set_lr_scheduler(lr_scheduler)
+
 
     train_start_time = time.time()
     trainer.train()
     train_end_time = time.time()
     train_total_time = train_end_time - train_start_time
-    print('Total training time : %s' % \
-          str(timedelta(seconds=train_total_time))
+    print('[%s] trainer trained %d epochs, total training time : %s' % \
+          (repr(trainer), trainer.cur_epoch, str(timedelta(seconds=train_total_time)))
     )
 
 

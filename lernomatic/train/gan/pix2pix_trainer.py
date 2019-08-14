@@ -123,7 +123,7 @@ class Pix2PixTrainer(trainer.Trainer):
             self.d_net.set_eval()
             self.g_optim.zero_grad()
 
-            pred_fake = self.d_net.forward(ab_fake)
+            pred_fake  = self.d_net.forward(ab_fake)
             g_loss_gan = self.gan_criterion(pred_fake, True)
             g_loss_l1  = self.l1_criterion(b_fake, b_real) * self.l1_lambda
             g_loss     = g_loss_gan + g_loss_l1
@@ -151,6 +151,9 @@ class Pix2PixTrainer(trainer.Trainer):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
+
+        if self.lr_scheduler is not None:
+            self.apply_lr_schedule()
 
 
     def val_epoch(self) -> None:
