@@ -34,7 +34,6 @@ def write_img_tensor(fig, ax, fname:str, img_tensor:torch.Tensor) -> None:
     fig.savefig(fname)
 
 
-
 def translate_dataset(max_images:int=128) -> None:
     inferrer = pix2pix_inferrer.Pix2PixInferrer(
         device_id = GLOBAL_OPTS['device_id']

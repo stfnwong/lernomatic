@@ -14,10 +14,6 @@ from lernomatic.data import data_split
 from lernomatic.util import image_util
 
 
-# debug
-from pudb import set_trace; set_trace()
-
-
 class ImageDataProc(object):
     def __init__(self, **kwargs) -> None:
         self.verbose = kwargs.pop('verbose', False)
@@ -32,7 +28,6 @@ class ImageDataProc(object):
         # format options
         self.to_pil              :bool   = kwargs.pop('to_pil', False)
         self.pil_rgb_format      :str    = kwargs.pop('pil_rgb_format', 'RGB')
-        # TODO : to_tensor (ie: place a tensor directly into HDF5)
 
     def __repr__(self) -> str:
         return 'ImageDataProc'

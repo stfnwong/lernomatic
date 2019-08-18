@@ -142,7 +142,7 @@ class TestDCGANTrainer(unittest.TestCase):
 
         # If we then adjust the number of epochs (to at least cur_epoch+1) then
         # we should see another
-        dst_trainer.num_epochs = src_trainer.num_epochs + 1
+        dst_trainer.set_num_epochs(src_trainer.num_epochs+1)
         dst_trainer.train()
         self.assertEqual(src_trainer.num_epochs + 1, dst_trainer.cur_epoch)
 
