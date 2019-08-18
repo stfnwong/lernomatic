@@ -103,6 +103,25 @@ class DCGANTrainer(trainer.Trainer):
     def set_generator(self, G:common.LernomaticModel) -> None:
         self.generator = G
 
+    def set_num_epochs(self, num_epochs:int) -> None:
+        if num_epochs > self.num_epochs:
+            # save temporary history
+            temp_g_loss_history = np.copy(self.g_loss_history)
+            temp_d_loss_history = np.copy(self.d_loss_history)
+            temp_loss_iter      = self.loss_iter
+            temp_iter_per_epoch = self.iter_per_epoch
+            temp_cur_epoch      = self.cur_epoch
+            self.num_epochs     = num_epochs
+            self._init_history()
+            # restore old history
+            self.g_loss_history[:len(temp_g_loss_history)] = temp_g_loss_history
+            self.d_loss_history[:len(temp_d_loss_history)] = temp_d_loss_history
+            self.loss_iter      = temp_loss_iter
+            self.cur_epoch      = temp_cur_epoch
+            self.iter_per_epoch = temp_iter_per_epoch
+        else:
+            self.num_epochs = num_epochs
+
     def get_trainer_params(self) -> dict:
         params = {
             # labels
