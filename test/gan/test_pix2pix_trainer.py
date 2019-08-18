@@ -131,6 +131,17 @@ class TestPix2PixTrainer(unittest.TestCase):
                 self.assertEqual(True, torch.equal(p1[1], p2[1]))
             print('\n ...done')
 
+        # check the various trainer stats
+        self.assertEqual(src_trainer.beta1, dst_trainer.beta1)
+        self.assertEqual(src_trainer.l1_lambda, dst_trainer.l1_lambda)
+        self.assertEqual(src_trainer.gan_mode, dst_trainer.gan_mode)
+        self.assertEqual(src_trainer.learning_rate, dst_trainer.learning_rate)
+        self.assertEqual(src_trainer.batch_size, dst_trainer.batch_size)
+        self.assertEqual(src_trainer.print_every, dst_trainer.print_every)
+        self.assertEqual(src_trainer.save_every, dst_trainer.save_every)
+        self.assertEqual(src_trainer.cur_epoch, dst_trainer.cur_epoch)
+        self.assertEqual(src_trainer.num_epochs, dst_trainer.num_epochs)
+
         # check history
         dst_trainer.load_history(test_history_file)
         self.assertIsNotNone(dst_trainer.g_loss_history)
@@ -148,16 +159,15 @@ class TestPix2PixTrainer(unittest.TestCase):
             self.assertEqual(src_trainer.d_loss_history[loss_elem], dst_trainer.d_loss_history[loss_elem])
         print('\n OK')
 
-        # check the various trainer stats
-        self.assertEqual(src_trainer.beta1, dst_trainer.beta1)
-        self.assertEqual(src_trainer.l1_lambda, dst_trainer.l1_lambda)
-        self.assertEqual(src_trainer.gan_mode, dst_trainer.gan_mode)
-        self.assertEqual(src_trainer.learning_rate, dst_trainer.learning_rate)
-        self.assertEqual(src_trainer.batch_size, dst_trainer.batch_size)
-        self.assertEqual(src_trainer.print_every, dst_trainer.print_every)
-        self.assertEqual(src_trainer.save_every, dst_trainer.save_every)
-        self.assertEqual(src_trainer.cur_epoch, dst_trainer.cur_epoch)
-        self.assertEqual(src_trainer.num_epochs, dst_trainer.num_epochs)
+        # we need to set the train loaders
+        dst_trainer.set_train_dataset(train_dataset)
+        # Now try to extent the trainer history and train for another epoch
+        dst_trainer.set_num_epochs(src_trainer.num_epochs+1)
+        self.assertEqual(dst_trainer.cur_epoch, src_trainer.cur_epoch)
+
+        print('Continuing training for dst_trainer from epoch %d' % dst_trainer.cur_epoch)
+        dst_trainer.train()
+        self.assertEqual(src_trainer.num_epochs+1, dst_trainer.cur_epoch)
 
         print('======== TestPix2PixTrainer.test_save_load_checkpoint <END>')
 
@@ -194,12 +204,6 @@ if __name__ == '__main__':
                         type=int,
                         default=25,
                         help='Print output every time this number of iterations has elapsed'
-                        )
-    # dataset options
-    parser.add_argument('--dataset-root',
-                        type=str,
-                        default='/mnt/ml-data/datasets/celeba/',
-                        help='Path to root of dataset'
                         )
     # checkpoint options
     parser.add_argument('--checkpoint-dir',

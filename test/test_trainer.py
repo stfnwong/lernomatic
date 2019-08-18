@@ -110,6 +110,12 @@ class TestTrainer(unittest.TestCase):
             print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
             self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
 
+        # Try to train for another epoch
+        dst_tr.set_num_epochs(src_tr.num_epochs+1)
+        self.assertEqual(dst_tr.num_epochs, src_tr.num_epochs+1)
+        dst_tr.train()
+        self.assertEqual(src_tr.num_epochs+1, dst_tr.cur_epoch)
+
         print('\n ...done')
         os.remove(test_checkpoint)
 

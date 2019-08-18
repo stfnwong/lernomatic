@@ -255,6 +255,18 @@ class Trainer(object):
     def get_mtm_scheduler(self) -> schedule.LRScheduler:
         return self.mtm_scheduler
 
+    def set_train_dataset(self, train_dataset) -> None:
+        self.train_dataset = train_dataset
+        self._init_dataloaders()
+
+    def set_val_dataset(self, val_dataset) -> None:
+        self.val_dataset = val_dataset
+        self._init_dataloaders()
+
+    def set_test_dataset(self, test_dataset) -> None:
+        self.test_dataset = test_dataset
+        self._init_dataloaders()
+
     def apply_lr_schedule(self) -> None:
         if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
             new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])

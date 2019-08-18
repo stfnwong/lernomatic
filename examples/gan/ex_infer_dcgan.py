@@ -14,13 +14,11 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from lernomatic.infer.gan import dcgan_inferrer
 from lernomatic.util import image_util
-from lernomatic.util.gan import dcgan_util
+from lernomatic.util import dcgan_util
 
 GLOBAL_OPTS = dict()
 TOOL_MODES = ('single', 'seed', 'history', 'walk')
 
-# debug
-#from pudb import set_trace; set_trace()
 
 
 # Get an inferrer object

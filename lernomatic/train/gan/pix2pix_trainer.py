@@ -75,6 +75,25 @@ class Pix2PixTrainer(trainer.Trainer):
         self.gan_criterion = gan_loss.GANLoss(self.gan_mode, self.device)
         self.l1_criterion  = torch.nn.L1Loss()
 
+    def set_num_epochs(self, num_epochs:int) -> None:
+        if num_epochs > self.num_epochs:
+            # resize history
+            g_temp_loss_history = np.copy(self.g_loss_history)
+            d_temp_loss_history = np.copy(self.d_loss_history)
+            temp_loss_iter      = self.loss_iter
+            temp_cur_epoch      = self.cur_epoch
+            self.num_epochs     = num_epochs
+
+            self._init_history()
+
+            # restore old history
+            self.g_loss_history[:len(g_temp_loss_history)] = g_temp_loss_history
+            self.d_loss_history[:len(d_temp_loss_history)] = d_temp_loss_history
+            self.loss_iter      = temp_loss_iter
+            self.cur_epoch      = temp_cur_epoch
+        else:
+            self.num_epochs = num_epochs
+
     def get_trainer_params(self) -> dict:
         params = super(Pix2PixTrainer, self).get_trainer_params()
         params['beta1']     = self.beta1
@@ -234,8 +253,6 @@ class Pix2PixTrainer(trainer.Trainer):
     def save_history(self, fname:str) -> None:
         history = dict()
         history['loss_iter'] = self.loss_iter
-        history['val_loss_iter']  = self.val_loss_iter
-        history['acc_iter']       = self.acc_iter
         history['cur_epoch']      = self.cur_epoch
 
         if self.train_loader is not None:
@@ -249,8 +266,6 @@ class Pix2PixTrainer(trainer.Trainer):
         history = torch.load(fname)
 
         self.loss_iter      = history['loss_iter']
-        self.val_loss_iter  = history['val_loss_iter']
-        self.acc_iter       = history['acc_iter']
         self.g_loss_history = history['g_loss_history']
         self.d_loss_history = history['d_loss_history']
         self.iter_per_epoch = history['iter_per_epoch']

@@ -10,8 +10,6 @@ import numpy as np
 import torch
 import torchvision.utils as vutils
 
-from lernomatic.models import common
-
 
 # Utils for sampling from latent space
 def midpoint_linear_interp(points:np.ndarray, ix:float) -> Union[float, np.ndarray]:
