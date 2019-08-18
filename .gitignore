@@ -6,3 +6,9 @@
 # Ignore image files in root
 *.png
 *.jpg
+
+# Ignore video files in root
+*.mp4
+
+# Ignore audio files in root
+*.mp3

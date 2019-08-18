@@ -143,7 +143,6 @@ def walk() -> None:
         p_next = np.random.randn(inferrer.get_zvec_dim())
 
 
-
 # Walk between two points
 def walk_link(inferrer:dcgan_inferrer.DCGANInferrer,
               p1:np.ndarray,

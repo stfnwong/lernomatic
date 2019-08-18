@@ -5,17 +5,22 @@ Train a DCGAN
 Stefan Wong 2019
 """
 
+import argparse
+# timing
 import time
 from datetime import timedelta
-import argparse
+# visions
 from torchvision import datasets
 from torchvision import transforms
+# library stuff
 from lernomatic.data import hdf5_dataset
 from lernomatic.models.gan import dcgan
 from lernomatic.train.gan import dcgan_trainer
 from lernomatic.train import schedule
 from lernomatic.vis import vis_loss_history
 from lernomatic.util import math_util
+# command line options
+from lernomatic.options import options
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -114,33 +119,12 @@ def main() -> None:
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
+    parser = options.get_trainer_options()
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
-                        )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=20,
-                        help='Print output every N epochs'
-                        )
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=-1,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
                         )
     # Network options
     parser.add_argument('--zvec-dim',
@@ -163,42 +147,6 @@ def get_parser() -> argparse.ArgumentParser:
                         type=float,
                         default=0.5,
                         help='beta1 parameter for ADAM optimizer'
-                        )
-    # Training options
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        help='Epoch to start training from'
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=20,
-                        help='Epoch to stop training at'
-                        )
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--weight-decay',
-                        type=float,
-                        default=1e-4,
-                        help='Weight decay to use for optimizer'
-                        )
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=0.0002,     # NOTE: this is the rate from Radford, Metz and Chintala
-                        help='Learning rate for ADAM optimizer'
-                        )
-    parser.add_argument('--momentum',
-                        type=float,
-                        default=0.5,
-                        help='Momentum for ADAM'
-                        )
-    parser.add_argument('--grad-clip',
-                        type=float,
-                        default=5.0,
-                        help='Clip gradients at this (absolute) value'
                         )
     # Data options
     parser.add_argument('--image-size',
@@ -224,7 +172,7 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='dcgan_celeba_',
+                        default='dcgan',
                         help='Name to prepend to all checkpoints'
                         )
     parser.add_argument('--load-checkpoint',

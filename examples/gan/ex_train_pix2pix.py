@@ -14,9 +14,11 @@ from lernomatic.models.gan.cycle_gan import nlayer_disc
 from lernomatic.models.gan.cycle_gan import resnet_gen
 from lernomatic.models.gan.cycle_gan import unet_gen
 from lernomatic.models import common
-
+# GAN utils
 from lernomatic.data.gan import aligned_dataset
 from lernomatic.data.gan import gan_transforms
+# command line options
+from lernomatic.options import options
 
 # measure training time
 import time
@@ -189,33 +191,12 @@ def main() -> None:
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
+    parser = options.get_trainer_options()
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
-                        )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=10,
-                        help='Print output every N epochs'
-                        )
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=-1,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
                         )
     # Network options
     parser.add_argument('--gen-type',
@@ -227,34 +208,6 @@ def get_parser() -> argparse.ArgumentParser:
                         type=str,
                         default='pixel',
                         help='Type of discriminator to use (nlayer or pixel)'
-                        )
-
-
-    # Training options
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        help='Epoch to start training from'
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=20,
-                        help='Epoch to stop training at'
-                        )
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--weight-decay',
-                        type=float,
-                        default=1e-4,
-                        help='Weight decay to use for optimizer'
-                        )
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=2e-4,
-                        help='Learning rate for optimizer'
                         )
     # Data options
     parser.add_argument('--train-data-path',
