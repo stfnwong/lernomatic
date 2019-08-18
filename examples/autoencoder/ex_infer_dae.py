@@ -104,12 +104,16 @@ def main() -> None:
         out_fig.tight_layout()
         out_fig.savefig(out_fig_fname)
 
+        if (GLOBAL_OPTS['max_batch'] > 0) and (batch_idx > GLOBAL_OPTS['max_batch']):
+            print('Max batch (%d) reached, stopping' % GLOBAL_OPTS['max_batch'])
+            break
+
     print('\n done')
     infer_end_time = time.time()
     infer_total_time = infer_end_time - infer_start_time
 
     print('Inferrer [%s] inferrer %d batches of size %d, total time : %s' %\
-          (repr(inferrer), len(val_loader), batch_size, str(timedelta(seconds = infer_total_time)))
+          (repr(inferrer), batch_idx,  batch_size, str(timedelta(seconds = infer_total_time)))
     )
 
 
@@ -123,6 +127,11 @@ def get_parser() -> argparse.ArgumentParser:
                         help='Name to prepend to all checkpoints'
                         )
     # General opts
+    parser.add_argument('--max-batch',
+                        type=int,
+                        default=0,
+                        help='Max number of elements from MNIST validation data to infer. 0 infers all. (default: 0)'
+                        )
     parser.add_argument('--data-dir',
                         type=str,
                         default='./data/',
