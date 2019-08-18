@@ -15,6 +15,7 @@ from torchvision import transforms
 # units under test
 from lernomatic.models.gan import dcgan
 from lernomatic.train.gan import dcgan_trainer
+from lernomatic.data import hdf5_dataset
 
 
 # debug
@@ -24,15 +25,22 @@ GLOBAL_OPTS = dict()
 
 
 def get_dataset(image_size:int = 64):
-    celeba_transform = transforms.Compose([
-           transforms.Resize(image_size),
-           transforms.CenterCrop(image_size),
-           transforms.ToTensor(),
-           transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-    dataset = torchvision.datasets.ImageFolder(
-        root=GLOBAL_OPTS['dataset_root'],
-        transform = celeba_transform
+    #celeba_transform = transforms.Compose([
+    #       transforms.Resize(image_size),
+    #       transforms.CenterCrop(image_size),
+    #       transforms.ToTensor(),
+    #       transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    #])
+    #dataset = torchvision.datasets.ImageFolder(
+    #    root=GLOBAL_OPTS['dataset_root'],
+    #    transform = celeba_transform
+    #)
+
+    dataset = hdf5_dataset.HDF5Dataset(
+        GLOBAL_OPTS['dataset_root'],
+        feature_name = 'images',
+        label_name = 'labels',
+        #transform = gan_data_transform
     )
 
     return dataset
@@ -189,7 +197,8 @@ if __name__ == '__main__':
     # dataset options
     parser.add_argument('--dataset-root',
                         type=str,
-                        default='/mnt/ml-data/datasets/celeba/',
+                        #default='/mnt/ml-data/datasets/celeba/',
+                        default='hdf5/dcgan_unit_test.h5',
                         help='Path to root of dataset'
                         )
     # checkpoint options

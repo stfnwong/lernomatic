@@ -7,18 +7,17 @@ Stefan Wong 2019
 import os
 from PIL import Image
 import argparse
+from tqdm import tqdm
 #from tqdm import tqdm
 from lernomatic.data import data_split
 from lernomatic.data import image_proc
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
 
-# TODO : maybe just check (n - num_err) > GLOBAL_OPTS['size'] for limiting
-# dataset size
 def main() -> None:
     if GLOBAL_OPTS['outfile'] is None:
         raise ValueError('No outfile specified (use --outfile=OUTFILE)')
@@ -39,9 +38,7 @@ def main() -> None:
 
     print('Checking %d files starting at path [%s]' % (len(image_paths), GLOBAL_OPTS['dataset_root']))
     num_err = 0
-    for n, path in enumerate(image_paths):
-        print('Checking file [%d / %d] ' % (n+1, len(image_paths)), end='\r')
-
+    for n, path in enumerate(tqdm(image_paths, unit='images')):
         # If there are any exceptions then just remove the file that caused
         # them and continue
         try:
@@ -57,6 +54,10 @@ def main() -> None:
             image_paths.pop(n)
             num_err += 1
 
+        if (GLOBAL_OPTS['size'] > 0) and ((n - num_err) >= GLOBAL_OPTS['size']):
+            print('\nFound %d files, stopping checks' % GLOBAL_OPTS['size'])
+            break
+
     if GLOBAL_OPTS['randomize']:
         print('Randomizing...')
         image_paths = random.shuffle(image_paths)
@@ -64,16 +65,16 @@ def main() -> None:
     # get a split
     s = data_split.DataSplit(split_name=GLOBAL_OPTS['split_name'])
 
-    s.data_paths  = [GLOBAL_OPTS['dataset_root'] + str(path) for path in image_paths]
-    s.data_labels = [int(0) for _ in range(len(image_paths))]
-    s.elem_ids    = [int(0) for _ in range(len(image_paths))]
+    if GLOBAL_OPTS['size'] > 0:
+        s.data_paths  = [str(path) for path in image_paths[0 : GLOBAL_OPTS['size']]]
+        s.data_labels = [int(0) for _ in range(GLOBAL_OPTS['size'])]
+        s.elem_ids    = [int(0) for _ in range(GLOBAL_OPTS['size'])]
+    else:
+        s.data_paths  = [str(path) for path in image_paths]
+        s.data_labels = [int(0) for _ in range(len(image_paths))]
+        s.elem_ids    = [int(0) for _ in range(len(image_paths))]
     s.has_labels  = True
     s.has_ids     = True
-
-    if GLOBAL_OPTS['size'] > 0:
-        s.data_paths  = s.data_paths[0 : GLOBAL_OPTS['size']]
-        s.data_labels = s.data_labels[0 : GLOBAL_OPTS['size']]
-        s.elem_ids    = s.elem_ids[0 : GLOBAL_OPTS['size']]
 
     # process the data
     proc = image_proc.ImageDataProc(

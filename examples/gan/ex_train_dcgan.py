@@ -25,18 +25,10 @@ GLOBAL_OPTS = dict()
 
 def main() -> None:
     if GLOBAL_OPTS['dataset'] is not None:
-        gan_data_transform = transforms.Compose([
-            transforms.Resize(GLOBAL_OPTS['image_size']),
-            transforms.CenterCrop(GLOBAL_OPTS['image_size']),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            transforms.ToTensor()
-        ])
-
         train_dataset = hdf5_dataset.HDF5Dataset(
             GLOBAL_OPTS['dataset'],
             feature_name = 'images',
             label_name = 'labels',
-            #transform = gan_data_transform
         )
     else:
         gan_data_transform = transforms.Compose([

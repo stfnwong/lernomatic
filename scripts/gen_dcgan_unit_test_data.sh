@@ -8,7 +8,7 @@ PYTHON=python
 DATASET_ROOT="/mnt/ml-data/datasets/celeba/"
 EXTENSION="jpg"
 # What size image to generate
-IMAGE_SIZE=128
+IMAGE_SIZE=64
 SPLIT_NAME='dcgan_unit_test'
 # name of output dataset
 DATASET_OUTFILE="hdf5/dcgan_unit_test.h5"
