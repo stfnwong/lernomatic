@@ -34,7 +34,7 @@ def slerp(val:float, q1:np.ndarray, q2:np.ndarray) -> np.ndarray:
     so = np.sin(omega)
 
     if so == 0.0:
-        return (1.0 - val) * q1 + val + q2
+        return lerp(val, q1, q2)
     return np.sin((1.0 - val) * omega) / so * q1 + np.sin(val * omega) / so * q2
 
 

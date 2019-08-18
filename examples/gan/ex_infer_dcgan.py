@@ -9,6 +9,7 @@ import os
 import torch
 import argparse
 import numpy as np
+from tqdm import tqdm
 from PIL import Image
 import matplotlib.pyplot as plt
 from lernomatic.infer.gan import dcgan_inferrer
@@ -135,14 +136,12 @@ def walk() -> None:
         )
 
         # write files to disk
-        for p, img in enumerate(out_imgs):
-            print('Writing image %d / %d ' % (p+1, len(out_imgs)), end='\r')
+        for p, img in enumerate(tqdm(out_imgs, unit='images')):
             path, ext = os.path.splitext(GLOBAL_OPTS['outfile'])
             fname = str(path) + '_' + str(img_idx) + str(ext)
             write_img(fig, ax, fname, img)
             img_idx += 1
 
-        print('\n OK')
         p_prev = p_next
         p_next = np.random.randn(inferrer.get_zvec_dim())
 
