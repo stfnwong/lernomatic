@@ -1,6 +1,6 @@
 """
-CIFAR10_TRAINERS
-Example trainer for CIFAR10 dataset
+CIFAR_TRAINER
+Trainers for use with torchvision CIFAR datasets
 
 Stefan Wong 2019
 """
@@ -63,14 +63,14 @@ class CIFAR10Trainer(trainer.Trainer):
             shuffle = self.shuffle
         )
         # validation data
-        self.test_loader = torch.utils.data.DataLoader(
+        self.val_loader = torch.utils.data.DataLoader(
             torchvision.datasets.CIFAR10(
                 self.data_dir,
                 train = False,
                 download = True,
                 transform = dataset_transform
             ),
-            batch_size = self.test_batch_size,
+            batch_size = self.val_batch_size,
             num_workers = self.num_workers,
             shuffle = self.shuffle
         )
@@ -81,8 +81,13 @@ class CIFAR10Trainer(trainer.Trainer):
         history['loss_iter']      = self.loss_iter
         history['cur_epoch']      = self.cur_epoch
         history['iter_per_epoch'] = self.iter_per_epoch
-        if self.test_loss_history is not None:
-            history['test_loss_history'] = self.test_loss_history
+        if self.val_loss_history is not None:
+            history['val_loss_history'] = self.val_loss_history
+            history['val_loss_iter']    = self.val_loss_iter
+
+        if self.acc_history is not None:
+            history['acc_history'] = self.acc_history
+            history['acc_iter']    = self.acc_iter
 
         torch.save(history, fname)
 
@@ -92,9 +97,12 @@ class CIFAR10Trainer(trainer.Trainer):
         self.loss_iter      = history['loss_iter']
         self.cur_epoch      = history['cur_epoch']
         self.iter_per_epoch = history['iter_per_epoch']
-        if 'test_loss_history' in history:
-            self.test_loss_history = history['test_loss_history']
-
+        if 'val_loss_history' in history:
+            self.val_loss_history = history['val_loss_history']
+            self.val_loss_iter    = history['val_loss_iter']
+        if 'acc_history' in history:
+            self.acc_history = history['acc_history']
+            self.acc_iter    = history['acc_iter']
 
 
 class CIFAR100Trainer(trainer.Trainer):
@@ -151,7 +159,7 @@ class CIFAR100Trainer(trainer.Trainer):
                 download = True,
                 transform = dataset_transform
             ),
-            batch_size = self.test_batch_size,
+            batch_size = self.val_batch_size,
             num_workers = self.num_workers,
             shuffle = self.shuffle
         )
@@ -162,8 +170,13 @@ class CIFAR100Trainer(trainer.Trainer):
         history['loss_iter']      = self.loss_iter
         history['cur_epoch']      = self.cur_epoch
         history['iter_per_epoch'] = self.iter_per_epoch
-        if self.test_loss_history is not None:
-            history['test_loss_history'] = self.test_loss_history
+        if self.val_loss_history is not None:
+            history['val_loss_history'] = self.val_loss_history
+            history['val_loss_iter']    = self.val_loss_iter
+
+        if self.acc_history is not None:
+            history['acc_history'] = self.acc_history
+            history['acc_iter']    = self.acc_iter
 
         torch.save(history, fname)
 
@@ -173,8 +186,12 @@ class CIFAR100Trainer(trainer.Trainer):
         self.loss_iter      = history['loss_iter']
         self.cur_epoch      = history['cur_epoch']
         self.iter_per_epoch = history['iter_per_epoch']
-        if 'test_loss_history' in history:
-            self.test_loss_history = history['test_loss_history']
+        if 'val_loss_history' in history:
+            self.val_loss_history = history['val_loss_history']
+            self.val_loss_iter    = history['val_loss_iter']
+        if 'acc_history' in history:
+            self.acc_history = history['acc_history']
+            self.acc_iter    = history['acc_iter']
 
     def save_checkpoint(self, fname):
         checkpoint = dict()
@@ -190,3 +207,4 @@ class CIFAR100Trainer(trainer.Trainer):
         self.model.load_state_dict(checkpoint['model'])
         self._init_optimizer()
         self.optimizer.load_state_dict(checkpoint['optimizer'])
+
