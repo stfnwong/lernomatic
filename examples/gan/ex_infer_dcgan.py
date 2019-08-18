@@ -20,7 +20,7 @@ GLOBAL_OPTS = dict()
 TOOL_MODES = ('single', 'seed', 'history', 'walk')
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 # Get an inferrer object
@@ -43,9 +43,7 @@ def write_img(fig, ax, fname:str, img_tensor:torch.Tensor) -> None:
     fig.savefig(fname)
 
 
-# NOTE: in effect this is using a new (unique) noise vector for each image.
-# ANOTHER NOTE: we could just add a loop parameter to call this N times rather
-# than use that janky shell script that is currently in the repo
+# Generate a set of images from a noise vector
 def generate_image() -> None:
     inferrer = get_inferrer(device_id = GLOBAL_OPTS['device_id'])
     inferrer.load_model(GLOBAL_OPTS['checkpoint_data'])
@@ -53,7 +51,6 @@ def generate_image() -> None:
 
     for n in range(GLOBAL_OPTS['num_images']):
         img = inferrer.forward()
-
         if GLOBAL_OPTS['num_images'] == 1:
             write_img(fig, ax, GLOBAL_OPTS['outfile'], img)
         else:
@@ -62,6 +59,7 @@ def generate_image() -> None:
             write_img(fig, ax, fname, img)
 
 
+# Generate one image from a random seed
 def generate_from_seed() -> None:
     inferrer = get_inferrer(device_id = GLOBAL_OPTS['device_id'])
     inferrer.load_model(GLOBAL_OPTS['checkpoint_data'])
@@ -73,8 +71,7 @@ def generate_from_seed() -> None:
     write_img(fig, ax, GLOBAL_OPTS['outfile'], out_tensor)
 
 
-# TODO : first do history of a single image, then add option to do 8x8 grid of
-# images, each one taken from some point in training history
+# Show the progression of the GAN outputs over the training cycl:w
 def generate_history() -> None:
     # In this mode we interpret the checkpoint_data file as a text file that
     # contains a (newline-seperated) list of checkpoint filenames
@@ -144,6 +141,7 @@ def walk() -> None:
 
         p_prev = p_next
         p_next = np.random.randn(inferrer.get_zvec_dim())
+
 
 
 # Walk between two points
