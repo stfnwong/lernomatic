@@ -16,7 +16,7 @@ from lernomatic.util import image_util
 from lernomatic.util.gan import dcgan_util
 
 GLOBAL_OPTS = dict()
-TOOL_MODES = ('single', 'seed', 'history', 'random_walk')
+TOOL_MODES = ('single', 'seed', 'history', 'walk')
 
 # debug
 from pudb import set_trace; set_trace()
@@ -115,57 +115,53 @@ def generate_history() -> None:
 
 
 
-# ======== INTERPOLATION STUFF ======== #
-# Put a whole lot of interpolation stuff here, then once it works move it to
-# the util module
-def interp_points(p1:torch.Tensor,
-                  p2:torch.Tensor,
-                  num_points:int=16,
-                  mode:str='linear') -> np.ndarray:
-    ratios = np.linspace(0, 1, num=num_points)
-    vectors = list()
-
-    if mode == 'linear':
-        for r in ratios:
-            v = (1.0 - r) * p1 + r * p2
-            vectors.append(v)
-    elif mode == 'spherical':
-        for r in ratios:
-            v = dcgan_utis.slerp(r, p1, p2)
-            vectors.append(v)
-    else:
-        raise ValueError('Invalid interpolation [%s]' % str(mode))
-
-    return np.asarray(vectors)
-
-
-def random_walk() -> None:
+# Walk along a series of random links
+def walk() -> None:
     inferrer = get_inferrer(device_id = GLOBAL_OPTS['device_id'])
     inferrer.load_model(GLOBAL_OPTS['checkpoint_data'])
 
-    # for now, we just interpolated between any two random points
-    #p1 = inferrer.get_random_zvec()
-    #p2 = inferrer.get_random_zvec()
-    p1 = np.random.randn(inferrer.get_zvec_dim())
-    p2 = np.random.randn(inferrer.get_zvec_dim())
-
-    num_points = 32
-    points = interp_points(p1, p2, num_points)
-
+    p_prev = np.random.randn(inferrer.get_zvec_dim())
+    p_next = np.random.randn(inferrer.get_zvec_dim())
     fig, ax = plt.subplots()
+    img_idx = 1
+    for link in range(GLOBAL_OPTS['num_links']):
+        print('Walking link %d / %d' % (link+1, GLOBAL_OPTS['num_links']))
+
+        out_imgs = walk_link(
+            inferrer,
+            p_prev,
+            p_next,
+            GLOBAL_OPTS['num_points']
+        )
+
+        # write files to disk
+        for p, img in enumerate(out_imgs):
+            print('Writing image %d / %d ' % (p+1, len(out_imgs)), end='\r')
+            path, ext = os.path.splitext(GLOBAL_OPTS['outfile'])
+            fname = str(path) + '_' + str(img_idx) + str(ext)
+            write_img(fig, ax, fname, img)
+            img_idx += 1
+
+        print('\n OK')
+        p_prev = p_next
+        p_next = np.random.randn(inferrer.get_zvec_dim())
+
+
+# Walk between two points
+def walk_link(inferrer:dcgan_inferrer.DCGANInferrer,
+              p1:np.ndarray,
+              p2:np.ndarray,
+              num_points:int=32) -> None:
+    points = dcgan_util.interp_walk(p1, p2, num_points)
+
+    out_img_list = list()
     for p in range(num_points):
-        print('Generating image %d / %d ' % (p+1, num_points), end='\r')
-        # Make a new Tensor
         x_t = torch.Tensor(points[p, :])
         x_t = x_t[None, :, None, None]
         out_img = inferrer.forward(x_t)
+        out_img_list.append(out_img)
 
-        # write file to disk
-        path, ext = os.path.splitext(GLOBAL_OPTS['outfile'])
-        fname = str(path) + '_' + str(p) + '.' + str(ext)
-        write_img(fig, ax, fname, out_img)
-
-    print('\n OK')
+    return out_img_list
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -186,6 +182,23 @@ def get_parser() -> argparse.ArgumentParser:
                         default='single',
                         choices=TOOL_MODES,
                         help='Tool mode. (default: single)'
+                        )
+    parser.add_argument('--interp-mode',
+                        type=str,
+                        choices = ('linear', 'spherical'),
+                        default='linear',
+                        help='Interpolation to use in walk mode (default: linear)'
+                        )
+    parser.add_argument('--num-points',
+                        type=int,
+                        default=32,
+                        help='In walk mode, number of points to interpolate (default: 32)'
+                        )
+    # TODO : for docstring - a link connects two points in a walk
+    parser.add_argument('--num-links',
+                        type=int,
+                        default=1,
+                        help='Number of links in the walk to do (default: 1)'
                         )
     # Device options
     parser.add_argument('--device-id',
@@ -237,7 +250,7 @@ if __name__ == '__main__':
         generate_from_seed()
     elif GLOBAL_OPTS['mode'] == 'history':
         generate_history()
-    elif GLOBAL_OPTS['mode'] == 'random_walk':
-        random_walk()
+    elif GLOBAL_OPTS['mode'] == 'walk':
+        walk()
     else:
         raise ValueError('Invalid tool mode [%s]' % str(GLOBAL_OPTS['mode']))

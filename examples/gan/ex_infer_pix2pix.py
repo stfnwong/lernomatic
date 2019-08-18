@@ -66,7 +66,6 @@ def translate_dataset(max_images:int=128) -> None:
                 fname = os.path.splitext(GLOBAL_OPTS['outfile'])[0] + '_' + str(img_idx) + '.png'
                 write_img_tensor(fig, ax, fname, fake_a[n])
                 img_idx += 1
-
         else:
             fname = os.path.splitext(GLOBAL_OPTS['outfile'])[0] + '_' + str(img_idx) + '.png'
             write_img_tensor(fig, ax, fname, fake_a)
