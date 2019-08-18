@@ -19,7 +19,10 @@ class CaptionInferrer(inferrer.Inferrer):
 
     Inferrer module for a caption model.
     """
-    def __init__(self, wmap:word_map.WordMap, **kwargs) -> None:
+    def __init__(self, wmap:word_map.WordMap,
+                 encoder:common.LernomaticModel=None,
+                 decoder:common.LernomaticModel=None,
+                 **kwargs) -> None:
         self.word_map = wmap
         self.encoder = kwargs.pop('encoder', None)
         self.decoder = kwargs.pop('decoder', None)
@@ -44,7 +47,6 @@ class CaptionInferrer(inferrer.Inferrer):
 
     # TODO : this needs to go
     def gen_caption(self, image:torch.Tensor) -> list:
-
         image = image.to(self.device)
         image = image.unsqueeze(0)
 
@@ -132,18 +134,29 @@ class CaptionInferrer(inferrer.Inferrer):
         return seq, alphas
 
     def load_checkpoint(self, fname:str, **kwargs) -> None:
-        encoder_key = kwargs.pop('encoder_key', 'encoder')
-        decoder_key = kwargs.pop('decoder_key', 'decoder')
+        load_encoder:bool = kwargs.pop('load_encoder', True)
+        load_decoder:bool = kwargs.pop('load_decoder', True)
+        encoder_key  = kwargs.pop('encoder_key', 'encoder')
+        decoder_key  = kwargs.pop('decoder_key', 'decoder')
+        if load_encoder:
+            self.encoder = common.LernomaticModel()
+        else:
+            self.encoder = None
+
+        if load_decoder:
+            self.decoder = common.LernomaticModel()
+        else:
+            self.decoder = None
 
         checkpoint_data = torch.load(fname)
 
-        if self.encoder is None:
+        if load_encoder:
             enc_model_path = checkpoint['encoder']['model_import_path']
             imp = importlib.import_module(enc_model_path)
             mod = getattr(imp, checkpoint['encoder']['model_name'])
             self.encoder = mod()
 
-        if self.decoder is None:
+        if load_decoder:
             dec_model_path = checkpoint['decoder']['model_import_path']
             imp = importlib.import_module(dec_model_path)
             mod = getattr(imp, checkpoint['decoder']['model_name'])

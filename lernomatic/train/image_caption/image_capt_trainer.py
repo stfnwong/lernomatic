@@ -550,36 +550,27 @@ class ImageCaptTrainer(trainer.Trainer):
         mod = getattr(imp, checkpoint['decoder']['model_name'])
         self.decoder = mod()
         self.decoder.set_params(checkpoint['decoder'])
-        # load weights from checkpoint
+
+        # Load optimizers
         self._init_optimizer()
-        if checkpoint['decoder_optim'] is not None:
-            self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
-        if checkpoint['encoder_optim'] is not None:
-            self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
-        # TODO : get rid of this?
-        #if self.decoder_optim is not None:
-        #    self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
-        #if self.encoder_optim is not None:
-        #    self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
+        self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
+        self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
 
         # transfer decoder optimizer
-        if self.decoder_optim is not None:
-            for state in self.decoder_optim.state.values():
-                for k, v in state.items():
-                    if isinstance(v, torch.Tensor):
-                        state[k] = v.to(self.device)
-        # transfer encoder optimizer
-        if self.encoder_optim is not None:
-            for state in self.encoder_optim.state.values():
-                for k, v in state.items():
-                    if isinstance(v, torch.Tensor):
-                        state[k] = v.to(self.device)
+        for state in self.decoder_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
 
-        self._init_device()
-        self._init_dataloaders()
+        # transfer encoder optimizer
+        for state in self.encoder_optim.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+
         self._send_to_device()
 
-    def save_history(self, fname):
+    def save_history(self, fname:str) -> None:
         history = dict()
         history['loss_history']   = self.loss_history
         history['loss_iter']      = self.loss_iter
@@ -594,7 +585,7 @@ class ImageCaptTrainer(trainer.Trainer):
 
         torch.save(history, fname)
 
-    def load_history(self, fname):
+    def load_history(self, fname:str) -> None:
         history = torch.load(fname)
         self.loss_history   = history['loss_history']
         self.loss_iter      = history['loss_iter']

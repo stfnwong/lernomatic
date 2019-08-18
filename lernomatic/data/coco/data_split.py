@@ -5,6 +5,9 @@ Data split object for COCO Image captioning
 Stefan Wong 2018
 """
 
+# TODO: if this is going to live on as a specialized class then it should
+# probably get a new name, and perhaps be re-tooled to sub-class DataSplit
+
 #import os
 import json
 #import h5py

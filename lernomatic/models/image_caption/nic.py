@@ -1,6 +1,8 @@
 """
 NIC
 Models for image captioning based on the 'Neural Image Caption' model
+Part of the motivation for this model is to simplify some of the other
+models that are currently in this repo
 
 Stefan Wong 2019
 """
@@ -11,7 +13,7 @@ import importlib
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from lernomatic.models import common
-# caption utils
+# caption utils - this is where beam search will be factored out to
 from lernomatic.util import caption as caption_utils
 
 
@@ -38,6 +40,7 @@ class NICDecoder(common.LernomaticModel):
 
     def __str__(self) -> str:
         return 'NICDecoder-%d' % self.net.vocab_size
+
 
 
 class NICDecoderModule(nn.Module):
@@ -84,8 +87,13 @@ class NICDecoderModule(nn.Module):
         # linear layer to find scores over vocab
         self.fc          = nn.Linear(self.dec_dim, self.vocab_size)
 
+    def init_hidden_state(self) -> None:
+        pass
 
-    def _inti
+    def init_weights(self, init_range:float=0.1) -> None:
+        self.embedding.data.uniform_(-init_range, init_range)
+        self.fc.bias.data.fill_(0)
+        self.fc.weight.data.uniform_(-init_range, init_range)
 
 
     def forward(self, enc_feature, enc_capt, capt_lengths) -> tuple:
@@ -141,4 +149,3 @@ class NICDecoderModule(nn.Module):
             alphas[:batch_size_t, t, ]       = alpha
 
 
-        pass
