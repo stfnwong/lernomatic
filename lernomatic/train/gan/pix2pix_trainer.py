@@ -89,6 +89,23 @@ class Pix2PixTrainer(trainer.Trainer):
         self.gan_mode  = params['gan_mode']
         super(Pix2PixTrainer, self).set_trainer_params(params)
 
+    def get_learning_rate(self) -> float:
+        d_optim_params = self.d_optim.param_groups[0]['lr']
+        g_optim_params = self.g_optim.param_groups[0]['lr']
+
+        return (d_optim_params, g_optim_params)
+
+    def set_learning_rate(self, lr: float, param_zero:bool=True) -> None:
+        if param_zero:
+            self.d_optim.param_groups[0]['lr'] = lr
+            self.g_optim.param_groups[0]['lr'] = lr
+        else:
+            for g in self.d_optim.param_groups:
+                g['lr'] = lr
+
+            for g in self.g_optim.param_groups:
+                g['lr'] = lr
+
     def train_epoch(self) -> None:
         """
         TRAIN_EPOCH
@@ -155,7 +172,6 @@ class Pix2PixTrainer(trainer.Trainer):
         if self.lr_scheduler is not None:
             self.apply_lr_schedule()
 
-
     def val_epoch(self) -> None:
         # No validation for GAN
         pass
@@ -171,7 +187,6 @@ class Pix2PixTrainer(trainer.Trainer):
             'trainer_params' : self.get_trainer_params()
         }
         torch.save(checkpoint_data,fname)
-
 
     def load_checkpoint(self, fname:str) -> None:
         checkpoint_data = torch.load(fname)

@@ -29,6 +29,7 @@ class Pix2PixInferrer(inferrer.Inferrer):
         self.model.set_eval()
         return self.model.forward(X).detach()
 
+
     def load_model(self, fname:str, model_key:str='g_net')-> None:
         self.model = common.LernomaticModel()
         checkpoint_data = torch.load(fname)
@@ -63,6 +64,3 @@ class Pix2PixInferrer(inferrer.Inferrer):
             )
         self.model.set_params(model_params)
         self._send_to_device()
-
-    def get_input_dims(self) -> tuple:
-        pass

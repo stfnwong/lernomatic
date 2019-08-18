@@ -13,11 +13,16 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from lernomatic.infer.gan import dcgan_inferrer
 from lernomatic.util import image_util
+from lernomatic.util.gan import dcgan_util
 
 GLOBAL_OPTS = dict()
-TOOL_MODES = ('single', 'seed', 'history')
+TOOL_MODES = ('single', 'seed', 'history', 'random_walk')
+
+# debug
+from pudb import set_trace; set_trace()
 
 
+# Get an inferrer object
 def get_inferrer(device_id:int) -> dcgan_inferrer.DCGANInferrer:
     inferrer = dcgan_inferrer.DCGANInferrer(
         None,
@@ -26,6 +31,7 @@ def get_inferrer(device_id:int) -> dcgan_inferrer.DCGANInferrer:
     return inferrer
 
 
+# Write image vector to disk
 def write_img(fig, ax, fname:str, img_tensor:torch.Tensor) -> None:
     out_img = image_util.tensor_to_img(img_tensor)
     # get figures
@@ -42,19 +48,27 @@ def write_img(fig, ax, fname:str, img_tensor:torch.Tensor) -> None:
 def generate_image() -> None:
     inferrer = get_inferrer(device_id = GLOBAL_OPTS['device_id'])
     inferrer.load_model(GLOBAL_OPTS['checkpoint_data'])
-    img = inferrer.forward()
     fig, ax = plt.subplots()
-    write_img(fig, ax, GLOBAL_OPTS['outfile'], img)
+
+    for n in range(GLOBAL_OPTS['num_images']):
+        img = inferrer.forward()
+
+        if GLOBAL_OPTS['num_images'] == 1:
+            write_img(fig, ax, GLOBAL_OPTS['outfile'], img)
+        else:
+            path, ext = os.path.splitext(GLOBAL_OPTS['outfile'])
+            fname = str(path) + '_' + str(n+1) + '.' + str(ext)
+            write_img(fig, ax, fname, img)
 
 
 def generate_from_seed() -> None:
     inferrer = get_inferrer(device_id = GLOBAL_OPTS['device_id'])
     inferrer.load_model(GLOBAL_OPTS['checkpoint_data'])
 
+    fig, ax = plt.subplots()
     img = Image.open(GLOBAL_OPTS['seed_file']).convert('RGB')
     inp_tensor = image_util.img_to_tensor(img)
     out_tensor = inferrer.forward(inp_tensor)
-    fig, ax = plt.subplots()
     write_img(fig, ax, GLOBAL_OPTS['outfile'], out_tensor)
 
 
@@ -100,6 +114,60 @@ def generate_history() -> None:
     print('\n done')
 
 
+
+# ======== INTERPOLATION STUFF ======== #
+# Put a whole lot of interpolation stuff here, then once it works move it to
+# the util module
+def interp_points(p1:torch.Tensor,
+                  p2:torch.Tensor,
+                  num_points:int=16,
+                  mode:str='linear') -> np.ndarray:
+    ratios = np.linspace(0, 1, num=num_points)
+    vectors = list()
+
+    if mode == 'linear':
+        for r in ratios:
+            v = (1.0 - r) * p1 + r * p2
+            vectors.append(v)
+    elif mode == 'spherical':
+        for r in ratios:
+            v = dcgan_utis.slerp(r, p1, p2)
+            vectors.append(v)
+    else:
+        raise ValueError('Invalid interpolation [%s]' % str(mode))
+
+    return np.asarray(vectors)
+
+
+def random_walk() -> None:
+    inferrer = get_inferrer(device_id = GLOBAL_OPTS['device_id'])
+    inferrer.load_model(GLOBAL_OPTS['checkpoint_data'])
+
+    # for now, we just interpolated between any two random points
+    #p1 = inferrer.get_random_zvec()
+    #p2 = inferrer.get_random_zvec()
+    p1 = np.random.randn(inferrer.get_zvec_dim())
+    p2 = np.random.randn(inferrer.get_zvec_dim())
+
+    num_points = 32
+    points = interp_points(p1, p2, num_points)
+
+    fig, ax = plt.subplots()
+    for p in range(num_points):
+        print('Generating image %d / %d ' % (p+1, num_points), end='\r')
+        # Make a new Tensor
+        x_t = torch.Tensor(points[p, :])
+        x_t = x_t[None, :, None, None]
+        out_img = inferrer.forward(x_t)
+
+        # write file to disk
+        path, ext = os.path.splitext(GLOBAL_OPTS['outfile'])
+        fname = str(path) + '_' + str(p) + '.' + str(ext)
+        write_img(fig, ax, fname, out_img)
+
+    print('\n OK')
+
+
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
@@ -116,7 +184,8 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--mode',
                         type=str,
                         default='single',
-                        help='Tool mode. Must be one of %s (default: single)' % str(TOOL_MODES)
+                        choices=TOOL_MODES,
+                        help='Tool mode. (default: single)'
                         )
     # Device options
     parser.add_argument('--device-id',
@@ -136,14 +205,14 @@ def get_parser() -> argparse.ArgumentParser:
                         help='Use this image as a seed rather than generating a random input vector (default: None)'
                         )
     # Output options
-    parser.add_argument('--num-files',
+    parser.add_argument('--num-images',
                         type=int,
                         default=1,
                         help='Number of output files to generate (default: 1)'
                         )
     parser.add_argument('--outfile',
                         type=str,
-                        default='figures/dcgan_celeba_output.png',
+                        default='figures/dcgan_output.png',
                         help='Name of output image'
                         )
 
@@ -168,5 +237,7 @@ if __name__ == '__main__':
         generate_from_seed()
     elif GLOBAL_OPTS['mode'] == 'history':
         generate_history()
+    elif GLOBAL_OPTS['mode'] == 'random_walk':
+        random_walk()
     else:
         raise ValueError('Invalid tool mode [%s]' % str(GLOBAL_OPTS['mode']))

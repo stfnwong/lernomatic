@@ -30,7 +30,6 @@ class DCGANTrainer(trainer.Trainer):
         self.beta1         :float = kwargs.pop('beta1', 0.5)
         self.real_label    :int   = kwargs.pop('real_label', 1)
         self.fake_label    :int   = kwargs.pop('fake_label', 0)
-        # option to save a history of generated images each epoch ?
 
         super(DCGANTrainer, self).__init__(None, **kwargs)
         # use CELoss
@@ -121,6 +120,17 @@ class DCGANTrainer(trainer.Trainer):
         self.real_label = params['real_label']
         self.beta1      = params['beta1']
 
+    def set_learning_rate(self, lr: float, param_zero:bool=True) -> None:
+        if param_zero:
+            self.optim_d.param_groups[0]['lr'] = lr
+            self.optim_g.param_groups[0]['lr'] = lr
+        else:
+            for g in self.optim_d.param_groups:
+                g['lr'] = lr
+
+            for g in self.optim_g.param_groups:
+                g['lr'] = lr
+
     # ==== TRAINING ==== #
     def train_epoch(self) -> None:
         self.discriminator.set_train()
@@ -195,6 +205,9 @@ class DCGANTrainer(trainer.Trainer):
                     print('\t Saving checkpoint to file [%s]' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+        if self.lr_scheduler is not None:
+            self.apply_lr_schedule()
+
     def val_epoch(self) -> None:
         pass
 
@@ -267,7 +280,8 @@ class DCGANTrainer(trainer.Trainer):
             'd_loss_history' : self.d_loss_history,
             'g_loss_history' : self.g_loss_history,
             'loss_iter'      : self.loss_iter,
-            'iter_per_epoch' : self.iter_per_epoch
+            'iter_per_epoch' : self.iter_per_epoch,
+            'cur_epoch'      : self.cur_epoch
         }
         torch.save(history, fname)
 
@@ -276,4 +290,4 @@ class DCGANTrainer(trainer.Trainer):
         self.d_loss_history = history['d_loss_history']
         self.g_loss_history = history['g_loss_history']
         self.loss_iter      = history['loss_iter']
-        self.cur_epoch = self.start_epoch
+        self.cur_epoch      = history['cur_epoch']

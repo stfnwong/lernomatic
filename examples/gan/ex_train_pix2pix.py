@@ -30,7 +30,6 @@ GLOBAL_OPTS = dict()
 
 
 def get_dataset(ab_path:str, dataset_name:str, data_root:str, transforms=None) -> aligned_dataset.AlignedDatasetHDF5:
-
     # TODO : support more image sizes?
     if transforms is None:
         transforms = gan_transforms.get_gan_transforms(
@@ -254,7 +253,7 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--learning-rate',
                         type=float,
-                        default=1e-3,
+                        default=2e-4,
                         help='Learning rate for optimizer'
                         )
     # Data options

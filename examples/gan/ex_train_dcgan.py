@@ -13,6 +13,7 @@ from torchvision import transforms
 from lernomatic.data import hdf5_dataset
 from lernomatic.models.gan import dcgan
 from lernomatic.train.gan import dcgan_trainer
+from lernomatic.train import schedule
 from lernomatic.vis import vis_loss_history
 from lernomatic.util import math_util
 
@@ -87,11 +88,24 @@ def main() -> None:
         gan_trainer.load_checkpoint(GLOBAL_OPTS['load_checkpoint'])
 
     print(gan_trainer.device)
+
+    # Get a scheduler
+    lr_scheduler = schedule.DecayToEpoch(
+        non_decay_time = int(GLOBAL_OPTS['num_epochs'] // 2),
+        decay_length   = int(GLOBAL_OPTS['num_epochs'] // 2),
+        initial_lr     = GLOBAL_OPTS['learning_rate'],
+        final_lr       = 0.0
+    )
+    print('Created scheduler')
+    print(lr_scheduler)
+    gan_trainer.set_lr_scheduler(lr_scheduler)
+
     train_start_time = time.time()
     gan_trainer.train()
     train_end_time = time.time()
     train_total_time = train_end_time - train_start_time
     print('Total training time : %s' % str(timedelta(seconds = train_total_time)))
+
     # show the training results
     dcgan_fig, dcgan_ax = vis_loss_history.get_figure_subplots(1)
     vis_loss_history.plot_train_history_dcgan(
@@ -139,7 +153,7 @@ def get_parser() -> argparse.ArgumentParser:
     # Network options
     parser.add_argument('--zvec-dim',
                         type=int,
-                        default=100,
+                        default=128,
                         help='Dimension of z vector'
                         )
     parser.add_argument('--g-num-filters',
@@ -221,7 +235,6 @@ def get_parser() -> argparse.ArgumentParser:
                         default='dcgan_celeba_',
                         help='Name to prepend to all checkpoints'
                         )
-    # TODO : need to implement this
     parser.add_argument('--load-checkpoint',
                         type=str,
                         default=None,

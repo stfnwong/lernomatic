@@ -16,9 +16,6 @@ from lernomatic.models import common
 import time
 from datetime import timedelta
 
-# debug
-#from pudb import set_trace; set_trace()
-
 
 class Trainer(object):
     """
@@ -261,7 +258,9 @@ class Trainer(object):
     def apply_lr_schedule(self) -> None:
         if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
             new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
-        elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or isinstance(self.lr_scheduler, schedule.DecayWhenEpoch):
+        elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or \
+             isinstance(self.lr_scheduler, schedule.DecayWhenEpoch) or \
+             isinstance(self.lr_scheduler, schedule.DecayToEpoch):
             new_lr = self.lr_scheduler.get_lr(self.cur_epoch)
         elif isinstance(self.lr_scheduler, schedule.DecayWhenAcc):
             new_lr = self.lr_scheduler.get_lr(self.acc_history[self.acc_iter])

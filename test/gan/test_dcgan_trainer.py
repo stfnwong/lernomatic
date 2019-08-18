@@ -135,6 +135,17 @@ class TestDCGANTrainer(unittest.TestCase):
             self.assertEqual(src_trainer.g_loss_history[n], dst_trainer.g_loss_history[n])
         print(' OK')
 
+        # Try training a bit more. Since the values of cur_epoch and num_epochs
+        # are the same, there should be no effect at first
+        dst_trainer.train()
+        self.assertEqual(dst_trainer.cur_epoch, src_trainer.cur_epoch)
+
+        # If we then adjust the number of epochs (to at least cur_epoch+1) then
+        # we should see another
+        dst_trainer.num_epochs = src_trainer.num_epochs + 1
+        dst_trainer.train()
+        self.assertEqual(src_trainer.num_epochs + 1, dst_trainer.cur_epoch)
+
         os.remove(test_checkpoint)
         os.remove(test_history)
 

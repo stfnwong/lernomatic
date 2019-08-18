@@ -13,10 +13,11 @@ import torchvision.utils as vutils
 from lernomatic.models import common
 
 
+# TODO : deprecate this....?
 def dcgan_gen_image_grid(gen_model:common.LernomaticModel, **kwargs) -> list:
 
     fixed_noise = kwargs.pop('fixed_noise', None)
-    nz          = kwargs.pop('nz', 100)
+    nz          = kwargs.pop('nz', 128)
     img_size    = kwargs.pop('img_size', 64)
     num_images  = kwargs.pop('num_images', 64)
 
@@ -27,7 +28,7 @@ def dcgan_gen_image_grid(gen_model:common.LernomaticModel, **kwargs) -> list:
     gen_model.eval()
 
     for n in range(num_images):
-        fake_g = gen_model(fixed_noise).detach().cpu()
+        fake_g = gen_model.forward(fixed_noise).detach().cpu()
         img_list.append(vutils.make_grid(fake_g, padding=2, normalize=True))
 
     return img_list
@@ -44,11 +45,17 @@ def midpoint_linear_interp(points:np.ndarray, ix:float) -> Union[float, np.ndarr
 
 
 # Mostly taken from https://github.com/soumith/dcgan.torch/issues/14
-def slerp(points:np.ndarray, q1:float, q2:float) -> np.ndarray:
+def slerp(val:float, q1:np.ndarray, q2:np.ndarray) -> np.ndarray:
     omega = np.arccos(
         np.clip(np.dot(q1 / np.linalg.norm(q1), q2 / np.linalg.norm(q2)), -1, 1)
     )
     so = np.sin(omega)
+
     if so == 0.0:
-        return (1.0 - points) * q1 + points + q2    # L'Hopital's rule
-    return np.sin((1.0 - points) * omega) / so * q1 + np.sin(points * omega) / so * q2
+        return (1.0 - val) * q1 + val + q2
+    return np.sin((1.0 - val) * omega) / so * q1 + np.sin(val * omega) / so * q2
+
+
+def interp_walk(p1:np.ndarray, p2:np.ndarray, num_steps:int=10) ->  np.ndarray:
+    pass
+

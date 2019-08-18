@@ -15,7 +15,7 @@ from lernomatic.util import image_util
 
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 
 class ImageDataProc(object):

@@ -18,8 +18,7 @@ from lernomatic.data import image_proc
 GLOBAL_OPTS = dict()
 
 
-def main():
-
+def main() -> None:
     img_paths = os.listdir(GLOBAL_OPTS['dataset_root'])
     src_len = len(img_paths)
     if img_paths is None or len(img_paths) < 1:
@@ -58,7 +57,7 @@ def main():
 
 
 
-def arg_parser():
+def arg_parser() -> argparse.ArgumentParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset-root',
                         type=str,
