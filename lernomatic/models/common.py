@@ -85,12 +85,10 @@ class LernomaticModel(object):
         # Import the actual network module
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
-
         if 'model_args' in params:
             self.net = mod(**params['model_args'])
         else:
             self.net = mod()
-
         self.net.load_state_dict(params['model_state_dict'])
 
     def set_train(self) -> None:

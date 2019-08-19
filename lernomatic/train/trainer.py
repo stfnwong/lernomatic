@@ -65,10 +65,11 @@ class Trainer(object):
         self.start_epoch = 0
         if self.val_batch_size == 0:
             self.val_batch_size = self.batch_size
-        # Setup optimizer. If we have no model then assume it will be
-        self._init_optimizer()
+
         # set up device
         self._init_device()
+        # Setup optimizer. If we have no model then assume it will be
+        self._init_optimizer()
         # Init the internal dataloader options. If nothing provided assume that
         # we will load options in later (eg: from checkpoint)
         self._init_dataloaders()
@@ -79,7 +80,7 @@ class Trainer(object):
         self._send_to_device()
 
         self.best_acc = 0.0
-        if self.save_every < 0:
+        if (self.train_loader is not None) and (self.save_every < 0):
             self.save_every = len(self.train_loader)-1
         if self.save_every > 0:
             self.save_best = True
@@ -120,12 +121,13 @@ class Trainer(object):
         self.loss_iter      = 0
         self.val_loss_iter  = 0
         self.acc_iter       = 0
-        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
 
         if self.train_loader is not None:
             self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+            self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
         else:
             self.loss_history = None
+            self.iter_per_epoch = 0
 
         if self.val_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)
@@ -242,6 +244,11 @@ class Trainer(object):
         if 'momentum' in optim_state:
             for g in self.optimizer.param_groups:
                 g['momentum'] = momentum
+
+    # Update batch size
+    def set_batch_size(self, batch_size:int) -> None:
+        self.batch_size = batch_size
+        self._init_dataloaders()
 
     def set_lr_scheduler(self, lr_scheduler: schedule.LRScheduler) -> None:
         self.lr_scheduler = lr_scheduler
@@ -393,7 +400,7 @@ class Trainer(object):
         Standard training routine
         """
         if self.save_every == -1:
-            self.save_every = len(self.train_loader)
+            self.save_every = len(self.train_loader)-1
 
         for epoch in range(self.cur_epoch, self.num_epochs):
             epoch_start_time = time.time()
@@ -524,7 +531,7 @@ class Trainer(object):
         self.num_epochs      = params['num_epochs']
         self.learning_rate   = params['learning_rate']
         self.momentum        = params['momentum']
-        self.weigh_decay     = params['weight_decay']
+        self.weight_decay    = params['weight_decay']
         self.loss_function   = params['loss_function']
         self.optim_function  = params['optim_function']
         self.cur_epoch       = params['cur_epoch']
@@ -533,7 +540,7 @@ class Trainer(object):
         self.print_every     = params['print_every']
         # dataloader params
         self.batch_size      = params['batch_size']
-        self.val_batch_size = params['val_batch_size']
+        self.val_batch_size  = params['val_batch_size']
         self.shuffle         = params['shuffle']
 
         self._init_device()

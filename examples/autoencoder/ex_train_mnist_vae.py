@@ -5,16 +5,15 @@ Train a Variational Autoencoder on MNIST dataset
 Stefan Wong 2019
 """
 
-import argparse
 import time
 from datetime import timedelta
+import argparse
 from lernomatic.train.autoencoder import mnist_vae_trainer
 from lernomatic.models.autoencoder import mnist_vae
 from lernomatic.options import options
 
 
 GLOBAL_OPTS = dict()
-
 
 def main() -> None:
     # Get a model
@@ -46,11 +45,9 @@ def main() -> None:
     trainer.train()
     train_end_time = time.time()
     train_total_time = train_end_time - train_start_time
-    print('Total training time [%s] (%d epochs)  %s' %\
-            (repr(trainer), trainer.cur_epoch,
-             str(timedelta(seconds = train_total_time)))
+    print('Trainer [%s] trained %d epochs in %s' %\
+          (repr(trainer), trainer.cur_epoch, str(timedelta(seconds = train_total_time)))
     )
-
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -74,8 +71,18 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='mnist_vae_',
+                        default='mnist_vae',
                         help='Name to prepend to all checkpoints'
+                        )
+    parser.add_argument('--load-checkpoint',
+                        type=str,
+                        default=None,
+                        help='Load a given checkpoint'
+                        )
+    parser.add_argument('--overwrite',
+                        action='store_true',
+                        default=False,
+                        help='Overwrite existing processed data files'
                         )
 
     return parser

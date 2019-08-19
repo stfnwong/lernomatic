@@ -8,19 +8,6 @@ Stefan Wong 2019
 import argparse
 
 
-def get_basic_options(parser:argparse.ArgumentParser=None) -> argparse.ArgumentParser:
-    if parser is None:
-        parser = argparse.ArgumentParser()
-
-    parser.add_argument('-v', '--verbose',
-                        action='store_true',
-                        default=False,
-                        help='Set verbose mode'
-                        )
-
-    return parser
-
-
 def get_trainer_options(parser:argparse.ArgumentParser=None) -> argparse.ArgumentParser:
     if parser is None:
         parser = argparse.ArgumentParser()
