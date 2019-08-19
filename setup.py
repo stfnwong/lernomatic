@@ -22,6 +22,8 @@ install_requirements = to_list("""
     matplotlib
     json
     h5py
+    pillow
+    unittest
     numpy >=1.12
 """)
 
