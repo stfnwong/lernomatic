@@ -14,6 +14,7 @@ going to try doing something HTML-like such as
 -->
 
 ![*An artists impression of a typical Lernomatic user in the wild*](doc/images/galaxy-brain.jpg)
+##### *An artists impression of a typical Lernomatic user in the wild*
 
 ## Features 
 ### Implements things like
