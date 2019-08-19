@@ -13,7 +13,7 @@ going to try doing something HTML-like such as
 <img src="doc/images/galaxy-brain.jpg", align="center">
 -->
 
-![*An artists impression of Lernomatic users in the wild*](doc/images/galaxy-brain.jpg)
+![*An artists impression of a typical Lernomatic user in the wild*](doc/images/galaxy-brain.jpg)
 
 ## Features 
 ### Implements things like
