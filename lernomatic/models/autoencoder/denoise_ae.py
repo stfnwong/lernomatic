@@ -12,7 +12,6 @@ import torch.nn as nn
 from lernomatic.models import common
 
 
-
 # ======== ENCODER SIDE ======== #
 class DAEEncoderBlock(nn.Module):
     def __init__(self, in_channels:int, out_channels:int,
@@ -46,9 +45,10 @@ class DAEEncoderModule(nn.Module):
     TODO : Docstring
     """
     def __init__(self, **kwargs) -> None:
-        self.num_blocks:int  = kwargs.pop('num_blocks', 4)
-        self.start_size:int  = kwargs.pop('start_size', 32)
-        self.kernel_size:int = kwargs.pop('kernel_size', 3)
+        self.num_blocks:int   = kwargs.pop('num_blocks', 4)
+        self.start_size:int   = kwargs.pop('start_size', 32)
+        self.kernel_size:int  = kwargs.pop('kernel_size', 3)
+        self.num_channels:int = kwargs.pop('num_channels', 1)
 
         super(DAEEncoderModule, self).__init__()
 
@@ -58,7 +58,7 @@ class DAEEncoderModule(nn.Module):
         for n in range(self.num_blocks):
             if n == 0:
                 block = DAEEncoderBlock(
-                    1,
+                    self.num_channels,
                     cur_channel_size,
                     kernel_size = self.kernel_size,
                 )
@@ -132,7 +132,8 @@ class DAEEncoder(common.LernomaticModel):
         return {
             'num_blocks'   : self.net.num_blocks,
             'start_size'   : self.net.start_size,
-            'kernel_size'  : self.net.kernel_size
+            'kernel_size'  : self.net.kernel_size,
+            'num_channels' : self.net.num_channels
         }
 
     def set_params(self, params : dict) -> None:
@@ -145,9 +146,10 @@ class DAEEncoder(common.LernomaticModel):
         mod = getattr(imp, self.module_name)
 
         self.net = mod(
-            num_blocks  = params['model_args']['num_blocks'],
-            start_size  = params['model_args']['start_size'],
-            kernel_size = params['model_args']['kernel_size'],
+            num_blocks   = params['model_args']['num_blocks'],
+            start_size   = params['model_args']['start_size'],
+            kernel_size  = params['model_args']['kernel_size'],
+            num_channels = params['model_args']['num_channels']
         )
         self.net.load_state_dict(params['model_state_dict'])
 
@@ -181,13 +183,13 @@ class DAEDecoderBlock(nn.Module):
         return out
 
 
-
 # check that start_size is a power of 2?
 class DAEDecoderModule(nn.Module):
     def __init__(self, **kwargs) -> None:
-        self.num_blocks:int  = kwargs.pop('num_blocks', 4)
-        self.kernel_size:int = kwargs.pop('kernel_size', 3)
-        self.start_size:int  = kwargs.pop('start_size', 256)
+        self.num_blocks:int   = kwargs.pop('num_blocks', 4)
+        self.kernel_size:int  = kwargs.pop('kernel_size', 3)
+        self.start_size:int   = kwargs.pop('start_size', 256)
+        self.num_channels:int = kwargs.pop('num_channels', 1)
 
         super(DAEDecoderModule, self).__init__()
 
@@ -232,7 +234,7 @@ class DAEDecoderModule(nn.Module):
         final_block = [
             nn.ConvTranspose2d(
                 cur_channel_size,
-                1,
+                self.num_channels,
                 kernel_size = self.kernel_size,
                 stride = 2,
                 padding = 1,
@@ -274,7 +276,8 @@ class DAEDecoder(common.LernomaticModel):
         return {
             'num_blocks'   : self.net.num_blocks,
             'start_size'   : self.net.start_size,
-            'kernel_size'  : self.net.kernel_size
+            'kernel_size'  : self.net.kernel_size,
+            'num_channels' : self.net.num_channels
         }
 
     def set_params(self, params : dict) -> None:
@@ -287,8 +290,9 @@ class DAEDecoder(common.LernomaticModel):
         mod = getattr(imp, self.module_name)
 
         self.net = mod(
-            num_blocks  = params['model_args']['num_blocks'],
-            start_size  = params['model_args']['start_size'],
-            kernel_size = params['model_args']['kernel_size'],
+            num_blocks   = params['model_args']['num_blocks'],
+            start_size   = params['model_args']['start_size'],
+            kernel_size  = params['model_args']['kernel_size'],
+            num_channels = params['model_args']['num_channels']
         )
         self.net.load_state_dict(params['model_state_dict'])

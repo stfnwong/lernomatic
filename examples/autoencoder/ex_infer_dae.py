@@ -93,13 +93,13 @@ def main() -> None:
         out_batch = inferrer.forward(data)
 
         # Plot noise
-        plot_denoise(noise_ax_list, noise_batch)
+        vis_img.plot_tensor_batch(noise_ax_list, noise_batch)
         noise_fig_fname = 'figures/dae/mnist_dae_batch_%d_noise.png' % int(batch_idx)
         noise_fig.tight_layout()
         noise_fig.savefig(noise_fig_fname)
 
         # Plot outputs
-        plot_denoise(out_ax_list, out_batch)
+        vis_img.plot_tensor_batch(out_ax_list, out_batch)
         out_fig_fname = 'figures/dae/mnist_dae_batch_%d_output.png' % int(batch_idx)
         out_fig.tight_layout()
         out_fig.savefig(out_fig_fname)

@@ -12,8 +12,6 @@ import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import common
 
-#from pudb import set_trace; set_trace()
-
 
 class DAETrainer(trainer.Trainer):
     def __init__(self,
@@ -22,7 +20,8 @@ class DAETrainer(trainer.Trainer):
                  **kwargs) -> None:
         self.encoder = encoder
         self.decoder = decoder
-        # TODO : options for noise?
+        self.noise_bias:float   = kwargs.pop('noise_bias', 0.25)
+        self.noise_factor:float = kwargs.pop('noise_factor', 0.1)
 
         super(DAETrainer, self).__init__(None, **kwargs)
         self.loss_function = 'MSELoss'
@@ -54,6 +53,10 @@ class DAETrainer(trainer.Trainer):
         if self.decoder is not None:
             self.decoder.send_to(self.device)
 
+    def get_noise(self, X:torch.Tensor) -> torch.Tensor:
+        noise = torch.rand(*X.shape)
+        return torch.mul(X + self.noise_bias, self.noise_factor * noise)
+
     def train_epoch(self) -> None:
         """
         Train a single epoch
@@ -63,9 +66,7 @@ class DAETrainer(trainer.Trainer):
 
         for batch_idx, (data, label) in enumerate(self.train_loader):
             # prep data
-            # TODO : make noise parameters settable
-            noise      = torch.rand(*data.shape)
-            data_noise = torch.mul(data + 0.25, 0.1 * noise)
+            data_noise = self.get_noise(data)
             data       = data.to(self.device)
             label      = label.to(self.device)
             data_noise = data_noise.to(self.device)
