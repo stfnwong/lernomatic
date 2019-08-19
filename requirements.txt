@@ -11,3 +11,5 @@ datetime
 matplotlib
 numpy
 pillow
+librosa
+wave
