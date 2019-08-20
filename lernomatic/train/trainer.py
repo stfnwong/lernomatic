@@ -65,6 +65,7 @@ class Trainer(object):
         self.start_epoch = 0
         if self.val_batch_size == 0:
             self.val_batch_size = self.batch_size
+
         # set up device
         self._init_device()
         # Setup optimizer. If we have no model then assume it will be
@@ -120,12 +121,13 @@ class Trainer(object):
         self.loss_iter      = 0
         self.val_loss_iter  = 0
         self.acc_iter       = 0
-        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
 
         if self.train_loader is not None:
             self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+            self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
         else:
             self.loss_history = None
+            self.iter_per_epoch = 0
 
         if self.val_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)
@@ -243,6 +245,11 @@ class Trainer(object):
             for g in self.optimizer.param_groups:
                 g['momentum'] = momentum
 
+    # Update batch size
+    def set_batch_size(self, batch_size:int) -> None:
+        self.batch_size = batch_size
+        self._init_dataloaders()
+
     def set_lr_scheduler(self, lr_scheduler: schedule.LRScheduler) -> None:
         self.lr_scheduler = lr_scheduler
 
@@ -258,9 +265,7 @@ class Trainer(object):
     def apply_lr_schedule(self) -> None:
         if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
             new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
-        elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or \
-             isinstance(self.lr_scheduler, schedule.DecayWhenEpoch) or \
-             isinstance(self.lr_scheduler, schedule.DecayToEpoch):
+        elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or isinstance(self.lr_scheduler, schedule.DecayWhenEpoch):
             new_lr = self.lr_scheduler.get_lr(self.cur_epoch)
         elif isinstance(self.lr_scheduler, schedule.DecayWhenAcc):
             new_lr = self.lr_scheduler.get_lr(self.acc_history[self.acc_iter])
@@ -333,9 +338,6 @@ class Trainer(object):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
-                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
-                self.save_history(hist_name)
 
             # perform any scheduling
             if self.lr_scheduler is not None:
@@ -398,7 +400,7 @@ class Trainer(object):
         Standard training routine
         """
         if self.save_every == -1:
-            self.save_every = len(self.train_loader)
+            self.save_every = len(self.train_loader)-1
 
         for epoch in range(self.cur_epoch, self.num_epochs):
             epoch_start_time = time.time()
@@ -529,7 +531,7 @@ class Trainer(object):
         self.num_epochs      = params['num_epochs']
         self.learning_rate   = params['learning_rate']
         self.momentum        = params['momentum']
-        self.weigh_decay     = params['weight_decay']
+        self.weight_decay    = params['weight_decay']
         self.loss_function   = params['loss_function']
         self.optim_function  = params['optim_function']
         self.cur_epoch       = params['cur_epoch']
@@ -538,7 +540,7 @@ class Trainer(object):
         self.print_every     = params['print_every']
         # dataloader params
         self.batch_size      = params['batch_size']
-        self.val_batch_size = params['val_batch_size']
+        self.val_batch_size  = params['val_batch_size']
         self.shuffle         = params['shuffle']
 
         self._init_device()
