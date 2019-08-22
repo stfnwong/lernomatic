@@ -19,9 +19,6 @@ from lernomatic.data import hdf5_dataset
 from lernomatic.util import file_util
 
 
-from pudb import set_trace; set_trace()
-
-
 GLOBAL_OPTS = dict()
 
 

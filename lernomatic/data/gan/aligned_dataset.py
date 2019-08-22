@@ -12,8 +12,6 @@ import torch
 from torch.utils.data import Dataset
 
 
-#from pudb import set_trace; set_trace()
-
 """
 TODO: The issue here is that if we use the default torchvision package we MUST
 use PIL, since torchvision itself uses PIL. This sucks, but its much simpler to

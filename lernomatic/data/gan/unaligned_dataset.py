@@ -12,7 +12,6 @@ import numpy as np
 from torch.utils.data import Dataset
 
 
-
 class UnalignedDataset(torch.utils.data.Dataset):
     def __init__(self, a_data_paths:list, b_data_paths:list, **kwargs) -> None:
         self.a_data_paths:list   = a_data_paths

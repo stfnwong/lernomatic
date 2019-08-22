@@ -14,8 +14,6 @@ from tqdm import tqdm
 from lernomatic.data.gan import aligned_data_split
 from lernomatic.util import image_util
 
-# debug
-#from pudb import set_trace; set_trace()
 
 
 class AlignedImageProc(object):
