@@ -212,6 +212,8 @@ The default implementation of `_init_history()` is given below:
             self.acc_history = None
 ```
 
+See the [history section](trainer-history) for more detail about history implementation.
+
 
 #### `_send_to_device()`
 Finally the model(s) are sent the the target device. In the simple case, this is just a wrapper around `LernomaticModel.send_to()` with the trainers device as the argument. More complex trainers may contain multiple models, and in those cases this method should be overridden to send all required components to the correct device (or devices, should that be required).
@@ -230,7 +232,21 @@ TODO : explain `train_epoch()` and `val_epoch()`
 
 
 ## <a name="trainer-checkpoints"></a> Checkpoints
+
+The `save_every` parameter controls how often a checkpoint is saved. The unit for this parameter is iterations. Setting this value negative will cause the internal value to be set to `len(self.train_loader)-1`, ensuring that the history is saved once for each epoch. To save more frequently, set this to some value that is a fraction of `len(self.train_loader)`.
+
+
 TODO : explain `save_checkpoint()` and `load_checkpoint()`
 
+
 ## <a name="trainer-histrory"></a> History
+
+The history is saved to a seperate file in the `checkpoint_dir` which is equal to `self.checkpoint_name + '_history'`. The history and the remaining checkpoint data are therefore independent. 
+
+Unlike [checkpoints](trainer-checkpoints) the controls for how often the history is saved is much less granular. The parameter `self.save_hist` simply determines whether or not a particular checkpoint is saved. By default checkpoints are saved at the end of each epoch unless `self.save_hist = False`.
+
+The history is saved by calling `save_history()`. This method takes a `str` containing the name of the history file and saves the history data to that file.
+
+When `train()` is called the trainer will typically run until `self.cur_epoch` is equal to `self.num_epochs`. Once this is the case, further calls to `train()` will have no effect. To extend the training time of a trainer that has already been constructed, use the `set_num_epochs()` method. Don't attempt to set the number of epochs manually. By calling `set_num_epochs()` the internal history is correctly extended.
+
 TODO : explain `save_history()` and `load_history()`
