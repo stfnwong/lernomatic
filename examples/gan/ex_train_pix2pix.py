@@ -24,8 +24,6 @@ from lernomatic.options import options
 import time
 from datetime import timedelta
 
-# debug
-#from pudb import set_trace; set_trace()
 
 
 GLOBAL_OPTS = dict()
@@ -181,8 +179,7 @@ def main() -> None:
             train_dataset = train_dataset,
             val_dataset   = val_dataset,
             # training params
-            #batch_size    = GLOBAL_OPTS['batch_size'],
-            batch_size    = 1,
+            batch_size    = GLOBAL_OPTS['batch_size'],
             learning_rate = GLOBAL_OPTS['learning_rate'],
             num_epochs    = GLOBAL_OPTS['num_epochs'],
             # device
@@ -288,6 +285,8 @@ if __name__ == '__main__':
 
     for k, v in opts.items():
         GLOBAL_OPTS[k] = v
+
+    GLOBAL_OPTS['batch_size'] = 1
 
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
