@@ -59,36 +59,42 @@ class Trainer(object):
         self.val_dataset            = kwargs.pop('val_dataset', None)
         self.shuffle         :float = kwargs.pop('shuffle', True)
         self.num_workers     :int   = kwargs.pop('num_workers' , 1)
+        self.drop_last       :bool  = kwargs.pop('drop_last', True)
         # parameter scheduling
         self.lr_scheduler           = kwargs.pop('lr_scheduler', None)
         self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
         self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
         self.early_stop      :dict  = kwargs.pop('early_stop', None)
 
-        if self.test_batch_size == 0:
-            self.test_batch_size = self.batch_size
-        self.best_acc = 0.0
-        if self.save_every > 0:
-            self.save_best = True
-
-        # Setup optimizer. If we have no model then assume it will be
-        self._init_optimizer()
+        self.start_epoch = 0
+        if self.val_batch_size == 0:
+            self.val_batch_size = self.batch_size
         # set up device
         self._init_device()
+        # Setup optimizer. If we have no model then assume it will be
+        self._init_optimizer()
         # Init the internal dataloader options. If nothing provided assume that
         # we will load options in later (eg: from checkpoint)
         self._init_dataloaders()
         # Init the loss and accuracy history. If no train_loader is provided
         # then we assume that one will be loaded later (eg: in some checkpoint
         # data)
-        if self.train_loader is not None:
-            self._init_history()
-
+        self._init_history()
         self._send_to_device()
+
+        self.best_acc = 0.0
+        if (self.train_loader is not None) and (self.save_every < 0):
+            self.save_every = len(self.train_loader)-1
+        if self.save_every > 0:
+            self.save_best = True
 
 ```
 
 Each trainer is expected to provide a `train()` method that trains the model. In the default implementation, sub routines are implemented for training and testing/validation. It is recommended that this approach be followed for trainers, however the only API requirement is that a `train()` method be exposed.
+
+By default, the `train()` method calls `train_epoch()` in a loop that ranges from `self.start_epoch` to `self.num_epochs`. The actual training logic is implemented in `train_epoch()`. 
+
+If a validation loader is present, then `val_epoch()` is called as well. This implements the validation logic on a single epoch of the validation data.
 
 #### Training parameters
 TODO : talk about how the parameters function
@@ -175,4 +181,6 @@ class NewTrainer(trainer.Trainer):
         """
 
 ```
+
+The `train_epoch()` method is where the training logic should go. 
 
