@@ -19,6 +19,8 @@ from lernomatic.data import hdf5_dataset
 from lernomatic.util import file_util
 
 
+from pudb import set_trace; set_trace()
+
 
 GLOBAL_OPTS = dict()
 
@@ -43,7 +45,7 @@ class TestAlignedDataSplit(unittest.TestCase):
     def setUp(self):
         self.test_a_path = 'testA/'
         self.test_b_path = 'testB/'
-        self.test_data_root = '/mnt/ml-data/datasets/cycelgan/monet2photo/'
+        self.test_data_root = '/mnt/ml-data/datasets/cyclegan/monet2photo/'
         # number of path pairs to place into split
         self.split_size  = 100
         self.verbose     = GLOBAL_OPTS['verbose']
@@ -83,13 +85,13 @@ class TestAlignedImageJoin(unittest.TestCase):
     def setUp(self):
         self.test_a_path = 'testA/'
         self.test_b_path = 'testB/'
-        self.test_data_root = '/home/kreshnik/ml-data/monet2photo/'  # TODO: make settable
+        self.test_data_root = '/mnt/ml-data/datasets/cyclegan/monet2photo/'
         # number of path pairs to place into split
         self.split_size  = 1024
         self.verbose     = GLOBAL_OPTS['verbose']
         # image properties
         self.test_image_shape = (3, 256, 256)
-        self.test_out_image_shape = (3, 512, 256)
+        self.test_out_image_shape = (3, 256, 512)
 
     def test_proc(self):
         print('======== TestAlignedImageJoin.test_proc ')

@@ -85,9 +85,9 @@ class AlignedImageJoin(AlignedImageProc):
     set of AB images.
     """
     def __init__(self, **kwargs) -> None:
-        self.extend_dim:int = kwargs.pop('extend_dim', 1)
         self.a_id_name:str  = kwargs.pop('a_id_name', 'a_ids')
         self.b_id_name:str  = kwargs.pop('b_id_name', 'b_ids')
+        self.cat_axis:int   = kwargs.pop('cat_axis', 2)
         super(AlignedImageJoin, self).__init__(**kwargs)
 
         # the output image will actually be concatenated along dim=1 (width)
@@ -96,7 +96,7 @@ class AlignedImageJoin(AlignedImageProc):
 
         out_img_shape = []
         for n, dim in enumerate(self.image_shape):
-            if n == self.extend_dim:
+            if n == self.cat_axis:
                 out_img_shape.append(2 * dim)
             else:
                 out_img_shape.append(dim)
@@ -154,9 +154,9 @@ class AlignedImageJoin(AlignedImageProc):
 
                 # concat
                 if self.direction == 'AB':
-                    aligned_image = np.concatenate([img_a, img_b], 1)
+                    aligned_image = np.concatenate([img_a, img_b], axis=self.cat_axis)
                 else:
-                    aligned_image = np.concatenate([img_b, img_a], 1)
+                    aligned_image = np.concatenate([img_b, img_a], axis=self.cat_axis)
 
                 # add image to dataset
                 images[idx] = aligned_image
