@@ -65,7 +65,6 @@ class Trainer(object):
         self.start_epoch = 0
         if self.val_batch_size == 0:
             self.val_batch_size = self.batch_size
-
         # set up device
         self._init_device()
         # Setup optimizer. If we have no model then assume it will be
@@ -262,10 +261,24 @@ class Trainer(object):
     def get_mtm_scheduler(self) -> schedule.LRScheduler:
         return self.mtm_scheduler
 
+    def set_train_dataset(self, train_dataset) -> None:
+        self.train_dataset = train_dataset
+        self._init_dataloaders()
+
+    def set_val_dataset(self, val_dataset) -> None:
+        self.val_dataset = val_dataset
+        self._init_dataloaders()
+
+    def set_test_dataset(self, test_dataset) -> None:
+        self.test_dataset = test_dataset
+        self._init_dataloaders()
+
     def apply_lr_schedule(self) -> None:
         if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
             new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
-        elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or isinstance(self.lr_scheduler, schedule.DecayWhenEpoch):
+        elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or \
+             isinstance(self.lr_scheduler, schedule.DecayWhenEpoch) or \
+             isinstance(self.lr_scheduler, schedule.DecayToEpoch):
             new_lr = self.lr_scheduler.get_lr(self.cur_epoch)
         elif isinstance(self.lr_scheduler, schedule.DecayWhenAcc):
             new_lr = self.lr_scheduler.get_lr(self.acc_history[self.acc_iter])
