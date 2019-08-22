@@ -26,7 +26,8 @@ The default `train()` method is a loop that calls `train_epoch()` followed by `v
 The `Trainer` base class in `lernomatic.train.trainer.py` has the following constructor.
 
 
-```
+```python
+
 class Trainer(object):
     def __init__(self, model=None, **kwargs) -> None:
         self.model           = model
@@ -102,7 +103,8 @@ This function converts an index into a CUDA device. Devices start at index 0 (th
 
 The default implementation of `_init_device()` is given below:
 
-```
+```python
+
     def _init_device(self) -> None:
         if self.device_id < 0:
             self.device = torch.device('cpu')
@@ -117,7 +119,8 @@ By default, if `self.model` is `None` then `self.optim` is set to `None`. This i
 
 The default implementation of `_init_optimizer()` is given below.
 
-```
+```python
+
     def _init_optimizer(self) -> None:
         if self.model is not None:
             if hasattr(torch.optim, self.optim_function):
@@ -148,7 +151,8 @@ The `Trainer` constructor accepts dataset objects. These should be of type `torc
 
 The default implementation of `_init_dataloaders()` is given below:
 
-```
+```python
+
     def _init_dataloaders(self) -> None:
         if self.train_dataset is None:
             self.train_loader = None
@@ -187,7 +191,8 @@ The training history is maintained in a seperate `numpy.ndarray`. The default co
 
 The default implementation of `_init_history()` is given below:
 
-```
+```python
+
     def _init_history(self) -> None:
         self.loss_iter      = 0
         self.val_loss_iter  = 0
@@ -213,7 +218,8 @@ Finally the model(s) are sent the the target device. In the simple case, this is
 
 The default implementation of `_send_to_device()` is given below:
 
-```
+```python
+
     def _send_to_device(self) -> None:
         self.model.send_to(self.device)
 ``` 
@@ -228,5 +234,3 @@ TODO : explain `save_checkpoint()` and `load_checkpoint()`
 
 ## <a name="trainer-histrory"></a> History
 TODO : explain `save_history()` and `load_history()`
-
-

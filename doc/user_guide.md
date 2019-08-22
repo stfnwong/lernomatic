@@ -19,21 +19,21 @@ By default, the `train()` method calls `train_epoch()` in a loop that ranges fro
 
 If a validation loader is present, then `val_epoch()` is called as well. This implements the validation logic on a single epoch of the validation data. The order of calls is always `train_epoch()` followed by `val_epoch()`. In other words, a complete epoch of training is done followed by one complete epoch of validation (they are not interleaved).
 
-#### Training parameters
-TODO : talk about how the parameters function
+For a complete description of the `Trainer` object, see [the trainer section](trainer.md).
 
 
 ### Creating a new model
 A model contains two parts. 
 
-1. An `LernomaticModel` wrapper. 
-2. One or more `torch.nn.Module' components.
+1. A `LernomaticModel` wrapper. 
+2. One or more `torch.nn.Module` components.
 
 The base model class is the `LernomaticModel` which is located in `lernomatic.model.common`. All models in LERNOMATIC should inherit from this class. 
 
 As an example, consider the following basic Pytorch network [taken from the pytorch tutorials](https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html).
 
-```
+```python
+
 class Net(nn.Module):
 
     def __init__(self):
@@ -60,33 +60,8 @@ class Net(nn.Module):
 
 ```
 
-To create an LernomaticModel object that can be used with the Lernomatic Trainer class, we need to wrap this `nn.Module` object in an `LernomaticModule` object. For the sake of example, let the above network be placed into a file called 'new_network.py' located in the LERNOMATIC models module `lernomatic.model`.
+For a complete description of models in *LERNOMATIC* [see the model section](models.md)
 
-```
- #in this example, the LernomaticModel object is also is new_network.py
-import torch
-from lernomatic.model import common
-
-
-class LernomaticModelNet(common.LernomaticModel):
-    def __init__(self) -> None:
-        self.net = Net()        # instantiate the actual class here 
-        # we provide the location for this file  in the import_path attribute
-        self.import_path = 'lernomatic.model.new_network.py'       
-        # we provide the path for the Net() class in the module_import_path attribute
-        self.module_import_path = 'lernomatic.model.new_network.py'
-        # we also provide the name of this object
-        self.model_name = 'LernomaticModelNet'
-        # and the name of the Net() module
-        self.module_name = 'Net'
-
-
-    # we create a hook to the forward() method of self.net
-    def forward(self, X:torch.Tensor) -> torch.Tensor:
-        return self.net.forward(X)
-```
-
-By default, the `LernomaticModel` class expects there to be a single `torch.nn.Module` object at the attribute `net`. As such, the basic `LernomaticModel` operations are written with this in mind. In cases where there are two or more networks, consider combining them into a single `torch.nn.Module`. If this is not feasible or appropriate, you may need to provide overrides for some of the default getters or setters in order to allow the trainer object to save and load the model checkpoints correctly. 
 
 
 ### Creating a new Trainer 
@@ -94,7 +69,8 @@ By default, the `LernomaticModel` class expects there to be a single `torch.nn.M
 To create a new trainer, we inherit from the trainer object in `lernomatic.train.trainer`.
 
 
-```
+```python
+
 from lernomatic.train import trainer
 
 class NewTrainer(trainer.Trainer):
