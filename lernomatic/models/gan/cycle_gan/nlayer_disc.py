@@ -5,6 +5,7 @@ NLayer Discriminator Model
 Stefan Wong 2019
 """
 
+import importlib
 import functools
 import torch
 import torch.nn as nn
@@ -13,7 +14,7 @@ from lernomatic.models import common
 
 class NLayerDiscriminator(common.LernomaticModel):
     def __init__(self,
-                 num_input_channels:int,
+                 num_input_channels:int=3,
                  num_filters:int=64,
                  num_layers:int=3,
                  **kwargs) -> None:

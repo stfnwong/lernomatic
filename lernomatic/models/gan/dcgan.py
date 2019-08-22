@@ -75,7 +75,7 @@ class DCGANGeneratorModule(nn.Module):
         self.num_filters:int  = kwargs.pop('num_filters', 64)
         self.kernel_size:int  = kwargs.pop('kernel_size', 4)
         self.img_size:int     = kwargs.pop('img_size', 64)
-        self.zvec_dim:int     = kwargs.pop('zvec_dim', 100)
+        self.zvec_dim:int     = kwargs.pop('zvec_dim', 128)
 
         # enforce that image size must be a power of 2
         if not math_util.is_pow2_int(self.img_size):

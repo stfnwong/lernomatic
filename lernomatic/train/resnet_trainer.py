@@ -21,8 +21,11 @@ from lernomatic.models import common
 
 class ResnetTrainer(trainer.Trainer):
     """
-    RESNETTRAINER
-    Trainer object for resnet experiments
+    ResnetTrainer
+
+    Trainer object for resnet experiments. This trainer is almost no different from the
+    default Trainer object save for the fact that it loads the CIFAR-10 dataset by
+    default.
     """
     def __init__(self, model: common.LernomaticModel, **kwargs) -> None:
         self.data_dir      = kwargs.pop('data_dir', 'data/')
