@@ -56,11 +56,9 @@ def main() -> None:
     )
 
 
-
-
 def get_parser() -> argparse.ArgumentParser:
     parser = options.get_trainer_options()
-    # General opts
+
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,

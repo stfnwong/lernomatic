@@ -29,8 +29,6 @@ class LernomaticModel(object):
     def __repr__(self) -> str:
         return 'LernomaticModel'
 
-    # TODO : add __call__ support?
-
     def get_model_parameters(self) -> dict:
         """
         Returns torch model parameters (state_dict)

@@ -15,18 +15,20 @@ class DCGANInferrer(inferrer.Inferrer):
     def __init__(self,
                  model:common.LernomaticModel,
                  **kwargs) -> None:
-
         super(DCGANInferrer, self).__init__(model, **kwargs)
 
     def __repr__(self) -> str:
         return 'DCGANInferrer'
 
-    def get_random_zvec(self) -> torch.Tensor:
+    def get_random_zvec(self, batch_size:int=1) -> torch.Tensor:
         # get a random Z vector scaled according to the model size
-        return torch.randn(1, self.model.get_zvec_dim(), 1, 1)
+        return torch.randn(batch_size, self.model.get_zvec_dim(), 1, 1)
 
     def get_img_size(self) -> int:
         return self.model.img_size
+
+    def get_zvec_dim(self) -> int:
+        return self.model.get_zvec_dim()
 
     def generate(self, X:torch.Tensor) -> torch.Tensor:
         self.model.set_eval()
@@ -62,5 +64,3 @@ class DCGANInferrer(inferrer.Inferrer):
         self.model.set_params(model_params)
         self._send_to_device()
 
-
-# TODO : DCGAN inferrer that can interpolate?

@@ -11,6 +11,7 @@ import torch.nn as nn
 import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import common
+from lernomatic.models.gan import dcgan
 
 # type stuff
 from typing import Tuple
@@ -24,12 +25,11 @@ class DCGANTrainer(trainer.Trainer):
                  D:common.LernomaticModel=None,
                  G:common.LernomaticModel=None,
                  **kwargs) -> None:
-        self.discriminator = D
-        self.generator     = G
-        self.beta1         = kwargs.pop('beta1', 0.5)
-        self.real_label    = kwargs.pop('real_label', 1)
-        self.fake_label    = kwargs.pop('fake_label', 0)
-        # option to save a history of generated images each epoch ?
+        self.discriminator :common.LernomaticModel = D
+        self.generator     :common.LernomaticModel = G
+        self.beta1         :float = kwargs.pop('beta1', 0.5)
+        self.real_label    :int   = kwargs.pop('real_label', 1)
+        self.fake_label    :int   = kwargs.pop('fake_label', 0)
 
         super(DCGANTrainer, self).__init__(None, **kwargs)
         # use CELoss
@@ -51,6 +51,7 @@ class DCGANTrainer(trainer.Trainer):
                 drop_last = True
             )
         self.test_loader = None
+        self.val_loader = None
 
     def _init_history(self) -> None:
         self.loss_iter = 0
@@ -102,6 +103,25 @@ class DCGANTrainer(trainer.Trainer):
     def set_generator(self, G:common.LernomaticModel) -> None:
         self.generator = G
 
+    def set_num_epochs(self, num_epochs:int) -> None:
+        if num_epochs > self.num_epochs:
+            # save temporary history
+            temp_g_loss_history = np.copy(self.g_loss_history)
+            temp_d_loss_history = np.copy(self.d_loss_history)
+            temp_loss_iter      = self.loss_iter
+            temp_iter_per_epoch = self.iter_per_epoch
+            temp_cur_epoch      = self.cur_epoch
+            self.num_epochs     = num_epochs
+            self._init_history()
+            # restore old history
+            self.g_loss_history[:len(temp_g_loss_history)] = temp_g_loss_history
+            self.d_loss_history[:len(temp_d_loss_history)] = temp_d_loss_history
+            self.loss_iter      = temp_loss_iter
+            self.cur_epoch      = temp_cur_epoch
+            self.iter_per_epoch = temp_iter_per_epoch
+        else:
+            self.num_epochs = num_epochs
+
     def get_trainer_params(self) -> dict:
         params = {
             # labels
@@ -119,8 +139,16 @@ class DCGANTrainer(trainer.Trainer):
         self.real_label = params['real_label']
         self.beta1      = params['beta1']
 
-    def gen_fixed_noise_vector(self, vec_dim:int) -> None:
-        self.fixed_noise = torch.randn(64, vec_dim, 1, 1, device=self.device)
+    def set_learning_rate(self, lr: float, param_zero:bool=True) -> None:
+        if param_zero:
+            self.optim_d.param_groups[0]['lr'] = lr
+            self.optim_g.param_groups[0]['lr'] = lr
+        else:
+            for g in self.optim_d.param_groups:
+                g['lr'] = lr
+
+            for g in self.optim_g.param_groups:
+                g['lr'] = lr
 
     # ==== TRAINING ==== #
     def train_epoch(self) -> None:
@@ -196,24 +224,11 @@ class DCGANTrainer(trainer.Trainer):
                     print('\t Saving checkpoint to file [%s]' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+        if self.lr_scheduler is not None:
+            self.apply_lr_schedule()
+
     def val_epoch(self) -> None:
         pass
-
-    def train(self) -> None:
-        self._send_to_device()
-        self.gen_fixed_noise_vector(self.generator.get_zvec_dim())
-
-        for n in range(self.cur_epoch, self.num_epochs):
-            self.train_epoch()
-            # since this is an unsupervised task we don't have a good notion of
-            # 'accuracy', therefore no test phase
-            # save history at the end of each epoch
-            hist_name = self.checkpoint_dir + '/' + self.checkpoint_name + '_history.pkl'
-            if self.verbose:
-                print('\t Saving history to file [%s] ' % str(hist_name))
-            self.save_history(hist_name)
-
-            self.cur_epoch += 1
 
     # also need to overload some of the history functions
     def get_loss_history(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -284,7 +299,8 @@ class DCGANTrainer(trainer.Trainer):
             'd_loss_history' : self.d_loss_history,
             'g_loss_history' : self.g_loss_history,
             'loss_iter'      : self.loss_iter,
-            'iter_per_epoch' : self.iter_per_epoch
+            'iter_per_epoch' : self.iter_per_epoch,
+            'cur_epoch'      : self.cur_epoch
         }
         torch.save(history, fname)
 
@@ -293,5 +309,4 @@ class DCGANTrainer(trainer.Trainer):
         self.d_loss_history = history['d_loss_history']
         self.g_loss_history = history['g_loss_history']
         self.loss_iter      = history['loss_iter']
-        self.iter_per_epoch = history['iter_per_epoch']
-        self.cur_epoch = self.start_epoch
+        self.cur_epoch      = history['cur_epoch']

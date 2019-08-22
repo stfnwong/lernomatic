@@ -8,6 +8,7 @@ Adapted in large part from models in https://github.com/junyanz/pytorch-CycleGAN
 Stefan Wong 2019
 """
 
+import importlib
 import functools
 import torch
 import torch.nn as nn
@@ -79,12 +80,12 @@ class ResnetBlock(nn.Module):
 
 class ResnetGenerator(common.LernomaticModel):
     def __init__(self,
-                 input_channels:int=3,
-                 output_channels:int=3,
+                 num_input_channels:int=3,
+                 num_output_channels:int=3,
                  **kwargs) -> None:
         self.net = ResnetGeneratorModule(
-            input_channels,
-            output_channels,
+            num_input_channels,
+            num_output_channels,
             **kwargs)
         self.import_path        = 'lernomatic.models.gan.cycle_gan.resnet_gen'
         self.module_import_path = 'lernomatic.models.gan.cycle_gan.resnet_gen'
@@ -103,13 +104,13 @@ class ResnetGenerator(common.LernomaticModel):
     def get_params(self) -> dict:
         params = super(ResnetGenerator, self).get_params()
         params['gen_params'] = {
-            'input_nc'        : self.net.input_channels,
-            'output_nc'       : self.net.output_channels,
-            'num_filters'     : self.net.num_filters,
-            'num_blocks'      : self.net.num_blocks,
-            'norm_type'       : self.net.norm_type,
-            'padding_type'    : self.net.padding_type,
-            'use_dropout'     : self.net.use_dropout,
+            'num_input_channels' : self.net.input_channels,
+            'num_output_channels': self.net.output_channels,
+            'num_filters'        : self.net.num_filters,
+            'num_blocks'         : self.net.num_blocks,
+            'norm_type'          : self.net.norm_type,
+            'padding_type'       : self.net.padding_type,
+            'use_dropout'        : self.net.use_dropout,
         }
 
         return params
@@ -124,8 +125,8 @@ class ResnetGenerator(common.LernomaticModel):
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
         self.net = mod(
-            params['gen_params']['input_nc'],
-            params['gen_params']['output_nc'],
+            params['gen_params']['num_input_channels'],
+            params['gen_params']['num_output_channels'],
             num_filters     = params['gen_params']['num_filters'],
             num_blocks      = params['gen_params']['num_blocks'],
             norm_type       = params['gen_params']['norm_type'],

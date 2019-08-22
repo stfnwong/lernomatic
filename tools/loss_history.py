@@ -9,12 +9,13 @@ import argparse
 import torch
 import matplotlib.pyplot as plt
 from lernomatic.vis import vis_loss_history
+from lernomatic.vis.gan import vis_gan_loss
 
 # debug
 #from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
-VALID_TOOL_MODES = ('show', 'probe')
+VALID_TOOL_MODES = ('show', 'probe', 'gan')
 
 
 def show() -> None:
@@ -44,11 +45,10 @@ def show() -> None:
     else:
         test_loss_history = None
 
-    #if GLOBAL_OPTS['verbose']:
-    #    print('Checkpoint [%s] current epoch : %d' % (str(GLOBAL_OPTS['input']), t.cur_epoch))
-    if GLOBAL_OPTS['verbose']:
-        print('%d training iterations in loss history file [%s]' %\
-              (int(history['loss_iter']), str(GLOBAL_OPTS['input'])))
+    if acc_history is not None:
+        fig, ax = vis_loss_history.get_figure_subplots(2)
+    else:
+        fig, ax = vis_loss_history.get_figure_subplots(1)
 
     vis_loss_history.plot_train_history_2subplots(
         ax,
@@ -67,6 +67,7 @@ def show() -> None:
         print(str(acc_history))
 
     if GLOBAL_OPTS['plot_filename'] is not None:
+        fig.tight_layout()
         fig.savefig(GLOBAL_OPTS['plot_filename'])
     else:
         plt.show()
@@ -76,8 +77,49 @@ def show() -> None:
 # the history file
 def probe() -> None:
     history = torch.load(GLOBAL_OPTS['input'])
+    print('Contents of file [%s]' % str(GLOBAL_OPTS['input']))
     for k, v in history.items():
-        print('[%s] : %s' % (str(k), type(v)))
+        print('  [%s] : %s' % (str(k), type(v)))
+
+
+def gan() -> None:
+    fig, ax = plt.subplots()
+    history = torch.load(GLOBAL_OPTS['input'])
+
+    # Do a quick check that the keys we need are actually in the history file
+    if GLOBAL_OPTS['g_loss_history_key'] not in history:
+        raise ValueError('No key [%s] in history file [%s]' %\
+                    (str(GLOBAL_OPTS['g_loss_history_key']), str(GLOBAL_OPTS['input']))
+        )
+
+    if GLOBAL_OPTS['d_loss_history_key'] not in history:
+        raise ValueError('No key [%s] in history file [%s]' %\
+                    (str(GLOBAL_OPTS['d_loss_history_key']), str(GLOBAL_OPTS['input']))
+        )
+
+    g_loss_history = history[GLOBAL_OPTS['g_loss_history_key']][0 : history['loss_iter']]
+    d_loss_history = history[GLOBAL_OPTS['d_loss_history_key']][0 : history['loss_iter']]
+
+    vis_gan_loss.plot_gan_loss(
+        ax,
+        g_loss_history,
+        d_loss_history,
+        title = GLOBAL_OPTS['title'],
+        iter_per_epoch = history['iter_per_epoch'],
+        cur_epoch = history['cur_epoch']
+    )
+
+    if GLOBAL_OPTS['print_loss']:
+        print('\t Generator loss [%s] :' % str(GLOBAL_OPTS['g_loss_history_key']))
+        print(str(g_loss_history))
+        print('\t Discriminator loss [%s] :' % str(GLOBAL_OPTS['d_loss_history_key']))
+        print(str(d_loss_history))
+
+    if GLOBAL_OPTS['plot_filename'] is not None:
+        fig.tight_layout()
+        fig.savefig(GLOBAL_OPTS['plot_filename'])
+    else:
+        plt.show()
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -90,8 +132,9 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--mode',
                         type=str,
+                        choices = VALID_TOOL_MODES,
                         default='show',
-                        help='Tool mode. Must be one of %s (default: show)' % str(VALID_TOOL_MODES)
+                        help='Tool mode. (default: show)'
                         )
     parser.add_argument('-v', '--verbose',
                         action='store_true',
@@ -102,6 +145,11 @@ def get_parser() -> argparse.ArgumentParser:
                         type=str,
                         default=None,
                         help='Title for plot output'
+                        )
+    parser.add_argument('--plot-filename',
+                        type=str,
+                        default='loss_history.png',
+                        help='Plot output file name'
                         )
     # names of loss keys
     parser.add_argument('--loss-history-key',
@@ -119,6 +167,18 @@ def get_parser() -> argparse.ArgumentParser:
                         default='acc_history',
                         help='Key that identifies loss history (default: acc_history)'
                         )
+    # GAN options
+    parser.add_argument('--g-loss-history-key',
+                        type=str,
+                        default='g_loss_history',
+                        help='Key that identifies generator loss history (default: g_loss_history)'
+                        )
+    parser.add_argument('--d-loss-history-key',
+                        type=str,
+                        default='d_loss_history',
+                        help='Key that identifies discriminator loss history (default: d_loss_history)'
+                        )
+
     # other opts
     parser.add_argument('--print-loss',
                         default=False,
@@ -149,11 +209,14 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
+    print('')
 
     if GLOBAL_OPTS['mode'] == 'show':
         show()
     elif GLOBAL_OPTS['mode'] == 'probe':
         probe()
+    elif GLOBAL_OPTS['mode'] == 'gan':
+        gan()
     else:
         raise ValueError('Invalid tool mode [%s]' % str(GLOBAL_OPTS['mode']))

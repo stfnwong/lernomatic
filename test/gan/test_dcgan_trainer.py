@@ -15,24 +15,18 @@ from torchvision import transforms
 # units under test
 from lernomatic.models.gan import dcgan
 from lernomatic.train.gan import dcgan_trainer
+from lernomatic.data import hdf5_dataset
 
-
-# debug
-#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
 
 def get_dataset(image_size:int = 64):
-    celeba_transform = transforms.Compose([
-           transforms.Resize(image_size),
-           transforms.CenterCrop(image_size),
-           transforms.ToTensor(),
-           transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-    dataset = torchvision.datasets.ImageFolder(
-        root=GLOBAL_OPTS['dataset_root'],
-        transform = celeba_transform
+    dataset = hdf5_dataset.HDF5Dataset(
+        GLOBAL_OPTS['dataset_root'],
+        feature_name = 'images',
+        label_name = 'labels',
+        #transform = gan_data_transform
     )
 
     return dataset
@@ -135,6 +129,17 @@ class TestDCGANTrainer(unittest.TestCase):
             self.assertEqual(src_trainer.g_loss_history[n], dst_trainer.g_loss_history[n])
         print(' OK')
 
+        # Try training a bit more. Since the values of cur_epoch and num_epochs
+        # are the same, there should be no effect at first
+        dst_trainer.train()
+        self.assertEqual(dst_trainer.cur_epoch, src_trainer.cur_epoch)
+
+        # If we then adjust the number of epochs (to at least cur_epoch+1) then
+        # we should see another
+        dst_trainer.set_num_epochs(src_trainer.num_epochs+1)
+        dst_trainer.train()
+        self.assertEqual(src_trainer.num_epochs + 1, dst_trainer.cur_epoch)
+
         os.remove(test_checkpoint)
         os.remove(test_history)
 
@@ -149,19 +154,9 @@ if __name__ == '__main__':
                         default=False,
                         help='Sets verbose mode'
                         )
-    parser.add_argument('--draw-plot',
-                        action='store_true',
-                        default=False,
-                        help='Draw plots'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of worker processes to use for HDF5 load'
-                        )
     parser.add_argument('--batch-size',
                         type=int,
-                        default=64,
+                        default=32,
                         help='Batch size to use during training'
                         )
     parser.add_argument('--device-id',
@@ -178,7 +173,7 @@ if __name__ == '__main__':
     # dataset options
     parser.add_argument('--dataset-root',
                         type=str,
-                        default='/mnt/ml-data/datasets/celeba/',
+                        default='hdf5/dcgan_unit_test.h5',
                         help='Path to root of dataset'
                         )
     # checkpoint options
@@ -189,7 +184,7 @@ if __name__ == '__main__':
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='resnet-trainer-test',
+                        default='dcgan-trainer-test',
                         help='String to prefix to checkpoint files'
                         )
     parser.add_argument('unittest_args', nargs='*')
