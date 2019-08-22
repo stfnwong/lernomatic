@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import Dataset
 
 
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 """
 TODO: The issue here is that if we use the default torchvision package we MUST
@@ -85,10 +85,10 @@ class AlignedDatasetHDF5(torch.utils.data.Dataset):
         self.fp.close()
 
     def __len__(self) -> int:
-        return max(len(self.fp[self.a_img_name]), len(self.fp[self.b_img_name]))
+        return min(len(self.fp[self.a_img_name]), len(self.fp[self.b_img_name]))
 
     def __getitem__(self, idx:int) -> tuple:
-        if idx > len(self):
+        if idx >= len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
         if self.direction == 0:
@@ -109,3 +109,9 @@ class AlignedDatasetHDF5(torch.utils.data.Dataset):
             return (a_img, b_img, a_id, b_id)
 
         return (a_img, b_img)
+
+    def get_a_dataset_len(self) -> int:
+        return len(self.fp[self.a_img_name])
+
+    def get_b_datset_len(self) -> int:
+        return len(self.fp[self.b_img_name])

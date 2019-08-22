@@ -93,6 +93,7 @@ class TestAlignedDataSplit(unittest.TestCase):
 #        self.test_image_shape = (3, 256, 256)
 
 
+
 class TestAlignedImageSplit(unittest.TestCase):
     def setUp(self):
         self.test_data_root = "/mnt/ml-data/datasets/cyclegan/night2day/train/"
@@ -108,7 +109,7 @@ class TestAlignedImageSplit(unittest.TestCase):
             self.test_data_root,
             verbose = self.verbose
         )
-        print('Found %d images starting at root path [%s]' %\
+        print('Processing %d images starting at root path [%s]' %\
               (len(dataset_paths), str(self.test_data_root))
         )
         self.assertNotEqual(0, len(dataset_paths))
@@ -132,16 +133,22 @@ class TestAlignedImageSplit(unittest.TestCase):
             self.assertIn('b_imgs', dataset_keys)
 
         ## Test as HDF5Dataset
-        #test_dataset = aligned_dataset.AlignedDatasetHDF5(
-        #    test_outfile,
-        #    image_dataset_name = align_proc.image_dataset_name,
-        #    a_id_name = test_a_id_name,
-        #    b_id_name = test_b_id_name,
-        #    verbose = self.verbose
-        #)
-        #self.assertEqual(len(test_a_paths), len(test_dataset))
+        test_dataset = aligned_dataset.AlignedDatasetHDF5(
+            test_outfile,
+            image_dataset_name = align_proc.image_dataset_name,
+            a_img_name = align_proc.a_img_name,
+            b_img_name = align_proc.b_img_name,
+            verbose = self.verbose
+        )
+        self.assertEqual(len(dataset_paths), len(test_dataset))
 
-        #for elem_idx, (
+        # Check that the elements in the dataset are the expected size
+        for elem_idx, (a_img, b_img) in enumerate(test_dataset):
+            print('Checking element [%d / %d]' % (elem_idx+1, len(test_dataset)), end='\r')
+            self.assertEqual(self.test_image_shape, a_img.shape)
+            self.assertEqual(self.test_image_shape, b_img.shape)
+
+        print('\n OK')
 
         # now that the test is over, get rid of the file
         os.remove(test_outfile)
