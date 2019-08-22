@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import Dataset
 
 
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 """
 TODO: The issue here is that if we use the default torchvision package we MUST
@@ -22,6 +22,7 @@ modified form such as the one here (https://github.com/jbohnslav/opencv_transfor
 """
 
 # Aligned dataset from Folders/Paths
+# returns PIL Images
 class AlignedDataset(Dataset):
     def __init__(self, ab_data_paths:list, **kwargs) -> None:
         self.ab_data_paths :list = ab_data_paths
@@ -48,17 +49,10 @@ class AlignedDataset(Dataset):
             ab_img = Image.open(str(self.data_root + self.ab_data_paths[idx])).convert('RGB')
 
         # split into two images
-        #_, ab_w, ab_h = ab_img.shape
         ab_w, ab_h = ab_img.size
         w2 = int(ab_w / 2)
         a_img = ab_img.crop((0, 0, w2, ab_h))
         b_img = ab_img.crop((w2, 0, ab_w, ab_h))
-
-        #a_img = torch.FloatTensor(a_img)
-        #b_img = torch.FloatTensor(b_img)
-        ## re-order shape
-        #a_img = a_img.transpose(2, 0, 1)
-        #b_img = b_img.transpose(2, 0, 1)
 
         if self.transform is not None:
             a_img = self.transform(a_img)
@@ -91,7 +85,7 @@ class AlignedDatasetHDF5(torch.utils.data.Dataset):
         self.fp.close()
 
     def __len__(self) -> int:
-        return np.max(len(self.fp[self.a_img_name]), len(self.fp[self.b_img_name]))
+        return max(len(self.fp[self.a_img_name]), len(self.fp[self.b_img_name]))
 
     def __getitem__(self, idx:int) -> tuple:
         if idx > len(self):

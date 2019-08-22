@@ -52,6 +52,7 @@ class TestPix2PixTrainer(unittest.TestCase):
         # TODO : settable?
         self.train_data_root = '/mnt/ml-data/datasets/cyclegan/night2day/train/'
         self.val_data_root   = '/mnt/ml-data/datasets/cyclegan/night2day/val/'
+        self.test_dataset = 'hdf5/night2day-unittest-256.h5'
         self.test_num_epochs = 1
 
     def test_save_load(self):
@@ -60,15 +61,9 @@ class TestPix2PixTrainer(unittest.TestCase):
         # Get some data
         train_ab_paths = [path for path in os.listdir(self.train_data_root)]
         val_ab_paths   = [path for path in os.listdir(self.val_data_root)]
-        train_dataset = get_aligned_dataset(
-            train_ab_paths,
-            'pix2pix_trainer_test_train_data',
-            self.train_data_root
-        )
-        val_dataset = get_aligned_dataset(
-            val_ab_paths,
-            'pix2pix_trainer_test_train_data',
-            self.val_data_root
+
+        train_dataset = aligned_dataset.AlignedDatasetHDF5(
+            self.test_dataset
         )
 
         # Get some models - we use resnet and PatchGAN here for now. At some
@@ -85,7 +80,7 @@ class TestPix2PixTrainer(unittest.TestCase):
             discriminator,
             # dataset
             train_dataset = train_dataset,
-            val_dataset   = val_dataset,
+            val_dataset   = None,
             # trainer general options
             batch_size    = GLOBAL_OPTS['batch_size'],
             device_id     = GLOBAL_OPTS['device_id'],
@@ -213,7 +208,7 @@ if __name__ == '__main__':
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='dcgan-trainer-test',
+                        default='pix2pix-trainer-test',
                         help='String to prefix to checkpoint files'
                         )
     parser.add_argument('unittest_args', nargs='*')

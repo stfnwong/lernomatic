@@ -18,24 +18,10 @@ from lernomatic.train.gan import dcgan_trainer
 from lernomatic.data import hdf5_dataset
 
 
-# debug
-#from pudb import set_trace; set_trace()
-
 GLOBAL_OPTS = dict()
 
 
 def get_dataset(image_size:int = 64):
-    #celeba_transform = transforms.Compose([
-    #       transforms.Resize(image_size),
-    #       transforms.CenterCrop(image_size),
-    #       transforms.ToTensor(),
-    #       transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    #])
-    #dataset = torchvision.datasets.ImageFolder(
-    #    root=GLOBAL_OPTS['dataset_root'],
-    #    transform = celeba_transform
-    #)
-
     dataset = hdf5_dataset.HDF5Dataset(
         GLOBAL_OPTS['dataset_root'],
         feature_name = 'images',
@@ -168,16 +154,6 @@ if __name__ == '__main__':
                         default=False,
                         help='Sets verbose mode'
                         )
-    parser.add_argument('--draw-plot',
-                        action='store_true',
-                        default=False,
-                        help='Draw plots'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of worker processes to use for HDF5 load'
-                        )
     parser.add_argument('--batch-size',
                         type=int,
                         default=32,
@@ -197,7 +173,6 @@ if __name__ == '__main__':
     # dataset options
     parser.add_argument('--dataset-root',
                         type=str,
-                        #default='/mnt/ml-data/datasets/celeba/',
                         default='hdf5/dcgan_unit_test.h5',
                         help='Path to root of dataset'
                         )
