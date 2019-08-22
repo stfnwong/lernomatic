@@ -237,12 +237,6 @@ if __name__ == '__main__':
                         default=False,
                         help='Remove generated files at the end of tests'
                         )
-    # data paths
-    parser.add_argument('--test-data-root',
-                        type=str,
-                        default='/home/kreshnik/ml-data/monet2photo',
-                        help='Path to root of test data'
-                        )
 
     parser.add_argument('unittest_args', nargs='*')
 
