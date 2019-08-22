@@ -137,7 +137,7 @@ class TestAlignedDatasetProc(unittest.TestCase):
         )
         self.assertEqual(len(test_a_paths), len(test_dataset))
 
-        for elem_idx, (
+        #for elem_idx, (
 
         # now that the test is over, get rid of the file
         os.remove(test_outfile)

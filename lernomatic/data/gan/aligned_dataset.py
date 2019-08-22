@@ -24,11 +24,12 @@ modified form such as the one here (https://github.com/jbohnslav/opencv_transfor
 # Aligned dataset from Folders/Paths
 class AlignedDataset(Dataset):
     def __init__(self, ab_data_paths:list, **kwargs) -> None:
-        self.ab_data_paths:list = ab_data_paths
-        self.data_root    :str  = kwargs.pop('data_root', None)
-        self.input_nc     :int  = kwargs.pop('input_nc', 3)
-        self.output_nc    :int  = kwargs.pop('output_nc', 3)
-        self.do_transpose:bool  = kwargs.pop('do_transpose', True)
+        self.ab_data_paths :list = ab_data_paths
+        self.direction     :int  = kwargs.pop('direction', 0)    # 0: A->B, 1: B->A
+        self.data_root     :str  = kwargs.pop('data_root', None)
+        self.input_nc      :int  = kwargs.pop('input_nc', 3)
+        self.output_nc     :int  = kwargs.pop('output_nc', 3)
+        self.do_transpose  :bool = kwargs.pop('do_transpose', True)
         self.transform = kwargs.pop('transform', None)
 
     def __repr__(self) -> str:
@@ -46,19 +47,18 @@ class AlignedDataset(Dataset):
         else:
             ab_img = Image.open(str(self.data_root + self.ab_data_paths[idx])).convert('RGB')
 
-        # TODO : could have another thing here for grayscale?
-        # transpose the image arrays to match the pytorch tensor shape order
-        #if self.do_transpose:
-        #    ab_img = ab_img.transpose(2, 0, 1)
-
         # split into two images
         #_, ab_w, ab_h = ab_img.shape
         ab_w, ab_h = ab_img.size
         w2 = int(ab_w / 2)
         a_img = ab_img.crop((0, 0, w2, ab_h))
         b_img = ab_img.crop((w2, 0, ab_w, ab_h))
-        #a_img = ab_img[:, 0: w2, 0 : ab_h]
-        #b_img = ab_img[:, w2:ab_w, 0: ab_h]
+
+        a_img = torch.FloatTensor(a_img)
+        b_img = torch.FloatTensor(b_img)
+        # re-order shape
+        a_img = a_img.transpose(2, 0, 1)
+        b_img = b_img.transpose(2, 0, 1)
 
         if self.transform is not None:
             a_img = self.transform(a_img)
@@ -67,15 +67,17 @@ class AlignedDataset(Dataset):
         return (a_img, b_img)
 
 
-# TODO : subclass from HDF5Dataset?
 # Aligned dataset from HDF5
 class AlignedDatasetHDF5(torch.utils.data.Dataset):
     def __init__(self, h5_filename:str, **kwargs) -> None:
-        self.transform              = kwargs.pop('transform', None)
-        self.image_dataset_name:str = kwargs.pop('image_dataset_name', 'images')
-        self.get_ids:bool           = kwargs.pop('get_ids', False)
-        self.a_id_name:str          = kwargs.pop('a_id_name', 'A_ids')
-        self.b_id_name:str          = kwargs.pop('b_id_name', 'B_ids')
+        self.transform                = kwargs.pop('transform', None)
+        self.direction          :int  = kwargs.pop('direction', 0)    # 0: A->B, 1: B->A
+        #self.image_dataset_name :str  = kwargs.pop('image_dataset_name', 'images')
+        self.a_img_name         :str  = kwargs.pop('a_img_name', 'a_imgs')
+        self.b_img_name         :str  = kwargs.pop('b_img_name', 'b_imgs')
+        self.get_ids            :bool = kwargs.pop('get_ids', False)
+        self.a_id_name          :str  = kwargs.pop('a_id_name', 'A_ids')
+        self.b_id_name          :str  = kwargs.pop('b_id_name', 'B_ids')
 
         self.fp = h5py.File(h5_filename, 'r')
         self.filename = h5_filename
@@ -96,7 +98,8 @@ class AlignedDatasetHDF5(torch.utils.data.Dataset):
         if idx > len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
-        aligned_img = torch.FloatTensor(self.fp[self.image_dataset_name][idx][:])
+        a_img = torch.FloatTensor(self.fp[self.a_img_name][idx][:])
+        b_img = torch.FloatTensor(self.fp[self.b_img_name][idx][:])
 
         if self.transform is not None:
             a_img = self.transform(a_img)
