@@ -84,27 +84,36 @@ class UnalignedDatasetHDF5(torch.utils.data.Dataset):
         self.fp.close()
 
     def __len__(self) -> int:
-        return len(self.fp[self.image_dataset_name])
+        return max(len(self.fp[self.a_img_name]), len(self.fp[self.b_img_name]))
 
     def __getitem__(self, idx:int) -> tuple:
-        if idx > len(self):
+        if idx >= len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
+        a_idx = idx % self.get_a_dataset_len()
+        b_idx = idx % self.get_b_dataset_len()
+
         if self.direction == 0:
-            a_img = torch.FloatTensor(self.fp[self.a_img_name][idx][:])
-            b_img = torch.FloatTensor(self.fp[self.b_img_name][idx][:])
+            a_img = torch.FloatTensor(self.fp[self.a_img_name][a_idx][:])
+            b_img = torch.FloatTensor(self.fp[self.b_img_name][b_idx][:])
         else:
-            a_img = torch.FloatTensor(self.fp[self.b_img_name][idx][:])
-            b_img = torch.FloatTensor(self.fp[self.a_img_name][idx][:])
+            a_img = torch.FloatTensor(self.fp[self.b_img_name][b_idx][:])
+            b_img = torch.FloatTensor(self.fp[self.a_img_name][a_idx][:])
 
         if self.transform is not None:
             a_img = self.transform(a_img)
             b_img = self.transform(b_img)
 
         if self.get_ids:
-            a_id = self.fp[self.a_id_name][idx][:]
-            b_id = self.fp[self.b_id_name][idx][:]
+            a_id = self.fp[self.a_id_name][a_idx][:]
+            b_id = self.fp[self.b_id_name][b_idx][:]
 
             return (a_img, b_img, a_id, b_id)
 
         return (a_img, b_img)
+
+    def get_a_datset_len(self) -> int:
+        return len(self.fp[self.a_img_name])
+
+    def get_b_dataset_len(self) -> int:
+        return len(self.fp[self.b_img_name])

@@ -85,6 +85,9 @@ class AlignedImageJoin(AlignedImageProc):
     set of AB images.
     """
     def __init__(self, **kwargs) -> None:
+        self.extend_dim:int = kwargs.pop('extend_dim', 1)
+        self.a_id_name:str  = kwargs.pop('a_id_name', 'a_ids')
+        self.b_id_name:str  = kwargs.pop('b_id_name', 'b_ids')
         super(AlignedImageJoin, self).__init__(**kwargs)
 
         # the output image will actually be concatenated along dim=1 (width)
@@ -93,7 +96,7 @@ class AlignedImageJoin(AlignedImageProc):
 
         out_img_shape = []
         for n, dim in enumerate(self.image_shape):
-            if n == 1:
+            if n == self.extend_dim:
                 out_img_shape.append(2 * dim)
             else:
                 out_img_shape.append(dim)
@@ -101,26 +104,6 @@ class AlignedImageJoin(AlignedImageProc):
 
     def __repr__(self) -> str:
         return 'AlignedImageJoin'
-
-    def check_and_crop(self, img_a:np.ndarray, img_b:np.ndarray) -> tuple:
-        status_ok = True
-
-        for img in [img_a, img_b]:
-            if len(img.shape) == 2:
-                aw, ah = img.shape
-            elif len(img.shape) == 3:
-                _, aw, ah = img.shape
-            else:
-                if self.verbose:
-                    print('Image [%s] must have shape (W, H) or shape (C, W, H)' % str(path))
-                status_ok = False
-                break
-
-        # Crop image to new size
-        img_a = image_util.crop(img_a, 0, 0, self.image_shape[-1])
-        img_b = image_util.crop(img_b, 0, 0, self.image_shape[-1])
-
-        return (img_a, img_b, status_ok)
 
     def proc(self, a_paths:list, b_paths:list, outfile:str) -> None:
         if len(a_paths) != len(b_paths):
@@ -137,12 +120,12 @@ class AlignedImageJoin(AlignedImageProc):
                 dtype=np.uint8
             )
             a_ids = fp.create_dataset(
-                'B_' + str(self.id_dataset_name),
+                str(self.b_id_name),
                 (len(a_paths), self.id_dataset_size),
                 dtype='S10'
             )
             b_ids = fp.create_dataset(
-                'A_' + str(self.id_dataset_name),
+                str(self.a_id_name),
                 (len(a_paths), self.id_dataset_size),
                 dtype='S10'
             )
@@ -168,12 +151,6 @@ class AlignedImageJoin(AlignedImageProc):
                 # swap channels
                 img_a = img_a.transpose(2, 0, 1)
                 img_b = img_b.transpose(2, 0, 1)
-                img_a, img_a_status = self.check_and_resize(img_a)
-                img_b, img_b_status = self.check_and_resize(img_b)
-
-                if (img_a_status is False) or (img_b_status is False):
-                    invalid_file_list.append((a_img_path, b_img_path))
-                    continue
 
                 # concat
                 if self.direction == 'AB':
