@@ -18,8 +18,6 @@ from lernomatic.data.gan import aligned_dataset
 from lernomatic.data import hdf5_dataset
 from lernomatic.util import file_util
 
-# debug
-#from pudb import set_trace; set_trace()
 
 
 GLOBAL_OPTS = dict()
@@ -45,7 +43,7 @@ class TestAlignedDataSplit(unittest.TestCase):
     def setUp(self):
         self.test_a_path = 'testA/'
         self.test_b_path = 'testB/'
-        self.test_data_root = '/home/kreshnik/ml-data/monet2photo/'  # TODO: make settable
+        self.test_data_root = '/mnt/ml-data/datasets/cycelgan/monet2photo/'
         # number of path pairs to place into split
         self.split_size  = 100
         self.verbose     = GLOBAL_OPTS['verbose']

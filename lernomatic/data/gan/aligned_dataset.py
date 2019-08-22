@@ -71,8 +71,8 @@ class AlignedDatasetHDF5(torch.utils.data.Dataset):
         self.a_img_name         :str  = kwargs.pop('a_img_name', 'a_imgs')
         self.b_img_name         :str  = kwargs.pop('b_img_name', 'b_imgs')
         self.get_ids            :bool = kwargs.pop('get_ids', False)
-        self.a_id_name          :str  = kwargs.pop('a_id_name', 'A_ids')
-        self.b_id_name          :str  = kwargs.pop('b_id_name', 'B_ids')
+        self.a_id_name          :str  = kwargs.pop('a_id_name', 'a_ids')
+        self.b_id_name          :str  = kwargs.pop('b_id_name', 'b_ids')
 
         self.fp = h5py.File(h5_filename, 'r')
         self.filename = h5_filename

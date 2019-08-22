@@ -31,8 +31,11 @@ from datetime import timedelta
 GLOBAL_OPTS = dict()
 
 
-def get_dataset(ab_path:str, dataset_name:str, data_root:str, transforms=None) -> aligned_dataset.AlignedDatasetHDF5:
-    # TODO : support more image sizes?
+def get_dataset(ab_path:str,
+                dataset_name:str,
+                data_root:str,
+                transforms=None) -> aligned_dataset.AlignedDataset:
+    # TODO : support more image sizes
     if transforms is None:
         transforms = gan_transforms.get_gan_transforms(
             do_crop = True,
@@ -43,6 +46,23 @@ def get_dataset(ab_path:str, dataset_name:str, data_root:str, transforms=None) -
         ab_path,
         data_root = data_root,
         transform = transforms
+    )
+
+    return dataset
+
+
+def get_hdf5_dataset(dataset_path:str, **kwargs) -> aligned_dataset.AlignedDatasetHDF5:
+    a_img_name:str = kwargs.pop('a_img_name', 'a_imgs')
+    b_img_name:str = kwargs.pop('b_img_name', 'b_imgs')
+    a_id_name:str  = kwargs.pop('a_id_name', 'a_ids')
+    b_id_name:str  = kwargs.pop('b_id_name', 'b_ids')
+
+    dataset = aligned_dataset.AlignedDatasetHDF5(
+        dataset_path,
+        a_img_name = a_img_name,
+        b_img_name = b_img_name,
+        a_id_name  = a_id_name,
+        b_id_name  = b_id_name,
     )
 
     return dataset
@@ -112,21 +132,29 @@ def main() -> None:
     if GLOBAL_OPTS['verbose']:
         print('Got discriminator [%s]' % repr(discriminator))
 
-    # get paths
-    train_ab_paths = [path for path in os.listdir(GLOBAL_OPTS['train_data_path'])]
-    val_ab_paths = [path for path in os.listdir(GLOBAL_OPTS['val_data_path'])]
+    if GLOBAL_OPTS['train_dataset_h5']:
+        train_dataset = get_hdf5_dataset(GLOBAL_OPTS['train_dataset_h5'])
+    else:
+        train_ab_paths = [path for path in os.listdir(GLOBAL_OPTS['train_data_path'])]
+        # get some data
+        train_dataset = get_dataset(
+            train_ab_paths,
+            'pix2xpix_train',
+            GLOBAL_OPTS['train_data_path']
+        )
 
-    # get some data
-    train_dataset = get_dataset(
-        train_ab_paths,
-        'pix2xpix_train',
-        GLOBAL_OPTS['train_data_path']
-    )
-    val_dataset   = get_dataset(
-        val_ab_paths,
-        'pix2xpix_val',
-        GLOBAL_OPTS['val_data_path']
-    )
+    if GLOBAL_OPTS['val_dataset_h5']:
+        val_dataset = get_hdf5_dataset(GLOBAL_OPTS['val_dataset_h5'])
+    else:
+        val_ab_paths = [path for path in os.listdir(GLOBAL_OPTS['val_data_path'])]
+
+        val_dataset   = get_dataset(
+            val_ab_paths,
+            'pix2xpix_val',
+            GLOBAL_OPTS['val_data_path']
+        )
+
+
 
     # get a trainer
     if GLOBAL_OPTS['load_checkpoint'] is not None:
@@ -210,6 +238,16 @@ def get_parser() -> argparse.ArgumentParser:
                         help='Type of discriminator to use (nlayer or pixel)'
                         )
     # Data options
+    parser.add_argument('--train-dataset-h5',
+                        type=str,
+                        default=None,
+                        help='If specified, load this *.h5 dataset as training data'
+                        )
+    parser.add_argument('--val-dataset-h5',
+                        type=str,
+                        default=None,
+                        help='If specified, load this *.h5 dataset as validation data'
+                        )
     parser.add_argument('--train-data-path',
                         type=str,
                         default='/home/kreshnik/ml-data/night2day/train/',
