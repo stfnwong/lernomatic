@@ -54,11 +54,11 @@ class AlignedDataset(Dataset):
         a_img = ab_img.crop((0, 0, w2, ab_h))
         b_img = ab_img.crop((w2, 0, ab_w, ab_h))
 
-        a_img = torch.FloatTensor(a_img)
-        b_img = torch.FloatTensor(b_img)
-        # re-order shape
-        a_img = a_img.transpose(2, 0, 1)
-        b_img = b_img.transpose(2, 0, 1)
+        #a_img = torch.FloatTensor(a_img)
+        #b_img = torch.FloatTensor(b_img)
+        ## re-order shape
+        #a_img = a_img.transpose(2, 0, 1)
+        #b_img = b_img.transpose(2, 0, 1)
 
         if self.transform is not None:
             a_img = self.transform(a_img)
@@ -72,7 +72,6 @@ class AlignedDatasetHDF5(torch.utils.data.Dataset):
     def __init__(self, h5_filename:str, **kwargs) -> None:
         self.transform                = kwargs.pop('transform', None)
         self.direction          :int  = kwargs.pop('direction', 0)    # 0: A->B, 1: B->A
-        #self.image_dataset_name :str  = kwargs.pop('image_dataset_name', 'images')
         self.a_img_name         :str  = kwargs.pop('a_img_name', 'a_imgs')
         self.b_img_name         :str  = kwargs.pop('b_img_name', 'b_imgs')
         self.get_ids            :bool = kwargs.pop('get_ids', False)
@@ -92,14 +91,18 @@ class AlignedDatasetHDF5(torch.utils.data.Dataset):
         self.fp.close()
 
     def __len__(self) -> int:
-        return len(self.fp[self.image_dataset_name])
+        return np.max(len(self.fp[self.a_img_name]), len(self.fp[self.b_img_name]))
 
     def __getitem__(self, idx:int) -> tuple:
         if idx > len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
-        a_img = torch.FloatTensor(self.fp[self.a_img_name][idx][:])
-        b_img = torch.FloatTensor(self.fp[self.b_img_name][idx][:])
+        if self.direction == 0:
+            a_img = torch.FloatTensor(self.fp[self.a_img_name][idx][:])
+            b_img = torch.FloatTensor(self.fp[self.b_img_name][idx][:])
+        else:
+            a_img = torch.FloatTensor(self.fp[self.b_img_name][idx][:])
+            b_img = torch.FloatTensor(self.fp[self.a_img_name][idx][:])
 
         if self.transform is not None:
             a_img = self.transform(a_img)

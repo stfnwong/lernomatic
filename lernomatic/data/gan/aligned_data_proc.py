@@ -7,7 +7,7 @@ Stefan Wong 2019
 
 import h5py
 import PIL
-from PIL import Image       # TODO : replace with opencv at some point
+from PIL import Image
 import os
 import numpy as np
 from tqdm import tqdm
@@ -15,7 +15,7 @@ from lernomatic.data.gan import aligned_data_split
 from lernomatic.util import image_util
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class AlignedImageProc(object):
@@ -71,26 +71,6 @@ class AlignedImageProc(object):
 
     def align_image_arrays(self, a_img:np.ndarray, b_img:np.ndarray) -> np.ndarray:
         return np.concatenate([a_img, b_img], dim=1)
-
-    #def check_and_resize(self, img:np.ndarray) -> tuple:
-    def check_and_resize(self, img:PIL.Image) -> tuple:
-        status_ok = True
-        if len(img.size) == 2:
-            aw, ah = img.size
-        elif len(img.size) == 3:
-            _, aw, ah = img
-        #if len(img.shape) == 2:
-        #    aw, ah = img.shape
-        #elif len(img.shape) == 3:
-        #    _, aw, ah = img.shape
-        else:
-            if self.verbose:
-                print('Image [%s] must have shape (W, H) or shape (C, W, H)' % str(path))
-            status_ok = False
-        # Crop image to new size
-        img = image_util.crop(img, 0, 0, self.image_shape[-1])
-
-        return (img, status_ok)
 
     def proc(self) -> None:
         raise NotImplementedError('This method should be implemented in sub-class')
@@ -245,7 +225,7 @@ class AlignedImageSplit(AlignedImageProc):
             )
             # Ids for each of the files
             fids = fp.create_dataset(
-                'ids_' + str(self.id_dataset_name),
+                str(self.id_dataset_name),
                 (len(paths), self.id_dataset_size),
                 dtype='S10'
             )
@@ -265,8 +245,6 @@ class AlignedImageSplit(AlignedImageProc):
                 img_b = image.crop(((w // 2), 0, w, h))
 
                 # Convert to numpy arrays
-                #img_a, img_a_status = self.check_and_resize(img_a)
-                #img_b, img_b_status = self.check_and_resize(img_b)
                 img_a = image_util.crop(img_a, 0, 0, self.image_shape[-1])
                 img_b = image_util.crop(img_b, 0, 0, self.image_shape[-1])
 
@@ -281,10 +259,6 @@ class AlignedImageSplit(AlignedImageProc):
                 img_id, _   = os.path.splitext(os.path.basename(path))
                 fids[idx]   = img_id.encode('ascii')
 
-                #a_id, _     = os.path.splitext(os.path.basename(a_img_path))
-                #b_id, _     = os.path.splitext(os.path.basename(b_img_path))
-                #a_id        = a_id.encode('ascii')
-                #b_id        = b_id.encode('ascii')
 
         # Print stats?
         print('Processed %d images, %s images failed' % (len(paths), len(invalid_file_list)))

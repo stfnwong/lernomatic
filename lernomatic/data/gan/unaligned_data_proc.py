@@ -5,13 +5,16 @@ Data processor for unaligned Cycle-GAN data
 Stefan Wong 2019
 """
 
-
-
+import PIL
+import h5py
+import numpy as np
+from tqdm import tqdm
+from lernomatic.util import image_util
 
 
 class UnalignedImageProc(object):
     """
-    UNALIGINEDIMAGEPROC
+    UnalignedImageProc
     Processs unaligned image data into and HDF5 file.
     For use with CycleGAN models
 
@@ -131,15 +134,20 @@ class UnalignedImageProc(object):
                     invalid_file_list.append((a_img_path, b_img_path))
                     continue
 
-                img_a = cv2.imread(a_img_path)
-                img_b = cv2.imread(b_img_path)
-                img_a = img_a.transpose(2, 0, 1)
-                img_b = img_b.transpose(2, 0, 1)
-                img_a, img_b, status_ok = self.check_and_crop(img_a, img_b)
+                img_a = PIL.Image.open(a_img_path).convert('RGB')
+                img_b = PIL.Image.open(b_img_path).convert('RGB')
+                # resize
+                img_a = image_util.crop(img_a, 0, 0, self.image_shape[-1])
+                img_b = image_util.crop(img_b, 0, 0, self.image_shape[-1])
 
-                if status_ok is False:
-                    invalid_file_list.append((a_img_path, b_img_path))
-                    continue
+
+                #img_a = img_a.transpose(2, 0, 1)
+                #img_b = img_b.transpose(2, 0, 1)
+                #img_a, img_b, status_ok = self.check_and_crop(img_a, img_b)
+
+                #if status_ok is False:
+                #    invalid_file_list.append((a_img_path, b_img_path))
+                #    continue
 
                 # concat
                 if self.direction == 'AB':
@@ -147,8 +155,11 @@ class UnalignedImageProc(object):
                 else:
                     aligned_image = np.concatenate([img_b, img_a], 1)
 
+                img_a = np.asarray(img_a).transpose(2, 0, 1)
+                img_b = np.asarray(img_b).transpose(2, 0, 1)
                 # add image to dataset
-                images[idx] = aligned_image
+                a_imgs[idx] = img_a
+                b_imgs[idx] = img_b
                 a_id, _ = os.path.splitext(os.path.basename(a_img_path))
                 b_id, _ = os.path.splitext(os.path.basename(b_img_path))
                 a_id    = a_id.encode('ascii')

@@ -16,10 +16,10 @@ from lernomatic.data.gan import aligned_data_split
 from lernomatic.data.gan import aligned_data_proc
 from lernomatic.data.gan import aligned_dataset
 from lernomatic.data import hdf5_dataset
-
+from lernomatic.util import file_util
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 
 GLOBAL_OPTS = dict()
@@ -81,68 +81,72 @@ class TestAlignedDataSplit(unittest.TestCase):
 
 
 
-class TestAlignedDatasetProc(unittest.TestCase):
+#class TestAlignedImageJoin(unittest.TestCase):
+#    def setUp(self):
+#        self.test_a_path = 'testA/'
+#        self.test_b_path = 'testB/'
+#        self.test_data_root = '/home/kreshnik/ml-data/monet2photo/'  # TODO: make settable
+#        # number of path pairs to place into split
+#        self.split_size  = 1024
+#        self.verbose     = GLOBAL_OPTS['verbose']
+#        # image properties
+#        self.test_image_shape = (3, 256, 256)
+
+
+class TestAlignedImageSplit(unittest.TestCase):
     def setUp(self):
-        self.test_a_path = 'testA/'
-        self.test_b_path = 'testB/'
-        self.test_data_root = '/home/kreshnik/ml-data/monet2photo/'  # TODO: make settable
-        # number of path pairs to place into split
-        self.split_size  = 1024
-        self.verbose     = GLOBAL_OPTS['verbose']
+        self.test_data_root = "/mnt/ml-data/datasets/cyclegan/night2day/train/"
+        self.split_size     = 1024
+        self.verbose        = GLOBAL_OPTS['verbose']
         # image properties
         self.test_image_shape = (3, 256, 256)
 
     def test_init(self):
-        print('======== TestAlignedDatasetProc.test_init ')
+        print('======== TestAlignedImageSplit.test_init ')
 
-        test_a_paths, test_b_paths = gen_test_file_lists(
+        dataset_paths = file_util.get_file_paths(
             self.test_data_root,
-            self.test_a_path,
-            self.test_b_path,
-            crop_len = True
+            verbose = self.verbose
         )
-        print('Got %d A images, %d B images' % (len(test_a_paths), len(test_b_paths)))
-        self.assertEqual(len(test_a_paths), len(test_b_paths))
+        print('Found %d images starting at root path [%s]' %\
+              (len(dataset_paths), str(self.test_data_root))
+        )
+        self.assertNotEqual(0, len(dataset_paths))
 
         # get a data processor
         test_image_dataset_name = 'images'
-        align_proc = aligned_data_proc.AlignedImageProc(
+        align_proc = aligned_data_proc.AlignedImageSplit(
             image_dataset_name = test_image_dataset_name,
             image_shape = self.test_image_shape,
             verbose = self.verbose
         )
-        self.assertEqual('AB', align_proc.direction)
+        #self.assertEqual('AB', align_proc.direction)
 
         test_outfile = 'data/test_aligned_proc.h5'
-        align_proc.proc(test_a_paths, test_b_paths, test_outfile)
+        align_proc.proc(dataset_paths, test_outfile)
 
         # Test as raw *.h5 file
-        test_a_id_name = 'A_ids'
-        test_b_id_name = 'B_ids'
         with h5py.File(test_outfile, 'r') as fp:
-            self.assertIn(test_image_dataset_name, fp)
-            self.assertIn(test_a_id_name, fp)
-            self.assertIn(test_b_id_name, fp)
-            self.assertEqual(len(fp[test_image_dataset_name]), len(test_a_paths))
-            self.assertEqual(len(fp[test_a_id_name]), len(test_a_paths))
-            self.assertEqual(len(fp[test_b_id_name]), len(test_a_paths))
+            dataset_keys = fp.keys()
+            self.assertIn('a_imgs', dataset_keys)
+            self.assertIn('b_imgs', dataset_keys)
 
-        # Test as HDF5Dataset
-        test_dataset = aligned_dataset.AlignedDatasetHDF5(
-            test_outfile,
-            image_dataset_name = align_proc.image_dataset_name,
-            a_id_name = test_a_id_name,
-            b_id_name = test_b_id_name,
-            verbose = self.verbose
-        )
-        self.assertEqual(len(test_a_paths), len(test_dataset))
+        ## Test as HDF5Dataset
+        #test_dataset = aligned_dataset.AlignedDatasetHDF5(
+        #    test_outfile,
+        #    image_dataset_name = align_proc.image_dataset_name,
+        #    a_id_name = test_a_id_name,
+        #    b_id_name = test_b_id_name,
+        #    verbose = self.verbose
+        #)
+        #self.assertEqual(len(test_a_paths), len(test_dataset))
 
         #for elem_idx, (
 
         # now that the test is over, get rid of the file
         os.remove(test_outfile)
 
-        print('======== TestAlignedDatasetProc.test_init <END>')
+        print('======== TestAlignedImageSplit.test_init <END>')
 
 
 

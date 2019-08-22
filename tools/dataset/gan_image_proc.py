@@ -11,6 +11,7 @@ from tqdm import tqdm
 #from tqdm import tqdm
 from lernomatic.data import data_split
 from lernomatic.data import image_proc
+from lernomatic.util import file_util
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -22,16 +23,10 @@ def main() -> None:
     if GLOBAL_OPTS['outfile'] is None:
         raise ValueError('No outfile specified (use --outfile=OUTFILE)')
 
-    image_paths = []
-
-    for dirname, subdir, filelist in os.walk(GLOBAL_OPTS['dataset_root']):
-        if GLOBAL_OPTS['verbose']:
-            print('Found directory [%s] containing %d files' % (dirname, len(filelist)))
-
-        if len(filelist) > 0:
-            for fname in filelist:
-                if GLOBAL_OPTS['extension'] in fname:
-                    image_paths.append(str(dirname) + '/' + str(fname))
+    image_paths = file_util.get_file_paths(
+        GLOBAL_OPTS['dataset_root'],
+        verbose=GLOBAL_OPTS['verbose']
+    )
 
     if len(image_paths) == 0:
         raise ValueError('Failed to find any images in path or subpaths of [%s]' % GLOBAL_OPTS['dataset_root'])
