@@ -7,13 +7,8 @@
 - *"Without Pytorch, this project is nothing"* - Jangqing Yia
 - *"This isn't a project that is really on my radar at the moment*" - Deff Jean
 
-<!---
-TODO : Need more experimentation with images. I was also
-going to try doing something HTML-like such as 
-<img src="doc/images/galaxy-brain.jpg", align="center">
--->
 
-![*An artists impression of a typical Lernomatic user in the wild*](doc/images/galaxy-brain.jpg)
+![*An artists impression of a typical Lernomatic user in the wild*](docs/images/galaxy-brain.jpg)
 ##### *An artists impression of a typical Lernomatic user in the wild*
 
 ## Features 
