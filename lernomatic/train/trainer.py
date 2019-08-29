@@ -175,12 +175,6 @@ class Trainer(object):
     def _send_to_device(self) -> None:
         self.model.send_to(self.device)
 
-    def save_checkpoint(self, fname: str) -> None:
-        raise NotImplementedError
-
-    def load_checkpoint(self, fname: str) -> None:
-        raise NotImplementedError
-
     def set_num_epochs(self, num_epochs:int) -> None:
         if num_epochs > self.num_epochs:
             # resize history

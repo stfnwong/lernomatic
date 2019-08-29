@@ -18,15 +18,18 @@ At minimum a `Trainer` requires
 Once the trainer object is [constructed](#train-constructor) the main interface is the `train()` method. Calling this method will cause the trainer to optimize the model with the given parameters
 
 ### `train()`
-The default `train()` method is a loop that calls `train_epoch()` followed by `val_epoch()` in the range `self.start_epoch` *->* `self.num_epochs`.
+The default `train()` method is a loop that calls `train_epoch()` followed by `val_epoch()` in the range `self.start_epoch` *->* `self.num_epochs`. In most cases it is sufficient to just call the `train()` method and have the `Trainer` object manage the history, checkpointing and optimization.
 
+### `train_epoch()`
+This method handles the details of training the model. This implementation should be inside the loop that iterates over `self.train_loader`.
 
 
 ## <a name="train-constructor"></a> Trainer construction
 The `Trainer` base class in `lernomatic.train.trainer.py` has the following constructor.
 
 
-```
+```python
+
 class Trainer(object):
     def __init__(self, model=None, **kwargs) -> None:
         self.model           = model
@@ -90,11 +93,17 @@ class Trainer(object):
 
 ```
 
+Not all parameters are required to be used for all instantiations of a `Trainer`. 
 
 
 ### <a name="trainer-init"></a> Trainer initialization functions 
 The initialization sequence for the base `Trainer` constructor is
-- Setup the device for computation by calling `_init_device()`. 
+
+1. Setup the device for computation by calling `_init_device()`. 
+2. Setup the optimizer(s) that will be used to train the model. 
+3. Setup the dataloaders used in the `train_epoch()` and `val_epoch()` methods.
+4. Setup the training history
+5. Send the models to the target device. Typically the models are sent rather than the optimziers themselves. Tensors in the optimizer are moved to a new device when loading a [checkpoint](#trainer-checkpoint)
 
 
 #### `_init_device()`
@@ -102,7 +111,8 @@ This function converts an index into a CUDA device. Devices start at index 0 (th
 
 The default implementation of `_init_device()` is given below:
 
-```
+```python
+
     def _init_device(self) -> None:
         if self.device_id < 0:
             self.device = torch.device('cpu')
@@ -117,7 +127,8 @@ By default, if `self.model` is `None` then `self.optim` is set to `None`. This i
 
 The default implementation of `_init_optimizer()` is given below.
 
-```
+```python
+
     def _init_optimizer(self) -> None:
         if self.model is not None:
             if hasattr(torch.optim, self.optim_function):
@@ -148,7 +159,8 @@ The `Trainer` constructor accepts dataset objects. These should be of type `torc
 
 The default implementation of `_init_dataloaders()` is given below:
 
-```
+```python
+
     def _init_dataloaders(self) -> None:
         if self.train_dataset is None:
             self.train_loader = None
@@ -187,7 +199,8 @@ The training history is maintained in a seperate `numpy.ndarray`. The default co
 
 The default implementation of `_init_history()` is given below:
 
-```
+```python
+
     def _init_history(self) -> None:
         self.loss_iter      = 0
         self.val_loss_iter  = 0
@@ -207,15 +220,19 @@ The default implementation of `_init_history()` is given below:
             self.acc_history = None
 ```
 
+See the [history section](trainer-history) for more detail about history implementation.
+
 
 #### `_send_to_device()`
 Finally the model(s) are sent the the target device. In the simple case, this is just a wrapper around `LernomaticModel.send_to()` with the trainers device as the argument. More complex trainers may contain multiple models, and in those cases this method should be overridden to send all required components to the correct device (or devices, should that be required).
 
 The default implementation of `_send_to_device()` is given below:
 
-```
+```python
+
     def _send_to_device(self) -> None:
         self.model.send_to(self.device)
+
 ``` 
 
 
@@ -224,9 +241,21 @@ TODO : explain `train_epoch()` and `val_epoch()`
 
 
 ## <a name="trainer-checkpoints"></a> Checkpoints
+
+The `save_every` parameter controls how often a checkpoint is saved. The unit for this parameter is iterations. Setting this value negative will cause the internal value to be set to `len(self.train_loader)-1`, ensuring that the history is saved once for each epoch. To save more frequently, set this to some value that is a fraction of `len(self.train_loader)`.
+
+
 TODO : explain `save_checkpoint()` and `load_checkpoint()`
 
+
 ## <a name="trainer-histrory"></a> History
+
+The history is saved to a seperate file in the `checkpoint_dir` which is equal to `self.checkpoint_name + '_history'`. The history and the checkpoint data are therefore independent. 
+
+Unlike [checkpoints](#trainer-checkpoints) the controls for how often the history is saved is much less granular. The parameter `self.save_hist` simply determines whether or not a particular checkpoint is saved. By default checkpoints are saved at the end of each epoch unless `self.save_hist = False`.
+
+The history is saved by calling `save_history()`. This method takes a `str` containing the name of the history file and saves the history data to that file.
+
+When `train()` is called the trainer will typically run until `self.cur_epoch` is equal to `self.num_epochs`. Once this is the case, further calls to `train()` will have no effect. To extend the training time of a trainer that has already been constructed, use the `set_num_epochs()` method. Don't attempt to set the number of epochs manually. By calling `set_num_epochs()` the internal history is correctly extended.
+
 TODO : explain `save_history()` and `load_history()`
-
-
