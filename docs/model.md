@@ -25,7 +25,6 @@ class LernomaticModelNet(common.LernomaticModel):
         # and the name of the Net() module
         self.module_name = 'Net'
 
-
     # we create a hook to the forward() method of self.net
     def forward(self, X:torch.Tensor) -> torch.Tensor:
         return self.net.forward(X)
@@ -43,13 +42,22 @@ The basic model in `lernomatic.model.common` has the following constructor
 class LernomaticModel(object):
     def __init__(self, **kwargs) -> None:
         self.net               : torch.nn.Module = None
-        self.import_path       : str             = 'lernomatic.model.common'
-        self.model_name        : str             = 'LernomaticModel'
-        self.module_name       : str             = None
-        self.module_import_path: str             = None
+        self.import_path        : str             = 'lernomatic.model.common'
+        self.module_import_path : str             = None
+        self.model_name         : str             = 'LernomaticModel'
+        self.module_name        : str             = None
 
 ```
 
-The purpose of the `LernomaticModel` wrapper is largerly to allow models to maintain their own metadata. This means that models can be largely self loading, and can therefore be attached to any `Trainer` object without needing to keep extra state.
+The purpose of the `LernomaticModel` wrapper is largerly to allow models to maintain their own metadata. This means that models can be largely self loading, and can therefore be attached to any `Trainer` object without needing to keep extra state. The following sections outline the purpose of each parameter.
+
+#### `import_path`
+This represents the path to the `LernomaticModule` object itself. 
+
+#### `module_import_path`
+This represents the path to the `torch.nn.Module` object that the `LernomaticModel` is wrapping.
 
 
+
+# `forward()` method
+This wraps the `forward()` or `__call__()` method of a `torch.nn.Module` object. The use of `__call__()` in the `LernomaticModel` itself is not actually implemented at the time of writing.

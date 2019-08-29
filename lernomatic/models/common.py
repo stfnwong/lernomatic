@@ -20,11 +20,11 @@ class LernomaticModel(object):
     with importlib.
     """
     def __init__(self, **kwargs) -> None:
-        self.net               : torch.nn.Module = None
-        self.import_path       : str             = 'lernomatic.model.common'
-        self.model_name        : str             = 'LernomaticModel'
-        self.module_name       : str             = None
-        self.module_import_path: str             = None
+        self.net                : torch.nn.Module = None
+        self.import_path        : str             = 'lernomatic.model.common'
+        self.module_import_path : str             = None
+        self.model_name         : str             = 'LernomaticModel'
+        self.module_name        : str             = None
 
     def __repr__(self) -> str:
         return 'LernomaticModel'
