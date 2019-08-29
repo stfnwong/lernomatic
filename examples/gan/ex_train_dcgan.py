@@ -5,16 +5,22 @@ Train a DCGAN
 Stefan Wong 2019
 """
 
+import argparse
+# timing
 import time
 from datetime import timedelta
-import argparse
+# visions
 from torchvision import datasets
 from torchvision import transforms
+# library stuff
 from lernomatic.data import hdf5_dataset
 from lernomatic.models.gan import dcgan
 from lernomatic.train.gan import dcgan_trainer
+from lernomatic.train import schedule
 from lernomatic.vis import vis_loss_history
 from lernomatic.util import math_util
+# command line options
+from lernomatic.options import options
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -24,18 +30,10 @@ GLOBAL_OPTS = dict()
 
 def main() -> None:
     if GLOBAL_OPTS['dataset'] is not None:
-        gan_data_transform = transforms.Compose([
-            transforms.Resize(GLOBAL_OPTS['image_size']),
-            transforms.CenterCrop(GLOBAL_OPTS['image_size']),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            transforms.ToTensor()
-        ])
-
         train_dataset = hdf5_dataset.HDF5Dataset(
             GLOBAL_OPTS['dataset'],
             feature_name = 'images',
             label_name = 'labels',
-            #transform = gan_data_transform
         )
     else:
         gan_data_transform = transforms.Compose([
@@ -87,11 +85,24 @@ def main() -> None:
         gan_trainer.load_checkpoint(GLOBAL_OPTS['load_checkpoint'])
 
     print(gan_trainer.device)
+
+    # Get a scheduler
+    lr_scheduler = schedule.DecayToEpoch(
+        non_decay_time = int(GLOBAL_OPTS['num_epochs'] // 2),
+        decay_length   = int(GLOBAL_OPTS['num_epochs'] // 2),
+        initial_lr     = GLOBAL_OPTS['learning_rate'],
+        final_lr       = 0.0
+    )
+    print('Created scheduler')
+    print(lr_scheduler)
+    gan_trainer.set_lr_scheduler(lr_scheduler)
+
     train_start_time = time.time()
     gan_trainer.train()
     train_end_time = time.time()
     train_total_time = train_end_time - train_start_time
     print('Total training time : %s' % str(timedelta(seconds = train_total_time)))
+
     # show the training results
     dcgan_fig, dcgan_ax = vis_loss_history.get_figure_subplots(1)
     vis_loss_history.plot_train_history_dcgan(
@@ -108,38 +119,17 @@ def main() -> None:
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
+    parser = options.get_trainer_options()
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
                         )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=20,
-                        help='Print output every N epochs'
-                        )
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=-1,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
-                        )
     # Network options
     parser.add_argument('--zvec-dim',
                         type=int,
-                        default=100,
+                        default=128,
                         help='Dimension of z vector'
                         )
     parser.add_argument('--g-num-filters',
@@ -157,42 +147,6 @@ def get_parser() -> argparse.ArgumentParser:
                         type=float,
                         default=0.5,
                         help='beta1 parameter for ADAM optimizer'
-                        )
-    # Training options
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        help='Epoch to start training from'
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=20,
-                        help='Epoch to stop training at'
-                        )
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--weight-decay',
-                        type=float,
-                        default=1e-4,
-                        help='Weight decay to use for optimizer'
-                        )
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=0.0002,     # NOTE: this is the rate from Radford, Metz and Chintala
-                        help='Learning rate for ADAM optimizer'
-                        )
-    parser.add_argument('--momentum',
-                        type=float,
-                        default=0.5,
-                        help='Momentum for ADAM'
-                        )
-    parser.add_argument('--grad-clip',
-                        type=float,
-                        default=5.0,
-                        help='Clip gradients at this (absolute) value'
                         )
     # Data options
     parser.add_argument('--image-size',
@@ -218,10 +172,9 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--checkpoint-name',
                         type=str,
-                        default='dcgan_celeba_',
+                        default='dcgan',
                         help='Name to prepend to all checkpoints'
                         )
-    # TODO : need to implement this
     parser.add_argument('--load-checkpoint',
                         type=str,
                         default=None,

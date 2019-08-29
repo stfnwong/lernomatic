@@ -12,6 +12,7 @@ import numpy as np
 
 EXP_DEFAULT_K = 1e-4
 # TODO : genericized to param sched?
+# TODO : docstrings for all the classes
 
 # ---- Learning Rate ---- #
 class LRScheduler(object):
@@ -529,12 +530,92 @@ class DecayWhenEpoch(LRScheduler):
         s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
         s.append('epoch : %.4f, lr decay : %.4f\n' % (self.num_epochs, self.lr_decay))
         s.append('\n')
+        return ''.join(s)
 
     def get_lr(self, cur_epoch: int) -> float:
         if (cur_epoch % self.num_epochs) == 0:
             self.learning_rate = self.learning_rate * self.lr_decay
 
         return self.learning_rate
+
+
+class DecayToEpoch(LRScheduler):
+    def __init__(self, **kwargs) -> None:
+        """
+        Arguments:
+            non_decay_time: (int)
+                Number of epochs to wait until applying the decay rate (default: 0)
+
+            initial_lr: (float)
+                Starting value of learning rate (default: 3e-4)
+
+            final_lr: (float)
+                Final value to decay towards. The learning rate is guarateed to not
+                go below this value no matter how long the training run lasts(default: 0.0)
+
+            decay_length: (int)
+                Number of epochs over which to apply the decay
+        """
+        self.non_decay_time :int   = kwargs.pop('non_decay_time', 0)
+        self.initial_lr     :float = kwargs.pop('initial_lr', 3e-4)
+        self.final_lr       :float = kwargs.pop('final_lr', 0.0)
+        self.decay_length   :int   = kwargs.pop('decay_length', 40)
+        super(DecayToEpoch, self).__init__(**kwargs)
+
+        self.lr_decay = (self.initial_lr - self.final_lr) / self.decay_length
+        self.learning_rate = self.initial_lr
+
+    def __repr__(self) -> str:
+        return 'DecayToEpoch'
+
+    def __str__(self) -> str:
+        s = []
+        s.append('DecayToEpoch learning rate scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.initial_lr, self.final_lr))
+        s.append('Decay starts after %d epochs\n' % self.non_decay_time)
+        s.append('Decay runs for %d epochs from %.4f -> %.4f \n' %\
+                 (self.decay_length, self.initial_lr, self.final_lr)
+        )
+        s.append('\n')
+
+        return ''.join(s)
+
+    def get_lr(self, cur_epoch:int) -> float:
+        if (cur_epoch > self.non_decay_time) and (cur_epoch < (self.non_decay_time + self.decay_length)):
+            self.learning_rate = self.learning_rate * self.lr_decay
+
+        return self.learning_rate
+
+#class DecayWhenEpochAfter(LRScheduler):
+#    """
+#    DecayWhenEpochAfter
+#    Decay the learning rate every num_epochs by lr_decay, but only after
+#    initial_epochs have passed
+#    """
+#    def __init__(self, **kwargs) -> None:
+#        self.initial_epochs:int = kwargs.pop('initial_epochs', 50)
+#        self.num_epochs : int   = kwargs.pop('num_epochs', 8)
+#        self.lr_decay   : float = kwargs.pop('lr_decay', 0.9)
+#        super(DecayWhenEpochAfter, self).__init__(**kwargs)
+#
+#    def __repr__(self) -> str:
+#        return 'DecayWhenEpochAfter'
+#
+#    def __str__(self) -> str:
+#        s = []
+#        s.append('DecayWhenEpochAfter learning rate scheduler\n')
+#        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+#        s.append('epoch : %.4f, lr decay : %.4f inital_epochs: %d \n' %\
+#                 (self.num_epochs, self.lr_decay, self.initial_epochs))
+#        s.append('\n')
+#
+#    def get_lr(self, cur_epoch: int) -> float:
+#        if cur_epoch < self.inital_epochs:
+#            return self.learning_rate
+#        if (cur_epoch % self.num_epochs) == 0:
+#            self.learning_rate = self.learning_rate * self.lr_decay
+#
+#        return self.learning_rate
 
 
 # ---- Momentum ----- #
