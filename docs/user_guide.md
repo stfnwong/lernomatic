@@ -1,5 +1,13 @@
 # LERNOMATIC USER GUIDE 
 
+LERNOMATIC is one of a dime-a-dozen PyTorch wrappers that people have surely written in the past few years. Like all the others, the real heavy lifting is being done by the PyTorch libraries (ATEN, torch, caffe2, and so on). The library implements various types of models, including 
+
+- Resnets
+- Variational Autoencoders
+- Deep Convolutional GANs
+
+and others (this file to be updated as more models are completed). The rest of this guide outlines the basic structure of the library and gives a brief overview of its idioms and how to extend it.
+
 
 ## Basic components of LERNOMATIC
 The two major components in LERNOMATIC are *models* and *trainers*. 
