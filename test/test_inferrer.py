@@ -77,7 +77,7 @@ class TestInferrer(unittest.TestCase):
         print('\n ...done')
 
         # run the forward pass
-        test_img, _ = next(iter(trainer.test_loader))
+        test_img, _ = next(iter(trainer.val_loader))
         pred = infer.forward(test_img)
         print('Complete prediction vector (shape: %s)' % (str(pred.shape)))
         print(str(pred))
@@ -123,9 +123,7 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose']:
         print('-------- GLOBAL OPTS (%s) --------' % str(sys.argv[0]))
         for k, v in GLOBAL_OPTS.items():
-            print('[%s] : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     sys.argv[1:] = args.unittest_args
     unittest.main()
-
-
