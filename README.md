@@ -6,6 +6,7 @@
 - *"Its' like a poor-man's fast.ai"* - Heremy Joward
 - *"Without Pytorch, this project is nothing"* - Jangqing Yia
 - *"This isn't a project that is really on my radar at the moment*" - Deff Jean
+- *"I briefly saw this a single time"* - Roseph Jedmon
 
 
 ![*An artists impression of a typical Lernomatic user in the wild*](docs/images/galaxy-brain.jpg)
