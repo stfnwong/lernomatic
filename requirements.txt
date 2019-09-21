@@ -13,3 +13,4 @@ numpy
 pillow
 librosa
 wave
+lmdb >= 0.97

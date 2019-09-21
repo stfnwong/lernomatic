@@ -19,9 +19,6 @@ from lernomatic.models import cifar
 # vis tools
 from lernomatic.vis import vis_loss_history
 
-# debug
-#from pudb import set_trace; set_trace()
-
 
 GLOBAL_OPTS = dict()
 
@@ -33,6 +30,7 @@ def get_figure_subplots(num_subplots:int=2) -> tuple:
         ax.append(sub_ax)
 
     return (fig, ax)
+
 
 
 class TestTrainer(unittest.TestCase):
@@ -460,6 +458,7 @@ class TestTrainer(unittest.TestCase):
         print('======== TestTrainer.test_history_extend <END>')
 
 
+
 # Entry point
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -499,7 +498,6 @@ if __name__ == '__main__':
         print('-------- GLOBAL OPTS (%s) --------' % str(sys.argv[0]))
         for k, v in GLOBAL_OPTS.items():
             print('\t[%s] : %s' % (str(k), str(v)))
-
 
     sys.argv[1:] = args.unittest_args
     unittest.main()

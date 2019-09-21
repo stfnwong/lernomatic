@@ -1,6 +1,8 @@
 """
 HDF5_DATASET
-Dataset for an HDF5 file
+Torch Dataset wrapper for an HDF5 file
+
+Stefan Wong 2019
 """
 
 import h5py
@@ -43,6 +45,7 @@ class HDF5Dataset(Dataset):
     """
     def __init__(self, filename: str, **kwargs) -> None:
         self.fp = h5py.File(filename, 'r')
+        self.filename      :str = filename
         # set dataset names
         self.feature_name  :str = kwargs.pop('feature_name', 'features')
         self.label_name    :str = kwargs.pop('label_name', 'labels')
@@ -51,6 +54,12 @@ class HDF5Dataset(Dataset):
 
     def __repr__(self) -> str:
         return 'HDF5Dataset'
+
+    def __str__(self) -> str:
+        s = []
+        s.append('HDF5Dataset [%s]\n' % str(self.filename))
+        s.append('feature <%s>, label <%s>\n' % (str(self.feature_name), str(self.label_name)))
+        return ''.join(s)
 
     def __del__(self) -> None:
         self.fp.close()
