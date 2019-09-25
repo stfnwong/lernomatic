@@ -68,7 +68,7 @@ class HDF5Dataset(Dataset):
         return len(self.fp[self.feature_name])
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        if idx > len(self)-1:
+        if idx >= len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
         feature = torch.FloatTensor(self.fp[self.feature_name][idx][:])

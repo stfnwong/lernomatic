@@ -17,7 +17,7 @@ from lernomatic.models.gan import dcgan
 from typing import Tuple
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 
 class DCGANTrainer(trainer.Trainer):
