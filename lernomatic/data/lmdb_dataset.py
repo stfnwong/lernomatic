@@ -19,9 +19,6 @@ from torch.utils.data import Dataset
 
 from typing import Tuple
 
-# debug
-#from pudb import set_trace; set_trace()
-
 
 class LMDBDataset(torch.utils.data.Dataset):
     def __init__(self, filename:str, **kwargs) -> None:
@@ -45,7 +42,7 @@ class LMDBDataset(torch.utils.data.Dataset):
             self.length = txn.stat()['entries']
 
         # cache all the keys in the dataset
-        cache_file = '__lmdb_dataset_' + ''.join(c for c in self.filename if c in string.ascii_letters)
+        cache_file = '__lmdb_dataset_' + ''.join(c for c in self.filename if c in string.ascii_letters) + '.cache'
         if os.path.isfile(cache_file):
             # load data from cache
             with open(cache_file, 'rb') as fp:
