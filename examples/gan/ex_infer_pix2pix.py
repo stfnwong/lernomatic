@@ -40,8 +40,6 @@ def translate_dataset(max_images:int=128) -> None:
     )
     inferrer.load_model(GLOBAL_OPTS['checkpoint'])
 
-    # Just assume for now that an ImageFolder dataset is fine
-    #dataset = datasets.ImageFolder(
     dataset = hdf5_dataset.HDF5Dataset(
         GLOBAL_OPTS['dataset_path'],
         feature_name = 'images',
