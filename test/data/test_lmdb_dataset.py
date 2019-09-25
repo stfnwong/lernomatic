@@ -43,7 +43,7 @@ class TestLMDBDataset(unittest.TestCase):
         for n, (image, target) in enumerate(dataset):
             print('Checking element [%d / %d]' % (n+1, len(dataset)), end='\r')
             self.assertEqual(True, isinstance(image, PIL.Image.Image))
-            self.assertEqual(None, target)          # TODO : change when loader has changed
+            self.assertEqual(0, target)          # TODO : change when loader has changed
 
             #print('Element %d : [%s] : %s' % (n, type(image), type(target)))
 

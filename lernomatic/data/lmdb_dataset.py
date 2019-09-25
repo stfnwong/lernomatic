@@ -5,9 +5,13 @@ Torch Dataset wrapper for an LMDB file
 Stefan Wong 2019
 """
 
+import os
 import io
 import lmdb
 import torch
+import string
+import pickle
+
 from torch.utils.data import Dataset
 import numpy as np
 import PIL
@@ -16,10 +20,9 @@ from torch.utils.data import Dataset
 from typing import Tuple
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
-# TODO : check the LSUN dataset source for ideas
 class LMDBDataset(torch.utils.data.Dataset):
     def __init__(self, filename:str, **kwargs) -> None:
         self.filename = filename
@@ -42,9 +45,17 @@ class LMDBDataset(torch.utils.data.Dataset):
             self.length = txn.stat()['entries']
 
         # cache all the keys in the dataset
-        # TODO : write cache to a file
-        with self.env.begin(write=False) as txn:
-            self.keys = [key for key, _ in txn.cursor()]
+        cache_file = '__lmdb_dataset_' + ''.join(c for c in self.filename if c in string.ascii_letters)
+        if os.path.isfile(cache_file):
+            # load data from cache
+            with open(cache_file, 'rb') as fp:
+                self.keys = pickle.load(fp)
+        else:
+            # cache keys and write to filec
+            with self.env.begin(write=False) as txn:
+                self.keys = [key for key, _ in txn.cursor()]
+            with open(cache_file, 'wb') as fp:
+                pickle.dump(self.keys, fp)
 
     def __repr__(self) -> str:
         return 'LMDBDataset [%s]' % str(self.filename)
@@ -63,10 +74,6 @@ class LMDBDataset(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return self.length
 
-    # TODO : also write __iter__ and __next__? This seems the more natural
-    # way to use LMDB files generally, but need to check if it works properly
-    # with the pytorch data loaders
-
     def __getitem__(self, idx:int) -> tuple:
         img = None
         target = 0
@@ -84,5 +91,4 @@ class LMDBDataset(torch.utils.data.Dataset):
             img = self.transform(img)
             target = torch.zeros(*img.shape)
 
-
-        return (img, target)        # TODO : target is always None here...
+        return (img, target)        # TODO : target should be the id?
