@@ -148,7 +148,7 @@ class DCGANTrainer(trainer.Trainer):
         for n, (data, _) in enumerate(self.train_loader):
             data = data.to(self.device)
             # Update D NETWORK
-            # Maximum log(D(x)) + log(1 - D(G(z)))
+            # Maximize log(D(x)) + log(1 - D(G(z)))
             self.discriminator.zero_grad()
 
             # make a tensor of real labels

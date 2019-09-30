@@ -90,7 +90,39 @@ class LRGANTrainer(trainer.Trainer):
             self.discriminator.send_to(self.device)
 
     def train_epoch(self) -> None:
-        pass
+
+        self.generator.set_train()
+        self.discriminator.set_train()
+
+        for batch_idx, (data, _) in enumerate(self.train_loader):
+            data = data.to(self.device)
+
+            # Update D network
+            # Maximize log(D(x)) + log(1 - D(G(z)))
+            self.discriminator.zero_grad()
+
+            # train the discriminator on some real data
+            label = torch.full((self.batch_size,), self.real_label, device=self.device)
+            real_out = self.discriminator.forward(data)
+            real_err_d = self.criterion(real_output, label)
+            real_err_d.backward()
+
+            d_x = real_out.data.mean()
+
+            # train the discriminator with some fake data
+            disc_noise = torch.randn(
+                self.batch_size,
+
+            #noise = torch.randn(
+            #    self.batch_size,
+            #    self.generator.get_zvec_dim(),
+            #    1, 1,
+            #    device = self.device
+            #)
+
+            #
+
+
 
     def val_epoch(self) -> None:
         pass
