@@ -8,6 +8,7 @@ Heavily adapted from the implementation at (https://github.com/junyanz/pytorch-C
 import random
 import torch
 
+
 class ImagePool(object):
     """
     Implements an image buffer that stores previously generated images, thus

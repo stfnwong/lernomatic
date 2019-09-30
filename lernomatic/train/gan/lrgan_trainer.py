@@ -1,18 +1,20 @@
 """
-DCGAN_TRAINER
-Trainer module for DCGANs
+LRGANTRAINER
+Trainer module for LRGAN experiments.
+See LR GAN paper (https://arxiv.org/pdf/1703.01560.pdf)
 
 Stefan Wong 2019
 """
 
-import importlib
 import torch
 import torch.nn as nn
+import importlib
 import numpy as np
+
 from lernomatic.train import trainer
 from lernomatic.models import common
-from lernomatic.models.gan import dcgan
-
+from lernomatic.models.gan import lrgan
+from lernomatic.util.gan import gan_util
 # type stuff
 from typing import Tuple
 
@@ -20,7 +22,7 @@ from typing import Tuple
 #from pudb import set_trace; set_trace()
 
 
-class DCGANTrainer(trainer.Trainer):
+class LRGANTrainer(trainer.Trainer):
     def __init__(self,
                  D:common.LernomaticModel=None,
                  G:common.LernomaticModel=None,
@@ -31,14 +33,14 @@ class DCGANTrainer(trainer.Trainer):
         self.real_label    :int   = kwargs.pop('real_label', 1)
         self.fake_label    :int   = kwargs.pop('fake_label', 0)
 
-        super(DCGANTrainer, self).__init__(None, **kwargs)
-        # use CELoss
+        super(LRGANTrainer, self).__init__(None, **kwargs)
+
         self.loss_function = 'BCELoss'
         self.optim_function = 'Adam'
         self.criterion = nn.BCELoss()
 
     def __repr__(self) -> str:
-        return 'DCGANTrainer'
+        return 'LRGANTrainer'
 
     def _init_dataloaders(self) -> None:
         if self.train_dataset is None:
@@ -87,135 +89,8 @@ class DCGANTrainer(trainer.Trainer):
         if self.discriminator is not None:
             self.discriminator.send_to(self.device)
 
-    def set_discriminator(self, D:common.LernomaticModel) -> None:
-        self.discriminator = D
-
-    def set_generator(self, G:common.LernomaticModel) -> None:
-        self.generator = G
-
-    def set_num_epochs(self, num_epochs:int) -> None:
-        if num_epochs > self.num_epochs:
-            # save temporary history
-            temp_g_loss_history = np.copy(self.g_loss_history)
-            temp_d_loss_history = np.copy(self.d_loss_history)
-            temp_loss_iter      = self.loss_iter
-            temp_iter_per_epoch = self.iter_per_epoch
-            temp_cur_epoch      = self.cur_epoch
-            self.num_epochs     = num_epochs
-            self._init_history()
-            # restore old history
-            self.g_loss_history[:len(temp_g_loss_history)] = temp_g_loss_history
-            self.d_loss_history[:len(temp_d_loss_history)] = temp_d_loss_history
-            self.loss_iter      = temp_loss_iter
-            self.cur_epoch      = temp_cur_epoch
-            self.iter_per_epoch = temp_iter_per_epoch
-        else:
-            self.num_epochs = num_epochs
-
-    def get_trainer_params(self) -> dict:
-        params = {
-            # labels
-            'fake_label' : self.fake_label,
-            'real_label' : self.real_label,
-            'beta1'      : self.beta1,
-        }
-        params.update(super(DCGANTrainer, self).get_trainer_params())
-        return params
-
-    def set_trainer_params(self, params:dict) -> None:
-        super(DCGANTrainer, self).set_trainer_params(params)
-        # set the subclass params
-        self.fake_label = params['fake_label']
-        self.real_label = params['real_label']
-        self.beta1      = params['beta1']
-
-    def set_learning_rate(self, lr: float, param_zero:bool=True) -> None:
-        if param_zero:
-            self.optim_d.param_groups[0]['lr'] = lr
-            self.optim_g.param_groups[0]['lr'] = lr
-        else:
-            for g in self.optim_d.param_groups:
-                g['lr'] = lr
-
-            for g in self.optim_g.param_groups:
-                g['lr'] = lr
-
-    # ==== TRAINING ==== #
     def train_epoch(self) -> None:
-        self.discriminator.set_train()
-        self.generator.set_train()
-
-        for n, (data, _) in enumerate(self.train_loader):
-            data = data.to(self.device)
-            # Update D NETWORK
-            # Maximum log(D(x)) + log(1 - D(G(z)))
-            self.discriminator.zero_grad()
-
-            # make a tensor of real labels
-            label = torch.full((self.batch_size,), self.real_label, device=self.device)
-            # compute loss on all-real batch
-            real_output = self.discriminator.forward(data)
-            errd_real = self.criterion(real_output, label)
-            errd_real.backward()
-
-            d_x = real_output.mean().item()
-
-            # Now train with an all-fake batch
-            noise = torch.randn(
-                self.batch_size,
-                self.generator.get_zvec_dim(),
-                1, 1,
-                device = self.device
-            )
-            # Update G network (maximize log(D(G(z))))
-            fake = self.generator.forward(noise)
-            label.fill_(self.fake_label)
-            # classify all the fake batches with D. Tensor is flattened here
-            disc_output = self.discriminator.forward(fake.detach()).view(-1)
-            # compute D's loss on the all fake batch
-            errd_fake = self.criterion(disc_output, label)
-            errd_fake.backward()
-            # compute gradients for this batch
-            dg_z1 = disc_output.mean().item()
-            err_d = errd_real + errd_fake
-            # optimize discriminator
-            self.optim_d.step()
-
-            # Update the Generator network
-            self.generator.zero_grad()
-            label.fill_(self.real_label)
-            output = self.discriminator.forward(fake).view(-1)
-            # compute G's loss based on the output from D
-            err_g = self.criterion(output, label)
-            # compute gradients for G and update
-            err_g.backward()
-            dg_z2 = output.mean().item()
-            self.optim_g.step()
-
-            # save history
-            self.d_loss_history[self.loss_iter] = err_d.item()
-            self.g_loss_history[self.loss_iter] = err_g.item()
-            self.loss_iter += 1
-
-            # display
-            if self.print_every > 0 and (self.loss_iter % self.print_every) == 0:
-                print('[TRAIN] :   Epoch      iteration      Loss (G)   Loss (D)')
-                print('          [%3d/%3d]  [%6d/%6d]  %.6f   %.6f  ' %\
-                      (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), err_d.item(), err_g.item())
-                )
-                print('[TRAIN] : D(x)     D(G(z)) [1/2]')
-                print('          %.4f      %.4f / %.4f' % (d_x, dg_z2, dg_z1))
-
-            # save
-            if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
-                ck_name = self.checkpoint_dir + self.checkpoint_name + \
-                    '_epoch_' + str(self.cur_epoch) + '_iter_' + str(self.loss_iter) + '.pkl'
-                if self.verbose:
-                    print('\t Saving checkpoint to file [%s]' % str(ck_name))
-                self.save_checkpoint(ck_name)
-
-        if self.lr_scheduler is not None:
-            self.apply_lr_schedule()
+        pass
 
     def val_epoch(self) -> None:
         pass

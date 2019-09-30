@@ -11,6 +11,7 @@ import torch.nn as nn
 import numpy as np
 from lernomatic.models import common
 from lernomatic.util import math_util
+# TODO: init the weights from gan_util
 
 # debug
 #from pudb import set_trace; set_trace()
