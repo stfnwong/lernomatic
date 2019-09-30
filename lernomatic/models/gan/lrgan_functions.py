@@ -32,7 +32,7 @@ class STNFunction(Function):
         if not canvas.is_cuda:
             raise ValueError('CUDA required for STNFunction.forward()')
 
-        stnm.BillinearSampler_BHWD_updateOutput_cuda(canvas, fgimg, fggrid, fgmask, output)
+        stnm.BillinearSampler_NHWD_updateOutput_cuda(canvas, fgimg, fggrid, fgmask, output)
 
         return output
 
@@ -51,7 +51,7 @@ class STNFunction(Function):
         d_fggrid  = d_fggrid.contiguous()
         d_fgmask  = d_fgmask.contiguous()
 
-        stnm.BillinearSampler_BHWD_updateGradInput_cuda(
+        stnm.BillinearSampler_NHWD_updateGradInput_cuda(
             self.canvas,
             self.fgimg,
             self.fggrid,
