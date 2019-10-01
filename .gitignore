@@ -4,3 +4,7 @@
 *.pkl
 # also ignore pngs in the root directiory
 *.png
+
+# Ignore pth/pkl files in root 
+*.pkl
+*.pth
