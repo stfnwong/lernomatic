@@ -70,6 +70,7 @@ class LRFinder(object):
         s = []
         s.append('%s (%.4f -> %.4f)\n' % (repr(self), self.lr_min, self.lr_max))
         s.append('Method [%s]\n' % str(self.lr_select_method))
+        s.append('avg_loss : %f, best_loss: %f, best_acc: %f\n' % (self.avg_loss, self.best_loss, self.best_acc))
         return ''.join(s)
 
     def __getstate__(self) -> dict:
@@ -268,10 +269,10 @@ class LogFinder(LRFinder):
     def __repr__(self) -> str:
         return 'LogFinder'
 
-    def __str__(self) -> str:
-        s = []
-        s.append('LogFinder. lr range [%f -> %f]\n' % (self.lr_min, self.lr_max))
-        return ''.join(s)
+    #def __str__(self) -> str:
+    #    s = []
+    #    s.append('LogFinder. lr range [%f -> %f]\n' % (self.lr_min, self.lr_max))
+    #    return ''.join(s)
 
     def find(self) -> tuple:
         """

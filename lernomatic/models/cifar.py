@@ -14,9 +14,9 @@ from lernomatic.models import common
 class CIFAR10Net(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:
         self.net = CIFAR10Module()        # Put **kwargs here if required
-        self.import_path = 'lernomatic.models.cifar'
-        self.model_name = 'CIFAR10Net'
-        self.module_name = 'CIFAR10Module'
+        self.import_path        = 'lernomatic.models.cifar'
+        self.model_name         = 'CIFAR10Net'
+        self.module_name        = 'CIFAR10Module'
         self.module_import_path = 'lernomatic.models.cifar'
 
     def __repr__(self) -> str:

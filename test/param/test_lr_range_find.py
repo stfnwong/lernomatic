@@ -1,7 +1,6 @@
 """
-TEST_LR_RANGE
-Unit tests that are just for the rangefinding components of the
-LRFinder class.
+TEST_LR_RANGE_FIND
+Unit tests that are just for the rangefinding components of the LRFinder class.
 
 Stefan Wong 2019
 """
@@ -12,9 +11,13 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+# timing stuff
+import time
+from datetime import timedelta
 # unit(s) under test
 from lernomatic.param import lr_common
 from lernomatic.train import cifar_trainer
+from lernomatic.models import common
 from lernomatic.models import cifar
 from lernomatic.vis import vis_loss_history
 
@@ -36,33 +39,40 @@ def get_trainer(model:common.LernomaticModel=None,
     trainer = cifar_trainer.CIFAR10Trainer(
         model,
         # turn off checkpointing
-        save_every = save_every,
-        print_every = print_every,
+        save_every    = save_every,
+        print_every   = print_every,
         # data options
-        batch_size = batch_size,
+        batch_size    = batch_size,
         # training options
-        learning_rate = GLOBAL_TEST_PARAMS['test_learning_rate'],
-        num_epochs = GLOBAL_TEST_PARAMS['train_num_epochs'],
-        device_id = GLOBAL_OPTS['device_id'],
-        verbose = GLOBAL_OPTS['verbose']
+        learning_rate = learning_rate,
+        num_epochs    = num_epochs,
+        device_id     = device_id,
+        verbose       = verbose
     )
 
     return trainer
 
 
-def get_lr_finder(trainer, find_type:str='LogFinder') -> lr_common.LRFinder:
+def get_lr_finder(trainer,
+                  find_type:str='LogFinder',
+                  lr_min:float=1e-6,
+                  lr_max:float=1.0,
+                  lr_select_method:str='max_acc',
+                  find_num_epochs:int=8,
+                  find_explode_thresh:float=8.0,
+                  find_print_every:int=32) -> lr_common.LRFinder:
     if not hasattr(lr_common, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
     lr_find_obj = getattr(lr_common, find_type)
     lr_finder = lr_find_obj(
         trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        lr_select_method = GLOBAL_OPTS['lr_select_method'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
+        lr_min           = lr_min,
+        lr_max           = lr_max,
+        lr_select_method = lr_select_method,
+        num_epochs       = find_num_epochs,
+        explode_thresh   = find_explode_thresh,
+        print_every      = find_print_every
     )
 
     return lr_finder
@@ -72,6 +82,30 @@ def get_lr_finder(trainer, find_type:str='LogFinder') -> lr_common.LRFinder:
 class TestLRFinderRange(unittest.TestCase):
     def test_sobel_loss(self) -> None:
         print('======== TestLRFinderRange.test_sobel_loss ')
+
+        test_finder_history = 'checkpoint/lr_find_sobel_loss.pth'
+
+        # Just use a simple CIFAR10 network for this
+        model = cifar.CIFAR10Net()
+        trainer = get_trainer(
+            model,
+            device_id  = GLOBAL_OPTS['device_id'],
+            batch_size = GLOBAL_OPTS['batch_size']
+        )
+
+        # defaults are fine here
+        lr_finder = get_lr_finder(trainer, lr_select_method='max_acc')
+        find_start_time = time.time()
+        lr_find_min, lr_find_max = lr_finder.find()
+        find_end_time = time.time()
+        find_total_time = find_end_time - find_start_time
+
+        lr_finder.save(test_finder_history)
+
+        print('Found learning rate range %.4f -> %.4f in %s' %\
+              (lr_find_min, lr_find_max, str(timedelta(seconds = find_total_time)))
+        )
+
 
 
 
