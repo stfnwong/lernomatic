@@ -87,7 +87,7 @@ class CaptionInferrer(inferrer.Inferrer):
             gate = decoder.sigmoid(decoder.f_beta(h))
             atten_w_embed = gate * atten_w_embed
 
-            h, c = self.decoder.decode_step(torch.cat([embeddings, atten_w_embed], dim=1), (h ,c))
+            h, c = self.decoder.lstm(torch.cat([embeddings, atten_w_embed], dim=1), (h ,c))
             scores = self.decoder.linear(h)
             scores = F.log_softmax(scores, dim=1)
 

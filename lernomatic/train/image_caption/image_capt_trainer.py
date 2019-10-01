@@ -218,7 +218,7 @@ class ImageCaptTrainer(trainer.Trainer):
 
             # forward pass
             imgs = self.encoder.forward(imgs)
-            scores, caps_sorted, decode_lengths, alphas,  sort_ind = self.decoder.forward(imgs, caps, caplens)
+            scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder.forward(imgs, caps, caplens)
             # remove the <start> token from the output captions
             targets        = caps_sorted[:, 1:]
             scores_packed  = pack_padded_sequence(scores,  decode_lengths, batch_first=True)
@@ -438,6 +438,9 @@ class ImageCaptTrainer(trainer.Trainer):
             # decode
             step = 1
             max_step = 50
+
+            # This implementation is bogus since we have to know all the
+            # internals of the decoder..
             while step < max_step:
                 embeddings = self.decoder.embedding(k_prev_words).squeeze(1)        # (s, embed_dim)
                 awe, _ = self.decoder.attention(enc_out, h)                         # attention-weighted embeddings

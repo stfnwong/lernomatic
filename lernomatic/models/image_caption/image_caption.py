@@ -11,6 +11,7 @@ import importlib
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from lernomatic.models import common
+from lernomatic.models.attention import linear_atten
 # caption utils
 from lernomatic.util import caption_util
 
@@ -73,7 +74,7 @@ class DecoderAtten(common.LernomaticModel):
         return self.net.f_beta(X)
 
     def decode_step(self, X:torch.Tensor) -> torch.Tensor:
-        return self.net.decode_step(X)
+        return self.net.lstm(X)
 
     def get_params(self) -> dict:
         return {
@@ -96,24 +97,6 @@ class DecoderAtten(common.LernomaticModel):
         self.net = mod()
         self.net.set_params(params['atten_params'])
         self.net.load_state_dict(params['model_state_dict'])
-
-
-class AttentionNet(common.LernomaticModel):
-    """
-    Lernomatic model wrapper for Attention Network
-    """
-    def __init__(self, enc_dim: int=1, dec_dim:int = 1, atten_dim:int=1) -> None:
-        self.net = AttentionNetModule(enc_dim, dec_dim, atten_dim)
-        self.model_name = 'AttentionNet'
-        self.module_name = 'AttentionNetModule'
-        self.import_path = 'lernomatic.models.image_caption.image_caption'
-        self.module_import_path = 'lernomatic.models.image_caption.image_caption'
-
-    def __repr__(self) -> str:
-        return 'AttentionNet'
-
-    def forward(self, enc_feature, dec_hidden) -> tuple:
-        return self.net(enc_feature, dec_hidden)
 
 
 class Encoder(common.LernomaticModel):
@@ -164,65 +147,6 @@ class Encoder(common.LernomaticModel):
 
 
 # ======== MODULES ======== #
-class AttentionNetModule(nn.Module):
-    def __init__(self, enc_dim=1, dec_dim=1, atten_dim=1) -> None:
-        """
-        ATTENTION NETWORK
-
-        Args:
-            enc_dim   - size of encoded image features
-            dec_dim   - size of decoder's RNN
-            atten_dim - size of the attention network
-        """
-        super(AttentionNetModule, self).__init__()
-        # save dims for __str__
-        self.enc_dim   = enc_dim
-        self.dec_dim   = dec_dim
-        self.atten_dim = atten_dim
-        self._init_network()
-
-    def __repr__(self) -> str:
-        return 'AttentionNet-%d' % self.atten_dim
-
-    def __str__(self) -> str:
-        s = []
-        s.append('Attention Network\n')
-        s.append('Encoder dim: %d, Decoder dim: %d, Attention dim :%d\n' %\
-                 (self.enc_dim, self.dec_dim, self.atten_dim))
-        return ''.join(s)
-
-    def _init_network(self) -> None:
-        self.enc_att  = nn.Linear(self.enc_dim, self.atten_dim)    # transform encoded feature
-        self.dec_att  = nn.Linear(self.dec_dim, self.atten_dim)    # transform decoder output (hidden state)
-        self.full_att = nn.Linear(self.atten_dim, 1)               # compute values to be softmaxed
-        self.relu     = nn.ReLU()
-        self.softmax  = nn.Softmax(dim=1)       # softmax to calculate weights
-
-    def forward(self, enc_feature, dec_hidden) -> tuple:
-        att1  = self.enc_att(enc_feature)        # shape : (N, num_pixels, atten_dim)
-        att2  = self.dec_att(dec_hidden)         # shape : (N, atten_dim)
-        att   = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)
-        alpha = self.softmax(att)               # shape : (N, num_pixels)
-        # compute the attention weighted encoding
-        atten_w_enc = (enc_feature * alpha.unsqueeze(2)).sum(dim=1)     # shape : (N, enc_dim)
-
-        return (atten_w_enc, alpha)
-
-    def get_params(self) -> dict:
-        params = {
-            'enc_dim' : self.enc_dim,
-            'dec_dim' : self.dec_dim,
-            'atten_dim' : self.atten_dim
-        }
-        return params
-
-    def set_params(self, params:dict) -> None:
-        self.enc_dim   = params['enc_dim']
-        self.dec_dim   = params['dec_dim']
-        self.atten_dim = params['atten_dim']
-        self._init_network()
-
-
 class DecoderAttenModule(nn.Module):
     def __init__(self, atten_dim=1, embed_dim=1,
                  dec_dim=1, vocab_size=1,
@@ -261,7 +185,7 @@ class DecoderAttenModule(nn.Module):
         # Create internal layers
         self.embedding   = nn.Embedding(self.vocab_size, self.embed_dim)
         self.drop        = nn.Dropout(p=self.dropout)
-        self.decode_step = nn.LSTMCell(self.embed_dim + self.enc_dim, self.dec_dim, bias=True)     # decoding LSTM cell
+        self.lstm = nn.LSTMCell(self.embed_dim + self.enc_dim, self.dec_dim, bias=True)     # decoding LSTM cell
         # linear layer to find initial hidden state of LSTM
         self.init_h      = nn.Linear(self.enc_dim, self.dec_dim)
         # linear layer to find initial cell state of LSTM
@@ -272,7 +196,10 @@ class DecoderAttenModule(nn.Module):
         # linear layer to find scores over vocab
         self.fc          = nn.Linear(self.dec_dim, self.vocab_size)
 
-    def forward(self, enc_feature, enc_capt, capt_lengths) -> tuple:
+    def forward(self,
+                enc_feature:torch.Tensor,
+                enc_capt:torch.Tensor,
+                capt_lengths:torch.Tensor) -> tuple:
         """
         FOWARD PASS
 
@@ -286,12 +213,11 @@ class DecoderAttenModule(nn.Module):
             (scores for vocab, sorted encoded captions, decode lengths, weights, sort indices)
 
         """
-        N          = enc_feature.size(0)             # batch size
-        enc_dim    = enc_feature.size(-1)
-        vocab_size = self.vocab_size
-
+        N           = enc_feature.size(0)             # batch size
+        enc_dim     = enc_feature.size(-1)
+        vocab_size  = self.vocab_size
         # flatten image
-        enc_feature = enc_feature.view(N, -1, enc_dim)  # aka : (N, num_pixels, enc_dim)
+        enc_feature = enc_feature.view(N, -1, enc_dim)  # shape : (N, num_pixels, enc_dim)
         num_pixels  = enc_feature.size(1)
 
         # pack_padded_sequence expects a sorted tensor (ie: longest to
@@ -317,24 +243,59 @@ class DecoderAttenModule(nn.Module):
         #    decoder state
         # 2) Generate a new word in the decoder with the previous word and the
         #    attention-weighted encoding
+        #for t in range(max(decode_lengths)):
+        #    batch_size_t = sum([l > t for l in decode_lengths])
+        #    atten_w_enc, alpha = self.atten_net(
+        #        enc_feature[:batch_size_t],
+        #        h[:batch_size_t]
+        #    )
+        #    gate = self.sigmoid(self.f_beta(h[:batch_size_t]))   # gating scalar (batch_size_t, enc_dim)
+        #    atten_w_enc = atten_w_enc * gate
+        #    h, c = self.lstm(
+        #        torch.cat([embeddings[:batch_size_t, t, :], atten_w_enc], dim=1),
+        #        (h[:batch_size_t], c[:batch_size_t])
+        #    )   # shape is (batch_size_t, vocab_size)
+
+        #    preds = self.fc(self.drop(h))
+        #    predictions[:batch_size_t, t, :] = preds
+        #    alphas[:batch_size_t, t, ]       = alpha
+
+
         for t in range(max(decode_lengths)):
             batch_size_t = sum([l > t for l in decode_lengths])
-            atten_w_enc, alpha = self.atten_net(
-                enc_feature[:batch_size_t],
-                h[:batch_size_t]
+            pred, alpha, h, c = self.lstm_step(
+                batch_size_t,
+                enc_feature,
+                embeddings,
+                h, c
             )
-            gate = self.sigmoid(self.f_beta(h[:batch_size_t]))   # gating scalar (batch_size_t, enc_dim)
-            atten_w_enc = atten_w_enc * gate
-            h, c = self.decode_step(
-                torch.cat([embeddings[:batch_size_t, t, :], atten_w_enc], dim=1),
-                (h[:batch_size_t], c[:batch_size_t])
-            )   # shape is (batch_size_t, vocab_size)
 
-            preds = self.fc(self.drop(h))
-            predictions[:batch_size_t, t, :] = preds
-            alphas[:batch_size_t, t, ]       = alpha
+            predictions[0 : batch_size_t, t, :] = pred
+            alphas[0 : batch_size_t, t, ]       = alpha
+
 
         return (predictions, enc_capt, decode_lengths, alphas, sort_ind)
+
+    def lstm_step(self,
+                  batch_size:int,
+                  enc_feature:torch.Tensor,
+                  embeddings:torch.Tensor,
+                  hidden:torch.Tensor,
+                  cell:torch.Tensor) -> tuple:
+
+        # Get the attention weighting
+        atten_w_enc, alpha = self.atten_net(enc_feature[0 : batch_size], hidden[0 : batch_size])
+        # concat the embeddings with the attention-weighted encodings and
+        # return the hidden and cell states (Actually this comment is a bit
+        # redundant, better to explain the actual rationale behind this
+        # implementation)
+        h, c = self.lstm(
+            torch.cat([embeddings[0 : batch_size, t, :], atten_w_enc], dim=1),
+            (hidden[0 : batch_size], cell[0 : batch_size])          # shape : (batch_size, vocab_size)
+        )
+        pred = self.fc(self.drop(h))
+
+        return (pred, alpha, h, c)
 
     def forward_step(self, enc_feature:torch.Tensor) -> torch.Tensor:
 
@@ -383,7 +344,7 @@ class DecoderAttenModule(nn.Module):
         self.atten_net   = self.atten_net.to(device)
         self.embedding   = self.embedding.to(device)
         self.drop        = self.drop.to(device)
-        self.decode_step = self.decode_step.to(device)
+        self.lstm        = self.lstm.to(device)
         self.init_h      = self.init_h.to(device)
         self.init_c      = self.init_c.to(device)
         self.f_beta      = self.f_beta.to(device)
@@ -405,6 +366,7 @@ class DecoderAttenModule(nn.Module):
         Initialize the decoders hidden state
         """
         mean_enc_out = enc_feature.mean(dim=1)
+        # Note that these are (Linear) layers  and not methods or attributes
         h = self.init_h(mean_enc_out)
         c = self.init_c(mean_enc_out)
 
