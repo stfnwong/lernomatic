@@ -14,6 +14,7 @@ from torchvision import datasets
 from torchvision import transforms
 # library stuff
 from lernomatic.data import hdf5_dataset
+from lernomatic.data import lmdb_dataset
 from lernomatic.models.gan import dcgan
 from lernomatic.train.gan import dcgan_trainer
 from lernomatic.train import schedule
@@ -24,25 +25,39 @@ from lernomatic.util.gan import gan_util
 from lernomatic.options import options
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
 
 def main() -> None:
+    # Transform for GAN data
+    gan_data_transform = transforms.Compose([
+        transforms.Resize(GLOBAL_OPTS['image_size']),
+        transforms.CenterCrop(GLOBAL_OPTS['image_size']),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
+
     if GLOBAL_OPTS['dataset'] is not None:
-        train_dataset = hdf5_dataset.HDF5Dataset(
-            GLOBAL_OPTS['dataset'],
-            feature_name = 'images',
-            label_name = 'labels',
-        )
+        # Assume the dataset type based on the extension
+        if ('h5' in GLOBAL_OPTS['dataset']) or ('hdf5' in GLOBAL_OPTS['dataset']):
+            print('Reading file [%s] as HDF5Dataset' % str(GLOBAL_OPTS['dataset']))
+            train_dataset = hdf5_dataset.HDF5Dataset(
+                GLOBAL_OPTS['dataset'],
+                feature_name = 'images',
+                label_name = 'labels',
+            )
+        else:
+            print('Reading file [%s] as LMDBDataset' % str(GLOBAL_OPTS['dataset']))
+            # For now we just assume that this is LMDB, but in practice I
+            # imagine that this isn't going to be overly robust
+            train_dataset = lmdb_dataset.LMDBDataset(
+                GLOBAL_OPTS['dataset'],
+                transform = gan_data_transform,
+                verbose = GLOBAL_OPTS['verbose']
+            )
     else:
-        gan_data_transform = transforms.Compose([
-            transforms.Resize(GLOBAL_OPTS['image_size']),
-            transforms.CenterCrop(GLOBAL_OPTS['image_size']),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ])
         train_dataset = datasets.ImageFolder(
             root=GLOBAL_OPTS['dataset_root'],
             transform = gan_data_transform
@@ -87,6 +102,7 @@ def main() -> None:
     )
 
     if GLOBAL_OPTS['load_checkpoint'] is not None:
+        print('Loading checkpoint data from file [%s]' % str(GLOBAL_OPTS['load_checkpoint']))
         gan_trainer.load_checkpoint(GLOBAL_OPTS['load_checkpoint'])
 
     print(gan_trainer.device)

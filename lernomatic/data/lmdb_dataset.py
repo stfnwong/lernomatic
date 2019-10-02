@@ -11,6 +11,7 @@ import lmdb
 import torch
 import string
 import pickle
+from tqdm import tqdm
 
 from torch.utils.data import Dataset
 import numpy as np
@@ -28,6 +29,7 @@ class LMDBDataset(torch.utils.data.Dataset):
         # label keys?
         self.label:str       = kwargs.pop('label', 'labels')
         self.feature:str     = kwargs.pop('feature', 'features')
+        self.verbose:bool    = kwargs.pop('verbose', False)
         self.transform       = kwargs.pop('transform', None)
 
         self.cur_idx: int = 0
@@ -44,15 +46,24 @@ class LMDBDataset(torch.utils.data.Dataset):
         # cache all the keys in the dataset
         cache_file = '__lmdb_dataset_' + ''.join(c for c in self.filename if c in string.ascii_letters) + '.cache'
         if os.path.isfile(cache_file):
+            if self.verbose:
+                print('Loading cache data from file [%s]' % str(cache_file))
             # load data from cache
             with open(cache_file, 'rb') as fp:
                 self.keys = pickle.load(fp)
         else:
+            if self.verbose:
+                print('Generating LMDB cache file [%s]...' % str(cache_file))
+
             # cache keys and write to filec
             with self.env.begin(write=False) as txn:
-                self.keys = [key for key, _ in txn.cursor()]
+                self.keys = [key for key, _ in tqdm(txn.cursor(), unit='keys', total=self.length)]
+
             with open(cache_file, 'wb') as fp:
                 pickle.dump(self.keys, fp)
+
+        if self.verbose:
+            print('\n...OK')
 
     def __repr__(self) -> str:
         return 'LMDBDataset [%s]' % str(self.filename)
