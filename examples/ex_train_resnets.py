@@ -6,21 +6,22 @@ Stefan Wong 2019
 """
 
 import argparse
+import time
+from datetime import timedelta
 from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
+from lernomatic.options import options
 
-# debug
-#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-def main():
 
+def main() -> None:
     # Get a model
     model = resnets.WideResnet(
         depth=GLOBAL_OPTS['num_layers'],
         num_classes=GLOBAL_OPTS['num_classes'],
-        w_factor=GLOBAL_OPTS['widen_factor']
+        w_factor = GLOBAL_OPTS['widen_factor']
     )
 
     # Get a trainer
@@ -43,40 +44,26 @@ def main():
         save_every = GLOBAL_OPTS['save_every'],
         verbose = GLOBAL_OPTS['verbose']
     )
-
+    # train the model
+    train_start_time = time.time()
     trainer.train()
+    train_end_time = time.time()
+    train_total_time = train_end_time - train_start_time
+
+    print('Total training time [%s] (%d epochs)  %s' %\
+            (repr(trainer), trainer.cur_epoch,
+             str(timedelta(seconds = train_total_time)))
+    )
 
 
-def get_parser():
-    parser = argparse.ArgumentParser()
-    # General opts
+def get_parser() -> argparse.ArgumentParser:
+    parser = options.get_trainer_options()
+
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
                         )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=100,
-                        help='Print output every N epochs'
-                        )
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=1000,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
-                        )
-    # Network options
     parser.add_argument('--num-layers',
                         type=int,
                         default=28,
@@ -92,42 +79,6 @@ def get_parser():
                         default=1,
                         help='Widen factor for wide Resnet'
                         )
-    # Training options
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        help='Epoch to start training from'
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=20,
-                        help='Epoch to stop training at'
-                        )
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--weight-decay',
-                        type=float,
-                        default=1e-4,
-                        help='Weight decay to use for optimizer'
-                        )
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=1e-3,
-                        help='Learning rate for optimizer'
-                        )
-    parser.add_argument('--momentum',
-                        type=float,
-                        default=0.5,
-                        help='Momentum for SGD'
-                        )
-    parser.add_argument('--grad-clip',
-                        type=float,
-                        default=5.0,
-                        help='Clip gradients at this (absolute) value'
-                        )
     # Data options
     parser.add_argument('--checkpoint-dir',
                         type=str,
@@ -138,16 +89,6 @@ def get_parser():
                         type=str,
                         default='resnet-cifar10',
                         help='Name to prepend to all checkpoints'
-                        )
-    parser.add_argument('--load-checkpoint',
-                        type=str,
-                        default=None,
-                        help='Load a given checkpoint'
-                        )
-    parser.add_argument('--overwrite',
-                        action='store_true',
-                        default=False,
-                        help='Overwrite existing processed data files'
                         )
 
     return parser
@@ -162,7 +103,7 @@ if __name__ == '__main__':
 
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
-        for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+        for k, v in GLOBAL_OPTS.items():
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()

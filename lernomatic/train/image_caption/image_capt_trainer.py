@@ -355,7 +355,7 @@ class ImageCaptTrainer(trainer.Trainer):
         avg_val_loss = val_loss / len(self.val_loader)
 
         print('[TEST]  : Avg. Test Loss,  BLEU-1  BLEU-2  BLEU-3  BLEU-4')
-        print('               %.4f      %.4f %.4f %.4f %.4f' %\
+        print('               %.4f      %.4f  %.4f  %.4f  %.4f' %\
               (avg_val_loss,
                self.acc_history[0, self.acc_iter],
                self.acc_history[1, self.acc_iter],

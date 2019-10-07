@@ -15,8 +15,6 @@ import torch
 from lernomatic.train import mnist_trainer
 from lernomatic.models import mnist as mnist_net
 
-# debug
-#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -57,8 +55,9 @@ class TestMNISTTrainer(unittest.TestCase):
 
         # Make a new trainer and load all parameters into that
         # I guess we need to put some kind of loader and model here...
+        new_model = mnist_net.MNISTNet()
         dst_tr = mnist_trainer.MNISTTrainer(
-            model,
+            new_model,
             device_id = GLOBAL_OPTS['device_id']
         )
         dst_tr.load_checkpoint(test_checkpoint_name)

@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 
 # modules under test
 from lernomatic.train import schedule
-from lernomatic.train import cifar10_trainer
-from lernomatic.models import cifar10
+from lernomatic.train import cifar_trainer
+from lernomatic.models import cifar
 # visualizations
 from lernomatic.vis import vis_loss_history
 
@@ -52,8 +52,8 @@ def get_trainer(learning_rate = None):
     else:
         test_learning_rate = GLOBAL_OPTS['learning_rate']
 
-    model = cifar10.CIFAR10Net()
-    trainer = cifar10_trainer.CIFAR10Trainer(
+    model = cifar.CIFAR10Net()
+    trainer = cifar_trainer.CIFAR10Trainer(
         model,
         # data options
         batch_size = GLOBAL_OPTS['batch_size'],
@@ -160,7 +160,7 @@ class TestTriangularScheduler(unittest.TestCase):
         test_lr_max = 0.01
         test_stepsize = 8 * len(trainer.train_loader)
         test_start_iter = 0
-        lr_scheduler = schedule.TriangularLRScheduler(
+        lr_scheduler = schedule.TriangularScheduler(
             lr_min = test_lr_min,
             lr_max = test_lr_max,
             stepsize = test_stepsize,
@@ -227,18 +227,18 @@ class TestEpochSetScheduler(unittest.TestCase):
             )
 
         # no zero key, should raise ValueError during check
-        schedule = {
+        epoch_schedule = {
             10: 0.002,
             20: 0.002,
             30: 0.002
         }
         with self.assertRaises(ValueError):
             lr_schedule = schedule.EpochSetScheduler(
-                schedule
+                epoch_schedule
             )
 
         # one of the keys is not an integer
-        schedule = {
+        epoch_schedule = {
             0 : 0.004,
             10: 0.002,
             20: 0.002,
@@ -247,9 +247,9 @@ class TestEpochSetScheduler(unittest.TestCase):
         }
         with self.assertRaises(ValueError):
             lr_schedule = schedule.EpochSetScheduler(
-                schedule
+                epoch_schedule
             )
-        schedule = {
+        epoch_schedule = {
             0 : 0.004,
             10: 0.002,
             20: 0.002,
@@ -258,7 +258,7 @@ class TestEpochSetScheduler(unittest.TestCase):
         }
 
         lr_schedule = schedule.EpochSetScheduler(
-            schedule
+            epoch_schedule
         )
         self.assertEqual(False, lr_schedule.lr_value)
         print(lr_schedule)
@@ -273,7 +273,7 @@ class TestEpochSetScheduler(unittest.TestCase):
         # get a trainer
         trainer = get_trainer()
         # get a (valid) schedule
-        schedule = {
+        epoch_schedule = {
             0  : 0.01,
             5  : 0.001,
             20 : 0.0008,
@@ -282,15 +282,14 @@ class TestEpochSetScheduler(unittest.TestCase):
         train_num_epochs = 50
 
         lr_schedule = schedule.EpochSetScheduler(
-            schedule,
+            epoch_schedule,
             lr_value = True
         )
         print(lr_schedule)
         print('Setting schedule in trainer and training')
-        trainer.set_schedule(lr_schedule)
-        trainer.num_epochs = train_num_epochs
-        trainer.checkpoint_name = test_checkpoint_name
-        trainer.save_every = test_save_every
+        trainer.set_lr_scheduler(lr_schedule)
+        trainer.set_num_epochs(train_num_epochs)
+        trainer.save_every = 0
         trainer.print_every = 200
         trainer.train()
 

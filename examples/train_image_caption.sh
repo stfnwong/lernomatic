@@ -11,7 +11,7 @@ COCO_WORDMAP="hdf5/coco_wordmap.json"
 COCO_OVERFIT_TRAIN="hdf5/coco-overfit-train.h5"
 COCO_OVERFIT_VAL="hdf5/coco-overfit-val.h5"
 # Training
-INITIAL_BATCH_SIZE=16
+INITIAL_BATCH_SIZE=32
 FINE_TUNE_BATCH_SIZE=32
 INITIAL_NUM_EPOCHS=20
 # Device
