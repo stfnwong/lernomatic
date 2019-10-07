@@ -1,6 +1,7 @@
 """
 LINEAR_ATTEN
 Attention network consisting of Linear/Fully-Connected Layers
+TODO: Actually this should be renmed as the Bahdanau Attention network (or soft attention network)
 
 Stefan Wong 2019
 """
@@ -16,16 +17,16 @@ class AttentionNet(common.LernomaticModel):
     """
     def __init__(self, enc_dim: int=1, dec_dim:int = 1, atten_dim:int=1) -> None:
         self.net = AttentionNetModule(enc_dim, dec_dim, atten_dim)
-        self.model_name = 'AttentionNet'
-        self.module_name = 'AttentionNetModule'
-        self.import_path = 'lernomatic.models.image_caption.image_caption'
+        self.model_name         = 'AttentionNet'
+        self.module_name        = 'AttentionNetModule'
+        self.import_path        = 'lernomatic.models.image_caption.image_caption'
         self.module_import_path = 'lernomatic.models.image_caption.image_caption'
 
     def __repr__(self) -> str:
         return 'AttentionNet'
 
-    def forward(self, enc_feature, dec_hidden) -> tuple:
-        return self.net(enc_feature, dec_hidden)
+    def forward(self, enc_feature, hidden) -> tuple:
+        return self.net(enc_feature, hidden)
 
 
 class AttentionNetModule(nn.Module):
@@ -62,9 +63,9 @@ class AttentionNetModule(nn.Module):
         self.relu     = nn.ReLU()
         self.softmax  = nn.Softmax(dim=1)       # softmax to calculate weights
 
-    def forward(self, enc_feature:torch.Tensor, dec_hidden:torch.Tensor) -> tuple:
+    def forward(self, enc_feature:torch.Tensor, hidden:torch.Tensor) -> tuple:
         att1  = self.enc_att(enc_feature)        # shape : (N, num_pixels, atten_dim)
-        att2  = self.dec_att(dec_hidden)         # shape : (N, atten_dim)
+        att2  = self.dec_att(hidden)             # shape : (N, atten_dim)
         att   = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)
         alpha = self.softmax(att)                # shape : (N, num_pixels)
         # compute the attention weighted encoding

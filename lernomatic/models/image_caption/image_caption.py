@@ -181,11 +181,11 @@ class DecoderAttenModule(nn.Module):
 
     def _init_network(self) -> None:
         # Create an Attention network
-        self.atten_net   = AttentionNetModule(self.enc_dim, self.dec_dim, self.atten_dim)
+        self.atten_net   = linear_atten.AttentionNetModule(self.enc_dim, self.dec_dim, self.atten_dim)
         # Create internal layers
         self.embedding   = nn.Embedding(self.vocab_size, self.embed_dim)
         self.drop        = nn.Dropout(p=self.dropout)
-        self.lstm = nn.LSTMCell(self.embed_dim + self.enc_dim, self.dec_dim, bias=True)     # decoding LSTM cell
+        self.lstm        = nn.LSTMCell(self.embed_dim + self.enc_dim, self.dec_dim, bias=True)     # decoding LSTM cell
         # linear layer to find initial hidden state of LSTM
         self.init_h      = nn.Linear(self.enc_dim, self.dec_dim)
         # linear layer to find initial cell state of LSTM
@@ -243,59 +243,51 @@ class DecoderAttenModule(nn.Module):
         #    decoder state
         # 2) Generate a new word in the decoder with the previous word and the
         #    attention-weighted encoding
-        #for t in range(max(decode_lengths)):
-        #    batch_size_t = sum([l > t for l in decode_lengths])
-        #    atten_w_enc, alpha = self.atten_net(
-        #        enc_feature[:batch_size_t],
-        #        h[:batch_size_t]
-        #    )
-        #    gate = self.sigmoid(self.f_beta(h[:batch_size_t]))   # gating scalar (batch_size_t, enc_dim)
-        #    atten_w_enc = atten_w_enc * gate
-        #    h, c = self.lstm(
-        #        torch.cat([embeddings[:batch_size_t, t, :], atten_w_enc], dim=1),
-        #        (h[:batch_size_t], c[:batch_size_t])
-        #    )   # shape is (batch_size_t, vocab_size)
-
-        #    preds = self.fc(self.drop(h))
-        #    predictions[:batch_size_t, t, :] = preds
-        #    alphas[:batch_size_t, t, ]       = alpha
-
 
         for t in range(max(decode_lengths)):
             batch_size_t = sum([l > t for l in decode_lengths])
-            pred, alpha, h, c = self.lstm_step(
+            atten_w_enc, alpha = self.atten_net(
+                enc_feature[0 : batch_size_t],
+                h[0 : batch_size_t]
+            )
+            pred, h, c = self.lstm_step(
                 batch_size_t,
-                enc_feature,
+                atten_w_enc,
                 embeddings,
-                h, c
+                h, c,
+                t
             )
 
             predictions[0 : batch_size_t, t, :] = pred
             alphas[0 : batch_size_t, t, ]       = alpha
 
-
         return (predictions, enc_capt, decode_lengths, alphas, sort_ind)
 
+    # TODO : move attention network out of this loop. Since this is an image
+    # caption problem we only need the encoded image once (which may not be
+    # true for a video caption problem).
     def lstm_step(self,
                   batch_size:int,
-                  enc_feature:torch.Tensor,
+                  atten_w_enc:torch.Tensor,
                   embeddings:torch.Tensor,
                   hidden:torch.Tensor,
-                  cell:torch.Tensor) -> tuple:
+                  cell:torch.Tensor,
+                  t:int) -> tuple:
 
         # Get the attention weighting
-        atten_w_enc, alpha = self.atten_net(enc_feature[0 : batch_size], hidden[0 : batch_size])
         # concat the embeddings with the attention-weighted encodings and
         # return the hidden and cell states (Actually this comment is a bit
         # redundant, better to explain the actual rationale behind this
         # implementation)
+
+        # NOTE: t is current iteration
         h, c = self.lstm(
             torch.cat([embeddings[0 : batch_size, t, :], atten_w_enc], dim=1),
             (hidden[0 : batch_size], cell[0 : batch_size])          # shape : (batch_size, vocab_size)
         )
         pred = self.fc(self.drop(h))
 
-        return (pred, alpha, h, c)
+        return (pred, h, c)
 
     def forward_step(self, enc_feature:torch.Tensor) -> torch.Tensor:
 

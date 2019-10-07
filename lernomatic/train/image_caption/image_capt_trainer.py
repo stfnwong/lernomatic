@@ -43,6 +43,7 @@ class ImageCaptTrainer(trainer.Trainer):
     def __init__(self, encoder, decoder, **kwargs) -> None:
         self.encoder          :common.LernomaticModel = encoder
         self.decoder          :common.LernomaticModel = decoder
+        # TODO : add seperate attention net here
         # Deal with keyword args
         self.dec_lr           : float = kwargs.pop('dec_lr', 1e-4)
         self.dec_mom          : float = kwargs.pop('dec_mom', 0.0)
@@ -217,7 +218,7 @@ class ImageCaptTrainer(trainer.Trainer):
             caplens = caplens.to(self.device)
 
             # forward pass
-            imgs = self.encoder.forward(imgs)
+            imgs = self.encoder.forward(imgs)       # encoded features
             scores, caps_sorted, decode_lengths, alphas, sort_ind = self.decoder.forward(imgs, caps, caplens)
             # remove the <start> token from the output captions
             targets        = caps_sorted[:, 1:]

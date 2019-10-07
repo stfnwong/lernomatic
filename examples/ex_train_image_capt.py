@@ -11,8 +11,8 @@ import torch
 from torchvision import transforms
 from lernomatic.param import image_caption_lr
 from lernomatic.train import schedule
-from lernomatic.train import image_capt_trainer
-from lernomatic.models import image_caption
+from lernomatic.train.image_caption import image_capt_trainer
+from lernomatic.models.image_caption import image_caption
 from lernomatic.models import common
 from lernomatic.data.text import word_map
 from lernomatic.data.coco import coco_dataset
