@@ -11,6 +11,10 @@ import numpy as np
 import copy
 import torch
 
+# KDE tools
+from lernomatic.util import kernel_util
+from lernomatic.util import math_util
+
 # debug
 #from pudb import set_trace; set_trace()
 
@@ -21,7 +25,7 @@ class LRFinder(object):
     Finds optimal learning rates
     """
     def __init__(self, trainer, **kwargs) -> None:
-        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range', 'laplace', 'sobel')
+        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range', 'laplace', 'sobel', 'kde')
         self.trainer          = trainer
         # learning params
         self.num_epochs       = kwargs.pop('num_epochs', 8)
@@ -35,7 +39,7 @@ class LRFinder(object):
         self.lr_min_factor    :float = kwargs.pop('lr_min_factor', 2.0)
         self.lr_max_scale     :float = kwargs.pop('lr_max_scale', 1.0)
         self.lr_select_method :str   = kwargs.pop('lr_select_method', 'max_acc')
-        self.lr_trunc         :int   = kwargs.pop('lr_trunc', 10)
+        self.lr_trunc         :int   = kwargs.pop('lr_trunc', 10)       # how much of lr result to truncate off on either side
         # search time
         self.max_batches      :int   = kwargs.pop('max_batches', 0)
         # gradient params
@@ -119,6 +123,21 @@ class LRFinder(object):
     # I want to set lr_max as the right-most tallest peak, then lr_min as the
     # next right-most tallest peak. I need to sort by position before magnitude
     # so that I have a 'range' in which the learning rate can vary
+
+    def _kde_loss(self) -> tuple:
+        lr_kde = kernel_util.kde(self.acc_history)
+        # clip out the relevant region
+        clip_point = lr_kde[self.lr_trunc : len(lr_kde) - self.lr_trunc].max() * 0.9
+        Xc = lr_kde[lr_kde < clip_point] = 0
+
+        idxs = np.argwhere(lr_kde > 0)
+        lr_max = self.log_lr_history[idxs[0][0]]
+        lr_min = self.log_lr_history[idxs[-2][0]]
+
+        return (lr_min, lr_max)
+
+
+    # TODO : remove these...
     def _laplace_loss(self) -> tuple:
         k = np.array([-1, 4, -1])
         Xs = np.convolve(np.asarray(self.acc_history), k)
@@ -195,6 +214,8 @@ class LRFinder(object):
             lr_min, lr_max = self._laplace_loss()
         elif self.lr_select_method == 'sobel':
             lr_min, lr_max = self._sobel_loss()
+        elif self.lr_select_method == 'kde':
+            lr_min, lr_max = self._kde_loss()
         else:
             raise ValueError('Invalid range selection method [%s]' % str(self.lr_select_method))
 

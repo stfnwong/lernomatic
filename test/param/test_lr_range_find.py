@@ -94,7 +94,7 @@ class TestLRFinderRange(unittest.TestCase):
         )
 
         # defaults are fine here
-        lr_finder = get_lr_finder(trainer, lr_select_method='max_acc')
+        lr_finder = get_lr_finder(trainer, lr_select_method='kde')
         find_start_time = time.time()
         lr_find_min, lr_find_max = lr_finder.find()
         find_end_time = time.time()

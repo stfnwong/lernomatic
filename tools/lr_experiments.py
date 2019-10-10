@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from lernomatic.param import lr_common
+from lernomatic.util import edge_util
+from lernomatic.util import math_util
 
 
 def single_centroid(X:np.ndarray) -> np.float64:
@@ -111,6 +113,11 @@ def main() -> None:
     # What is the kde of the kde?
     kde2 = kernel_density_est(kde)
 
+    # What does the kde 'edge' function look like?
+    # offset just gets rid of negatives
+    sobel_kde = edge_util.sobel(kde, offset=np.max(kde))
+    f_sobel_kde = math_util.moving_avg(sobel_kde, n=5)
+
     # what is the sum of the bottom half vs the top half?
     #lower_sum = np.sum(acc_history[ : len(acc_history) // 2])
     #upper_sum = np.sum(acc_history[len(acc_history) // 2 : ])
@@ -126,8 +133,9 @@ def main() -> None:
     #plot_centroid_segments(ax, acc_history, centroids, seg_len)
 
     ax.plot(kde)
-    #ax.plot(kde2)
-    ax.axvline(x = np.argmax(kde), color='r')
+    ax.plot(f_sobel_kde)
+
+    ax.axvline(x = np.argmax(f_sobel_kde), color='r')
     #ax.plot(acc_history)
     #xm = single_centroid(acc_history)
     #ax.axvline(x = xm, color='r')
