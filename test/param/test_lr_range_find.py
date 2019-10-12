@@ -6,6 +6,7 @@ Stefan Wong 2019
 """
 
 import sys
+import os
 import unittest
 import argparse
 import numpy as np
@@ -20,6 +21,9 @@ from lernomatic.train import cifar_trainer
 from lernomatic.models import common
 from lernomatic.models import cifar
 from lernomatic.vis import vis_loss_history
+
+# debug
+from pudb import set_trace; set_trace()
 
 
 GLOBAL_OPTS = dict()
@@ -80,8 +84,8 @@ def get_lr_finder(trainer,
 
 
 class TestLRFinderRange(unittest.TestCase):
-    def test_sobel_loss(self) -> None:
-        print('======== TestLRFinderRange.test_sobel_loss ')
+    def test_kde_loss(self) -> None:
+        print('======== TestLRFinderRange.test_kde_loss ')
 
         test_finder_history = 'checkpoint/lr_find_sobel_loss.pth'
 
@@ -94,7 +98,12 @@ class TestLRFinderRange(unittest.TestCase):
         )
 
         # defaults are fine here
-        lr_finder = get_lr_finder(trainer, lr_select_method='kde')
+        if os.path.exists(test_finder_history):
+            lr_finder = lr_common.lr_finder_auto_load(test_finder_history)
+            lr_finder.trainer = trainer
+        else:
+            lr_finder = get_lr_finder(trainer, lr_select_method='kde')
+
         find_start_time = time.time()
         lr_find_min, lr_find_max = lr_finder.find()
         find_end_time = time.time()
@@ -102,15 +111,53 @@ class TestLRFinderRange(unittest.TestCase):
 
         lr_finder.save(test_finder_history)
 
+        print('Acc history contains %d elements' % len(lr_finder.acc_history))
         print('Found learning rate range %.4f -> %.4f in %s' %\
               (lr_find_min, lr_find_max, str(timedelta(seconds = find_total_time)))
         )
 
+        self.assertGreaterEqual(lr_find_min, 10 ** lr_finder.log_lr_history[600])
+        self.assertLessEqual(lr_find_max, 10 ** lr_finder.log_lr_history[750])
 
+        print('======== TestLRFinderRange.test_kde_loss <END>')
 
+    def test_max_acc(self):
+        print('======== TestLRFinderRange.test_max_acc ')
 
-        print('======== TestLRFinderRange.test_sobel_loss <END>')
+        test_finder_history = 'checkpoint/lr_max_acc_loss.pth'
 
+        # Just use a simple CIFAR10 network for this
+        model = cifar.CIFAR10Net()
+        trainer = get_trainer(
+            model,
+            device_id  = GLOBAL_OPTS['device_id'],
+            batch_size = GLOBAL_OPTS['batch_size']
+        )
+
+        # defaults are fine here
+        if os.path.exists(test_finder_history):
+            lr_finder = lr_common.lr_finder_auto_load(test_finder_history)
+            lr_finder.trainer = trainer
+        else:
+            lr_finder = get_lr_finder(trainer, lr_select_method='kde')
+
+        find_start_time = time.time()
+        lr_find_min, lr_find_max = lr_finder.find()
+        find_end_time = time.time()
+        find_total_time = find_end_time - find_start_time
+
+        lr_finder.save(test_finder_history)
+
+        print('Acc history contains %d elements' % len(lr_finder.acc_history))
+        print('Found learning rate range %.4f -> %.4f in %s' %\
+              (lr_find_min, lr_find_max, str(timedelta(seconds = find_total_time)))
+        )
+
+        # These values are just found by inspection
+        self.assertGreaterEqual(lr_find_min, 10 ** lr_finder.log_lr_history[332])
+        self.assertLessEqual(lr_find_max, 10 ** lr_finder.log_lr_history[377])
+
+        print('======== TestLRFinderRange.test_max_acc <END>')
 
 
 

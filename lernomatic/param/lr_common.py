@@ -124,18 +124,28 @@ class LRFinder(object):
     # next right-most tallest peak. I need to sort by position before magnitude
     # so that I have a 'range' in which the learning rate can vary
 
-    def _kde_loss(self) -> tuple:
-        lr_kde = kernel_util.kde(self.acc_history)
-        # clip out the relevant region
-        clip_point = lr_kde[self.lr_trunc : len(lr_kde) - self.lr_trunc].max() * 0.9
-        Xc = lr_kde[lr_kde < clip_point] = 0
+    def _max_acc_loss(self) -> tuple:
+        acc_history = np.asarray(self.acc_history)
+        clip_point = acc_history.max() * 0.85
+        idxs = np.argwhere(acc_history > clip_point)
 
-        idxs = np.argwhere(lr_kde > 0)
         lr_max = self.log_lr_history[idxs[0][0]]
-        lr_min = self.log_lr_history[idxs[-2][0]]
+        lr_min = self.log_lr_history[idxs[-1][0]]
 
         return (lr_min, lr_max)
 
+    def _kde_loss(self) -> tuple:
+        lr_kde = kernel_util.kde(np.asarray(self.acc_history))
+        # clip out the relevant region
+        #clip_point = lr_kde[self.lr_trunc : len(lr_kde) - self.lr_trunc].max() * 0.9
+        lr_kde = lr_kde[self.lr_trunc : len(lr_kde) - self.lr_trunc]
+        clip_point = lr_kde.max() * 0.9
+
+        idxs = np.argwhere(lr_kde > clip_point)
+        lr_max = self.log_lr_history[idxs[0][0]]
+        lr_min = self.log_lr_history[idxs[-1][0]]
+
+        return (lr_min, lr_max)
 
     # TODO : remove these...
     def _laplace_loss(self) -> tuple:
@@ -184,6 +194,7 @@ class LRFinder(object):
     def get_params(self) -> dict:
         return self.__getstate__()
 
+    # TODO : should this return a bool for status?
     def check_loaders(self) -> None:
         if self.trainer.train_loader is None:
             raise ValueError('No train_loader in trainer')
@@ -200,8 +211,9 @@ class LRFinder(object):
 
     def get_lr_range(self) -> tuple:
         if self.lr_select_method == 'max_acc':
-            lr_max = self.log_lr_history[self.best_acc_idx] * self.lr_max_scale
-            lr_min = lr_max * self.lr_min_factor
+            #lr_max = self.log_lr_history[self.best_acc_idx] * self.lr_max_scale
+            #lr_min = lr_max * self.lr_min_factor
+            lr_min, lr_max = self._max_acc_loss()
         elif self.lr_select_method == 'min_loss':
             lr_max = self.log_lr_history[self.best_loss_idx] * self.lr_max_scale
             lr_min = lr_max * self.lr_min_factor
