@@ -20,6 +20,10 @@ from lernomatic.train import schedule
 # vis tools
 from lernomatic.vis import vis_loss_history
 
+# timing stuff
+import time
+from datetime import timedelta
+
 # debug
 #from pudb import set_trace; set_trace()
 
@@ -216,6 +220,8 @@ def main() -> None:
 
     trainers = []
     acc_list = []
+
+    expr_start_time =  time.time()
     # run each schedule
     for idx in range(len(schedulers)):
 
@@ -249,6 +255,7 @@ def main() -> None:
         if GLOBAL_OPTS['find_only'] is True:
             break
 
+        schedule_start_time = time.time()
         run_schedule(
             trainer,
             schedulers[idx],
@@ -262,6 +269,9 @@ def main() -> None:
         loss_title = str(schedulers[idx]) + ' ' + str(GLOBAL_OPTS['lr_select_method']) + ' Loss : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
         acc_title  = str(schedulers[idx]) + ' ' + str(GLOBAL_OPTS['lr_select_method']) + ' Accuracy : LR range (%.3f -> %.3f)' % (lr_find_min, lr_find_max)
         generate_plot(trainer, loss_title, acc_title, figure_names[idx])
+        schedule_end_time = time.time()
+        schedule_total_time = schedule_end_time - schedule_start_time
+        print('Schedule [%s] took %s seconds' % (str(schedulers[idx]), str(timedelta(seconds = schedule_total_time))))
 
 
     # Make one more plot of comparing accuracies
@@ -280,6 +290,10 @@ def main() -> None:
         acc_fig.savefig('figures/[%s]_[%s]_ex_lr_scheduling_acc_compare_%.4f_%.4f.png' %\
                         (str(GLOBAL_OPTS['model']), str(GLOBAL_OPTS['lr_select_method']), lr_find_min, lr_find_max)
         )
+
+    expr_end_time = time.time()
+    expr_total_time = expr_end_time - expr_start_time
+    print('Total experiment time : %s' % str(timedelta(seconds = expr_total_time)))
 
 
 def get_parser() -> argparse.ArgumentParser:
