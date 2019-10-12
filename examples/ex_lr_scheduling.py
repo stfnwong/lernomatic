@@ -353,7 +353,7 @@ def get_parser() -> argparse.ArgumentParser:
                         )
     parser.add_argument('--lr-select-method',
                         type=str,
-                        default='min_loss',
+                        default='kde',
                         help='Method to use for selecting LR range'
                         )
     # Schedule options

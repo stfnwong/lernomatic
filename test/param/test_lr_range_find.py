@@ -57,6 +57,7 @@ def get_trainer(model:common.LernomaticModel=None,
     return trainer
 
 
+
 def get_lr_finder(trainer,
                   find_type:str='LogFinder',
                   lr_min:float=1e-6,
@@ -116,10 +117,17 @@ class TestLRFinderRange(unittest.TestCase):
               (lr_find_min, lr_find_max, str(timedelta(seconds = find_total_time)))
         )
 
-        self.assertGreaterEqual(lr_find_min, 10 ** lr_finder.log_lr_history[600])
-        self.assertLessEqual(lr_find_max, 10 ** lr_finder.log_lr_history[750])
+        fig, ax = plt.subplots()
+        lr_finder.plot_lr_vs_acc(ax)
+        #ax.plot(np.asarray(lr_finder.acc_history))
+        #ax.axvline(x = lr_find_min, color='r')
+        #ax.axvline(x = lr_find_max, color='r')
+
+        fig.tight_layout()
+        fig.savefig('lr_find_max_acc.png')
 
         print('======== TestLRFinderRange.test_kde_loss <END>')
+
 
     def test_max_acc(self):
         print('======== TestLRFinderRange.test_max_acc ')
@@ -153,9 +161,14 @@ class TestLRFinderRange(unittest.TestCase):
               (lr_find_min, lr_find_max, str(timedelta(seconds = find_total_time)))
         )
 
-        # These values are just found by inspection
-        self.assertGreaterEqual(lr_find_min, 10 ** lr_finder.log_lr_history[332])
-        self.assertLessEqual(lr_find_max, 10 ** lr_finder.log_lr_history[377])
+        fig, ax = plt.subplots()
+        lr_finder.plot_lr_vs_acc(ax)
+        #ax.plot(np.asarray(lr_finder.acc_history))
+        #ax.axvline(x = lr_find_min, color='r')
+        #ax.axvline(x = lr_find_max, color='r')
+
+        fig.tight_layout()
+        fig.savefig('lr_find_kde.png')
 
         print('======== TestLRFinderRange.test_max_acc <END>')
 
