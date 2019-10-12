@@ -129,7 +129,6 @@ class LRFinder(object):
     def _kde_loss(self) -> tuple:
         lr_kde = kernel_util.kde(np.asarray(self.acc_history))
         # clip out the relevant region
-        #clip_point = lr_kde[self.lr_trunc : len(lr_kde) - self.lr_trunc].max() * 0.9
         lr_kde = lr_kde[self.lr_trunc : len(lr_kde) - self.lr_trunc]
         clip_point = lr_kde.max() * 0.9
 
@@ -180,8 +179,6 @@ class LRFinder(object):
 
     def get_lr_range(self) -> tuple:
         if self.lr_select_method == 'max_acc':
-            #lr_max = self.log_lr_history[self.best_acc_idx] * self.lr_max_scale
-            #lr_min = lr_max * self.lr_min_factor
             lr_min, lr_max = self._max_acc_loss()
         elif self.lr_select_method == 'min_loss':
             lr_max = self.log_lr_history[self.best_loss_idx] * self.lr_max_scale

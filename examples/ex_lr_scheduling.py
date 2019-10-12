@@ -47,15 +47,16 @@ def get_lr_finder(trainer, find_type='LogFinder') -> lr_common.LRFinder:
     if not hasattr(lr_common, find_type):
         raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
+    # TODO : use local parameters...
     lr_find_obj = getattr(lr_common, find_type)
     lr_finder = lr_find_obj(
         trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
+        lr_min           = GLOBAL_OPTS['lr_min'],
+        lr_max           = GLOBAL_OPTS['lr_max'],
         lr_select_method = GLOBAL_OPTS['lr_select_method'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
+        num_epochs       = GLOBAL_OPTS['find_num_epochs'],
+        explode_thresh   = GLOBAL_OPTS['find_explode_thresh'],
+        print_every      = GLOBAL_OPTS['find_print_every']
     )
 
     return lr_finder
