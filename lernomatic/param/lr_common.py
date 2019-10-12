@@ -25,7 +25,7 @@ class LRFinder(object):
     Finds optimal learning rates
     """
     def __init__(self, trainer, **kwargs) -> None:
-        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'min_range', 'laplace', 'sobel', 'kde')
+        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'kde')
         self.trainer          = trainer
         # learning params
         self.num_epochs       = kwargs.pop('num_epochs', 8)
@@ -116,14 +116,6 @@ class LRFinder(object):
 
         return smooth_loss
 
-    # TODO : need a new algorithm here. I think I want to know
-    # 1) Where all the 'edges' are
-    # 2) What the magnitude of each edge is
-    # I sort of want the highest rate that also has the highest peak. That is,
-    # I want to set lr_max as the right-most tallest peak, then lr_min as the
-    # next right-most tallest peak. I need to sort by position before magnitude
-    # so that I have a 'range' in which the learning rate can vary
-
     def _max_acc_loss(self) -> tuple:
         acc_history = np.asarray(self.acc_history)
         clip_point = acc_history.max() * 0.85
@@ -144,29 +136,6 @@ class LRFinder(object):
         idxs = np.argwhere(lr_kde > clip_point)
         lr_max = self.log_lr_history[idxs[0][0]]
         lr_min = self.log_lr_history[idxs[-1][0]]
-
-        return (lr_min, lr_max)
-
-    # TODO : remove these...
-    def _laplace_loss(self) -> tuple:
-        k = np.array([-1, 4, -1])
-        Xs = np.convolve(np.asarray(self.acc_history), k)
-        clip_point = Xs[self.lr_trunc : len(Xs) - self.lr_trunc].max() * 0.9
-        Xc = Xs[Xs < clip_point] = 0
-        idxs = np.argwhere(Xs > 0)
-        lr_max = self.log_lr_history[idxs[0][0]]
-        lr_min = self.log_lr_history[idxs[-2][0]]
-
-        return (lr_min, lr_max)
-
-    def _sobel_loss(self) -> tuple:
-        k = np.array([-1, 0, 1])
-        Xs = np.convolve(np.asarray(self.acc_history), k)
-        clip_point = Xs[self.lr_trunc : len(Xs) - self.lr_trunc].max() * 0.9
-        Xc = Xs[Xs < clip_point] = 0
-        idxs = np.argwhere(Xs > 0)
-        lr_max = self.log_lr_history[idxs[0][0]]
-        lr_min = self.log_lr_history[idxs[-2][0]]
 
         return (lr_min, lr_max)
 
@@ -220,12 +189,6 @@ class LRFinder(object):
         elif self.lr_select_method == 'max_range':
             lr_max = self.log_lr_history[-1] * self.lr_max_scale
             lr_min = lr_max * self.lr_min_factor
-        elif self.lr_select_method == 'min_range':
-            raise NotImplementedError('TODO : min_range method')
-        elif self.lr_select_method == 'laplace':
-            lr_min, lr_max = self._laplace_loss()
-        elif self.lr_select_method == 'sobel':
-            lr_min, lr_max = self._sobel_loss()
         elif self.lr_select_method == 'kde':
             lr_min, lr_max = self._kde_loss()
         else:
