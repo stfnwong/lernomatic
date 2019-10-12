@@ -243,6 +243,12 @@ class Trainer(object):
             for g in self.optimizer.param_groups:
                 g['momentum'] = momentum
 
+    def set_weight_decay(self, wd:float) -> None:
+        optim_state = self.optimizer.state_dict()
+        if 'weight_decay' in optim_state:
+            for g in self.optimizer.param_groups:
+                g['weight_decay'] = wd
+
     def set_lr_scheduler(self, lr_scheduler: schedule.LRScheduler) -> None:
         self.lr_scheduler = lr_scheduler
 
@@ -524,7 +530,7 @@ class Trainer(object):
         self.num_epochs      = params['num_epochs']
         self.learning_rate   = params['learning_rate']
         self.momentum        = params['momentum']
-        self.weigh_decay     = params['weight_decay']
+        self.weight_decay    = params['weight_decay']
         self.loss_function   = params['loss_function']
         self.optim_function  = params['optim_function']
         self.cur_epoch       = params['cur_epoch']
