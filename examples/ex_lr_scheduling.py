@@ -329,6 +329,11 @@ def get_parser() -> argparse.ArgumentParser:
                         default=0.001,
                         help='Exponential decay term'
                         )
+    parser.add_argument('--find-only',
+                        default=False,
+                        action='store_true',
+                        help='Only perform the learning rate find step'
+                        )
     # Data options
     parser.add_argument('--checkpoint-dir',
                         type=str,

@@ -25,7 +25,7 @@ class LRFinder(object):
     Finds optimal learning rates
     """
     def __init__(self, trainer, **kwargs) -> None:
-        valid_select_methods = ('max_acc', 'min_loss', 'max_range', 'kde')
+        valid_select_methods = ('max_acc', 'thresh_acc', 'min_loss', 'max_range', 'kde')
         self.trainer          = trainer
         # learning params
         self.num_epochs       = kwargs.pop('num_epochs', 8)
@@ -117,6 +117,12 @@ class LRFinder(object):
         return smooth_loss
 
     def _max_acc_loss(self) -> tuple:
+        lr_max = self.log_lr_history[self.best_acc_idx] * self.lr_max_scale
+        lr_min = lr_max * self.lr_min_factor
+
+        return (lr_min, lr_max)
+
+    def _thresh_acc_loss(self) -> tuple:
         acc_history = np.asarray(self.acc_history)
         clip_point = acc_history.max() * 0.85
         idxs = np.argwhere(acc_history > clip_point)
@@ -178,7 +184,9 @@ class LRFinder(object):
         raise NotImplementedError('This method should be implemented in subclass')
 
     def get_lr_range(self) -> tuple:
-        if self.lr_select_method == 'max_acc':
+        if self.lr_select_method == 'thresh_acc':
+            lr_min, lr_max = self._thresh_acc_loss()
+        elif self.lr_select_method == 'max_acc':
             lr_min, lr_max = self._max_acc_loss()
         elif self.lr_select_method == 'min_loss':
             lr_max = self.log_lr_history[self.best_loss_idx] * self.lr_max_scale
