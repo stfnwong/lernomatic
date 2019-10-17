@@ -16,6 +16,7 @@ from nltk.translate.bleu_score import corpus_bleu
 from lernomatic.train import schedule
 from lernomatic.train import trainer
 from lernomatic.models import image_caption
+from lernomatic.models import common
 from lernomatic.util import util
 
 # debug
@@ -40,10 +41,14 @@ class ImageCaptTrainer(trainer.Trainer):
     IMAGECAPTTRAINER
     Trainer object for image captioning experiments
     """
-    def __init__(self, encoder, decoder, **kwargs) -> None:
+    def __init__(self,
+                 encoder:common.LernomaticModel=None,
+                 decoder:common.LernomaticModel=None,
+                 atten_net:common.LernomaticModel=None,
+                 **kwargs) -> None:
         self.encoder          :common.LernomaticModel = encoder
         self.decoder          :common.LernomaticModel = decoder
-        # TODO : add seperate attention net here
+        self.atten_net        :common.LernomaticModel = atten_net
         # Deal with keyword args
         self.dec_lr           : float = kwargs.pop('dec_lr', 1e-4)
         self.dec_mom          : float = kwargs.pop('dec_mom', 0.0)
@@ -96,8 +101,13 @@ class ImageCaptTrainer(trainer.Trainer):
         self.loss_iter = 0
         self.val_loss_iter = 0
         self.acc_iter = 0
-        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
-        self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+        if self.train_loader is not None:
+            self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
+            self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+        else:
+            self.iter_per_epoch = 0
+            self.loss_history = None
+
         if self.val_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)
             self.acc_history = np.zeros((4, len(self.val_loader) * self.num_epochs))
@@ -209,8 +219,6 @@ class ImageCaptTrainer(trainer.Trainer):
             raise ValueError('[%s] no encoder set, cannot train' % repr(self))
         self.encoder.set_train()
         self.decoder.set_train()
-
-        # TODO : can add batch time meters here later
 
         for batch_idx, (imgs, caps, caplens) in enumerate(self.train_loader):
             imgs = imgs.to(self.device)
@@ -539,7 +547,8 @@ class ImageCaptTrainer(trainer.Trainer):
         torch.save(checkpoint_data, fname)
 
     def load_checkpoint(self, fname: str) -> None:
-        checkpoint = torch.load(fname)
+        # TODO : using map_location as a hack here... is there a generic way?
+        checkpoint = torch.load(fname, map_location='cpu')
         self.set_trainer_params(checkpoint['trainer_state'])
 
         # Create the model objects and load parameters
@@ -558,7 +567,9 @@ class ImageCaptTrainer(trainer.Trainer):
         # Load optimizers
         self._init_optimizer()
         self.decoder_optim.load_state_dict(checkpoint['decoder_optim'])
-        self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
+        # only load the encoder optimizer if we are doing fine tuning
+        if self.encoder.do_fine_tune():
+            self.encoder_optim.load_state_dict(checkpoint['encoder_optim'])
 
         # transfer decoder optimizer
         for state in self.decoder_optim.state.values():
@@ -566,11 +577,12 @@ class ImageCaptTrainer(trainer.Trainer):
                 if isinstance(v, torch.Tensor):
                     state[k] = v.to(self.device)
 
-        # transfer encoder optimizer
-        for state in self.encoder_optim.state.values():
-            for k, v in state.items():
-                if isinstance(v, torch.Tensor):
-                    state[k] = v.to(self.device)
+        # transfer encoder optimizer (if there is one)
+        if self.encoder_optim is not None:
+            for state in self.encoder_optim.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.to(self.device)
 
         self._send_to_device()
 

@@ -5,6 +5,7 @@ Do forward pass on caption model
 Stefan Wong 2019
 """
 
+import sys
 import argparse
 from torchvision import transforms
 import torch
@@ -12,7 +13,10 @@ import cv2
 import numpy as np
 # lernomatic modules
 from lernomatic.data.text import word_map
-from lernomatic.infer import infer_caption
+from lernomatic.infer.caption import infer_caption
+
+# debug
+from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -47,6 +51,9 @@ def main() -> None:
         beam_size = GLOBAL_OPTS['beam_size'],
         max_steps = 50
     )
+
+    if GLOBAL_OPTS['verbose']:
+        print('Loading checkpoint data from file [%s]' % str(GLOBAL_OPTS['checkpoint']))
 
     infer.load_checkpoint(GLOBAL_OPTS['checkpoint'])
     caption = infer.gen_caption(image)
@@ -116,8 +123,8 @@ if __name__ == '__main__':
         GLOBAL_OPTS[k] = v
 
     if GLOBAL_OPTS['verbose'] is True:
-        print(' ---- GLOBAL OPTIONS ---- ')
+        print(' ---- GLOBAL OPTIONS [%s]---- ' % sys.argv[0])
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()

@@ -5,6 +5,7 @@ Do foward pass for caption models
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import torch.nn.functional as F
 from lernomatic.infer import inferrer
@@ -72,47 +73,60 @@ class CaptionInferrer(inferrer.Inferrer):
         # Store top-k sequence scores here. Initially they are all 0
         top_k_scores = torch.zeros(self.beam_size, 1).to(self.device)    # shape: (k,1)
         # Store alphas for top-k sequences.
-        seqs_alpha = torch.ones(self.beam_size, 1, enc_img_size, enc_img_size).to(self.device)
+        seq_alphas = torch.ones(self.beam_size, 1, enc_img_size, enc_img_size).to(self.device)
 
         step = 1
-        h, c = self.decoder.init_hidden_state(enc_img)
+        #h, c = self.decoder.init_hidden_state(enc_img)
+        h = None        # hidden state
+        c = None        # cell state
 
         k = self.beam_size
 
-        # TODO : factor out this beam search implementation
-        while step < self.max_step:
-            embeddings = self.decoder.embedding(k_prev_words).squeeze(1)
-            atten_w_embed, alpha = self.decoder.attention(enc_img, h)
-            alpha = alpha.view(-1, enc_img_size, enc_img_size)
-            gate = decoder.sigmoid(decoder.f_beta(h))
-            atten_w_embed = gate * atten_w_embed
+        # lists to hold complete sequences
+        complete_seqs = list()
+        complete_seqs_alpha = list()
+        complete_seqs_scores = list()
 
-            h, c = self.decoder.lstm(torch.cat([embeddings, atten_w_embed], dim=1), (h ,c))
-            scores = self.decoder.linear(h)
-            scores = F.log_softmax(scores, dim=1)
+        # TODO : factor out this beam search implementation
+        while step < self.max_steps:
+            #embeddings = self.decoder.embedding(k_prev_words).squeeze(1)
+            #atten_w_embed, alpha = self.decoder.attention(enc_img, h)
+            #alpha = alpha.view(-1, enc_img_size, enc_img_size)
+            #gate = self.decoder.sigmoid(self.decoder.f_beta(h))
+            #atten_w_embed = gate * atten_w_embed
+
+            #h, c = self.decoder.lstm(torch.cat([embeddings, atten_w_embed], dim=1), (h ,c))
+            #scores = self.decoder.linear(h)
+            #scores = F.log_softmax(scores, dim=1)
+
+            scores, alpha, h, c = self.decoder.forward_step(enc_img, enc_img_size, k_prev_words, h, c)
 
             if step == 1:
                 top_k_scores, top_k_words = scores[0].topk(k, 0, True, True)
             else:
                 top_k_scores, top_k_words = scores.view(-1).topk(k, 0, True, True)
+            #top_k_scores, top_k_words = scores[0].topk(k, 0, True, True)
 
             # convert unrolled indicies to actual indicies of scores
-            prev_word_inds = top_k_words / len(self.word_map)
-            next_word_inds = top_k_words % len(self.word_map)
+            prev_word_inds = top_k_words / len(self.word_map)       # shape (s,)
+            next_word_inds = top_k_words % len(self.word_map)       # shape (s,)
 
             # add new words to sequences, alphas
-            seqs = torch.cat([seqs[prev_word_inds], next_word_inds.unsqueeze(1)], dim=1)
+            seqs = torch.cat([seqs[prev_word_inds], next_word_inds.unsqueeze(1)], dim=1)        # shape (s, step+1)
             seq_alphas = torch.cat([seq_alphas[prev_word_inds], alpha[prev_word_inds].unsqueeze(1)], dim=1)
 
             # record sequences that didn't complete (contain no <end> token)
             incomplete_inds = [ind for ind, next_word in enumerate(next_word_inds) if next_word != self.word_map.get_end()]
-            complete_inds = list(set(range(len(next_word_inds)))) - set(incomplete_inds)
+            complete_inds = list(set(range(len(next_word_inds))) - set(incomplete_inds))
+
+            print('[step %d] : found %d complete inds' % (step, len(complete_inds)))
 
             # we don't need to beam search on complete sequences
             if len(complete_inds) > 0:
                 complete_seqs.extend(seqs[complete_inds].tolist())
                 complete_seqs_alpha.extend(seq_alphas[complete_inds].tolist())
                 complete_seqs_scores.extend(top_k_scores[complete_inds])
+
             k = k - len(complete_inds)
             if k == 0:
                 break
@@ -121,7 +135,7 @@ class CaptionInferrer(inferrer.Inferrer):
             seq_alphas = seq_alphas[incomplete_inds]
             h = h[prev_word_inds[incomplete_inds]]
             c = c[prev_word_inds[incomplete_inds]]
-            enc_imgs = enc_imgs[prev_word_inds[incomplete_inds]]
+            enc_img = enc_img[prev_word_inds[incomplete_inds]]
             top_k_scores = top_k_scores[incomplete_inds].unsqueeze(1)
             k_prev_words = next_word_inds[incomplete_inds].unsqueeze(1)
 
@@ -148,18 +162,18 @@ class CaptionInferrer(inferrer.Inferrer):
         else:
             self.decoder = None
 
-        checkpoint_data = torch.load(fname)
+        checkpoint_data = torch.load(fname, map_location='cpu')
 
         if load_encoder:
-            enc_model_path = checkpoint['encoder']['model_import_path']
+            enc_model_path = checkpoint_data['encoder']['model_import_path']
             imp = importlib.import_module(enc_model_path)
-            mod = getattr(imp, checkpoint['encoder']['model_name'])
+            mod = getattr(imp, checkpoint_data['encoder']['model_name'])
             self.encoder = mod()
 
         if load_decoder:
-            dec_model_path = checkpoint['decoder']['model_import_path']
+            dec_model_path = checkpoint_data['decoder']['model_import_path']
             imp = importlib.import_module(dec_model_path)
-            mod = getattr(imp, checkpoint['decoder']['model_name'])
+            mod = getattr(imp, checkpoint_data['decoder']['model_name'])
             self.decoder = mod()
 
         encoder_params = dict()

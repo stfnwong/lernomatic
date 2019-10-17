@@ -1,7 +1,10 @@
 #!/bin/bash
 # Process the first 5000 elements of the COCO dataset
 
-time python tools/proc_coco_data.py \
+# Name of python 3.6 interpreter
+PYTHON=python3
+
+time $PYTHON tools/proc_coco_data.py \
     --train-dataset-fname=hdf5/coco_train_5000.h5 \
     --test-dataset-fname=hdf5/coco_test_5000.h5 \
     --val-dataset-fname=hdf5/coco_val_5000.h5 \

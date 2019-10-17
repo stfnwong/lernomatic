@@ -166,7 +166,7 @@ def get_dataset(fname:str,
 
 
 def overfit() -> None:
-    # Try to overfit the classifier on some small amount of data
+    # Try to overfit the network on some small amount of data
 
     overfit_dataset = get_dataset(
         GLOBAL_OPTS['overfit_train_data'],

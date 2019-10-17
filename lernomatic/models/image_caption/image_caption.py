@@ -8,6 +8,7 @@ Stefan Wong 2018
 import torch
 import torchvision
 import importlib
+import torch.nn.functional as F
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from lernomatic.models import common
@@ -17,6 +18,9 @@ from lernomatic.util import caption_util
 
 # debug
 #from pudb import set_trace; set_trace()
+
+# TODO : change names here (mostly so that the corresponding __repr__ changes
+# as well)
 
 
 # TODO : decoder without attention
@@ -64,8 +68,19 @@ class DecoderAtten(common.LernomaticModel):
     def linear(self, X:torch.Tensor) -> torch.Tensor:
         return self.net.fc(X)
 
-    def forward(self, enc_feature, enc_capt, capt_lengths):
+    def forward(self,
+                enc_feature:torch.Tensor,
+                enc_capt:torch.Tensor,
+                capt_lengths:torch.Tensor) -> torch.Tensor:
         return self.net(enc_feature, enc_capt, capt_lengths)
+
+    def forward_step(self,
+                     enc_feature:torch.Tensor,
+                     enc_feature_size:int,
+                     enc_capt:torch.Tensor,
+                     h:torch.Tensor=None,
+                     c:torch.Tensor=None) -> tuple:
+        return self.net.forward_step(enc_feature, enc_feature_size, enc_capt, h, c)
 
     def init_hidden_state(self, X:torch.Tensor) -> tuple:
         return self.net.init_hidden_state(X)
@@ -201,7 +216,7 @@ class DecoderAttenModule(nn.Module):
                 enc_capt:torch.Tensor,
                 capt_lengths:torch.Tensor) -> tuple:
         """
-        FOWARD PASS
+        FOWARD PASS (training)
 
         Args:
             enc_feature  - Tensor of dimension (N, enc_image_size, enc_image_size, enc_dim)
@@ -261,6 +276,13 @@ class DecoderAttenModule(nn.Module):
             predictions[0 : batch_size_t, t, :] = pred
             alphas[0 : batch_size_t, t, ]       = alpha
 
+        #step_info = {
+        #    'enc_capt'       : enc_capt,
+        #    'decode_lengths' : decode_lengths, '
+        #    'sort_ind'       : sort_ind
+        #}
+
+        #return (predictions, alphas, step_info)
         return (predictions, enc_capt, decode_lengths, alphas, sort_ind)
 
     # TODO : move attention network out of this loop. Since this is an image
@@ -273,14 +295,15 @@ class DecoderAttenModule(nn.Module):
                   hidden:torch.Tensor,
                   cell:torch.Tensor,
                   t:int) -> tuple:
+        """
+        Do one step of LSTM
+        """
 
         # Get the attention weighting
         # concat the embeddings with the attention-weighted encodings and
         # return the hidden and cell states (Actually this comment is a bit
         # redundant, better to explain the actual rationale behind this
         # implementation)
-
-        # NOTE: t is current iteration
         h, c = self.lstm(
             torch.cat([embeddings[0 : batch_size, t, :], atten_w_enc], dim=1),
             (hidden[0 : batch_size], cell[0 : batch_size])          # shape : (batch_size, vocab_size)
@@ -289,14 +312,33 @@ class DecoderAttenModule(nn.Module):
 
         return (pred, h, c)
 
-    def forward_step(self, enc_feature:torch.Tensor) -> torch.Tensor:
+    def forward_step(self,
+                     enc_feature:torch.Tensor,
+                     enc_feature_size:int,
+                     enc_caption:torch.Tensor,
+                     h:torch.Tensor=None,
+                     c:torch.Tensor=None
+                     ) -> tuple:
+        """
+        FORWARD PASS (evaluation)
 
-        enc_img_size = enc_feature.size(1)
-        enc_dim      = enc_feature.size(3)
+        Performs one step of the forward pass
+        """
+        if h is None or c is None:
+            h, c = self.init_hidden_state(enc_feature)
 
-        # flatten encoding
-        enc_feature = enc_feature.view(1, -1, enc_dim)
-        num_pixels  = enc_feature.size(1)
+        embeddings = self.embedding(enc_caption)
+        atten_w_embed, alpha = self.atten_net(enc_feature, h)
+        alpha = alpha.view(-1, enc_feature_size, enc_feature_size)
+
+        gate = self.sigmoid(self.f_beta(h))
+        atten_w_embed = gate * atten_w_embed
+
+        scores = self.fc(h)
+        scores = F.log_softmax(scores, dim=1)
+
+        return (scores, alpha, h, c)
+
 
     def get_params(self) -> dict:
         params = dict()
