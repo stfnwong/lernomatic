@@ -7,6 +7,7 @@ Stefan Wong 2018
 
 import importlib
 import torch
+from torch.utils import tensorboard
 from torch import nn
 import numpy as np
 from lernomatic.train import schedule
@@ -17,6 +18,7 @@ import time
 from datetime import timedelta
 
 
+# TODO : add Tensorboard writer?
 class Trainer(object):
     """
     Trainer
@@ -61,6 +63,8 @@ class Trainer(object):
         self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
         self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
         self.early_stop      :dict  = kwargs.pop('early_stop', None)
+        # Tensorboard writer
+        #self.tb_writer:tensorboard.SummaryWriter = kwargs.pop('tb_writer', None)
 
         self.start_epoch = 0
         if self.val_batch_size == 0:
@@ -452,15 +456,40 @@ class Trainer(object):
             return None
         return self.loss_history[0 : self.loss_iter]
 
+    def get_cur_loss(self) -> float:
+        if self.loss_iter == 0:
+            return 0.0
+        return self.loss_history[self.loss_iter]
+
+    def get_cur_epoch_loss(self) -> np.ndarray:
+        if self.loss_iter == 0:
+            return None
+        return self.loss_history[self.loss_iter - len(self.train_loader) : self.loss_iter]
+
     def get_val_loss_history(self) -> np.ndarray:
         if self.val_loss_iter == 0:
             return None
         return self.val_loss_history[0 : self.val_loss_iter]
 
+    def get_cur_val_loss(self) -> float:
+        if self.val_loss_iter == 0:
+            return 0.0
+        return self.val_loss_history[self.val_loss_iter]
+
+    def get_cur_epoch_val_loss(self) -> np.ndarray:
+        if self.val_loss_iter == 0:
+            return None
+        return self.val_loss_history[self.val_loss_iter - len(self.val_loader) : self.val_loss_iter]
+
     def get_acc_history(self) -> np.ndarray:
         if self.acc_iter == 0:
             return None
         return self.acc_history[0 : self.acc_iter]
+
+    def get_cur_acc(self) -> float:
+        if self.acc_iter == 0:
+            return 0.0
+        return self.acc_history[self.acc_iter]
 
     # model checkpoints
     def save_checkpoint(self, fname : str) -> None:
