@@ -18,7 +18,6 @@ import time
 from datetime import timedelta
 
 
-# TODO : add Tensorboard writer?
 class Trainer(object):
     """
     Trainer
@@ -64,7 +63,7 @@ class Trainer(object):
         self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
         self.early_stop      :dict  = kwargs.pop('early_stop', None)
         # Tensorboard writer
-        #self.tb_writer:tensorboard.SummaryWriter = kwargs.pop('tb_writer', None)
+        self.tb_writer:tensorboard.SummaryWriter = kwargs.pop('tb_writer', None)
 
         self.start_epoch = 0
         if self.val_batch_size == 0:
@@ -271,6 +270,9 @@ class Trainer(object):
         self.test_dataset = test_dataset
         self._init_dataloaders()
 
+    def set_tb_writer(self, writer:tensorboard.SummaryWriter) -> None:
+        self.tb_writer = writer
+
     def apply_lr_schedule(self) -> None:
         if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
             new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
@@ -339,6 +341,10 @@ class Trainer(object):
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
 
+                # if we have a tensorboard writer, update that as well
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('train_loss', loss.item(), batch_idx)
+
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
 
@@ -384,6 +390,9 @@ class Trainer(object):
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
 
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('val_loss', val_loss, batch_idx)
+
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
 
@@ -395,6 +404,9 @@ class Trainer(object):
               (avg_val_loss, correct, len(self.val_loader.dataset),
                100.0 * acc)
         )
+
+        if self.tb_writer is not None:
+            self.tb_writer.add_scalar('val_acc', acc, 1)
 
         # save the best weights
         if acc > self.best_acc:

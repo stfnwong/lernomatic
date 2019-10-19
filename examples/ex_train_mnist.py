@@ -42,10 +42,10 @@ def main() -> None:
         verbose = GLOBAL_OPTS['verbose']
     )
 
-    # TODO : put the writer into the trainer?
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
         writer = tensorboard.SummaryWriter()
-        writer.add_graph(model)
+        #writer.add_graph(model.net)
+        trainer.set_tb_writer(writer)
 
     # train the model
     train_start_time = time.time()

@@ -12,3 +12,6 @@
 
 # Ignore audio files in root
 *.mp3
+
+# Ignore LMDB cache files
+*.cache
