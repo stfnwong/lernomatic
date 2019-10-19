@@ -9,6 +9,7 @@ import argparse
 import time
 from datetime import timedelta
 # Tensorboard
+import torchvision
 from torch.utils import tensorboard
 # lernomatic
 from lernomatic.train import mnist_trainer
@@ -17,6 +18,8 @@ from lernomatic.options import options
 
 
 GLOBAL_OPTS = dict()
+
+#from pudb import set_trace; set_trace()
 
 
 def main() -> None:
@@ -44,7 +47,10 @@ def main() -> None:
 
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
         writer = tensorboard.SummaryWriter()
-        #writer.add_graph(model.net)
+        #data, label = next(iter(trainer.train_loader))
+        #grid = torchvision.utils.make_grid(data)
+        #writer.add_image('data', grid, 0)
+        #writer.add_graph(model.net, data)
         trainer.set_tb_writer(writer)
 
     # train the model

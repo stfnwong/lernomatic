@@ -64,6 +64,14 @@ class MNISTTrainer(trainer.Trainer):
             shuffle = self.shuffle
         )
 
+    def train_epoch(self) -> None:
+        super(MNISTTrainer, self).train_epoch()
+
+        # If we have a tensorboard writer, then visualize some outputs here
+        #if self.tb_writer is not None:
+        #    data, label = next(iter(self.train_loader))
+        #    self.tb_writer.add_graph(self.model.net, data)
+
     def save_history(self, fname: str) -> None:
         history = dict()
         history['loss_history']   = self.loss_history

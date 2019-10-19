@@ -8,7 +8,9 @@ Stefan Wong 2019
 import sys
 import argparse
 import matplotlib.pyplot as plt
-# library modules
+# Tensorboard
+from torch.utils import tensorboard
+# lernomatic
 from lernomatic.models import common
 from lernomatic.models import resnets
 from lernomatic.train import resnet_trainer
@@ -61,6 +63,10 @@ def main() -> None:
     ref_model = get_model()
     ref_trainer = get_trainer(ref_model, 'ex_cifar10_lr_find_schedule_')
 
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        ref_writer = tensorboard.SummaryWriter()
+        ref_trainer.set_tb_writer(ref_writer)
+
     ref_train_start_time = time.time()
     ref_trainer.train()
     ref_train_end_time = time.time()
@@ -73,6 +79,11 @@ def main() -> None:
     # get a model and train it with a scheduler
     sched_model = get_model()
     sched_trainer = get_trainer(sched_model, 'ex_cifar10_lr_find_schedule_')
+
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        sched_writer = tensorboard.SummaryWriter()
+        sched_trainer.set_tb_writer(sched_writer)
+
     # get an LRFinder object
     lr_finder = lr_common.LogFinder(
         sched_trainer,
@@ -147,6 +158,11 @@ def get_parser() -> argparse.ArgumentParser:
                         type=str,
                         default=None,
                         help='Load a given checkpoint'
+                        )
+    parser.add_argument('--tensorboard-dir',
+                        default=None,
+                        type=str,
+                        help='Directory to save tensorboard runs to. If None, tensorboard is not used. (default: None)'
                         )
 
     return parser

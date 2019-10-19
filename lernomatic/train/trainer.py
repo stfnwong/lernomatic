@@ -18,6 +18,7 @@ import time
 from datetime import timedelta
 
 
+# TODO : Update accuracy so that there is val_acc AND train_acc AND test_acc
 class Trainer(object):
     """
     Trainer
@@ -343,7 +344,7 @@ class Trainer(object):
 
                 # if we have a tensorboard writer, update that as well
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('train_loss', loss.item(), batch_idx)
+                    self.tb_writer.add_scalar('train/loss', loss.item(), self.loss_iter)
 
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
@@ -391,7 +392,7 @@ class Trainer(object):
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
 
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('val_loss', val_loss, batch_idx)
+                    self.tb_writer.add_scalar('val/loss', val_loss, self.val_loss_iter)
 
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
@@ -406,7 +407,7 @@ class Trainer(object):
         )
 
         if self.tb_writer is not None:
-            self.tb_writer.add_scalar('val_acc', acc, 1)
+            self.tb_writer.add_scalar('val/acc', acc, self.acc_iter)
 
         # save the best weights
         if acc > self.best_acc:

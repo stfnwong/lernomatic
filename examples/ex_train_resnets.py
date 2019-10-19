@@ -8,6 +8,9 @@ Stefan Wong 2019
 import argparse
 import time
 from datetime import timedelta
+# Tensorboard
+from torch.utils import tensorboard
+# lernomatic
 from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
 from lernomatic.options import options
@@ -44,6 +47,12 @@ def main() -> None:
         save_every = GLOBAL_OPTS['save_every'],
         verbose = GLOBAL_OPTS['verbose']
     )
+
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter()
+        #writer.add_graph(model.net)
+        trainer.set_tb_writer(writer)
+
     # train the model
     train_start_time = time.time()
     trainer.train()
@@ -89,6 +98,11 @@ def get_parser() -> argparse.ArgumentParser:
                         type=str,
                         default='resnet-cifar10',
                         help='Name to prepend to all checkpoints'
+                        )
+    parser.add_argument('--tensorboard-dir',
+                        default=None,
+                        type=str,
+                        help='Directory to save tensorboard runs to. If None, tensorboard is not used. (default: None)'
                         )
 
     return parser
