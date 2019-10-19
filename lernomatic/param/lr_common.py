@@ -10,6 +10,7 @@ import pickle
 import numpy as np
 import copy
 import torch
+import matplotlib.pyplot as plt
 # tensorboard
 from torch.utils import tensorboard
 
@@ -352,6 +353,12 @@ class LogFinder(LRFinder):
                 if self.max_batches > 0 and batch_idx >= self.max_batches:
                     break
 
+                # if the trainer has a tb_writer, then place some data into it
+                # here
+                if self.trainer.tb_writer is not None:
+                    self.trainer.tb_writer.add_scalar('lr_find/loss', loss.item(), len(self.smooth_loss_history))
+                    self.trainer.tb_writer.add_scalar('lr_find/smooth_loss', smooth_loss, len(self.smooth_loss_history))
+
             # need to also break out of the outer loop
             if explode is True:
                 break
@@ -361,6 +368,16 @@ class LogFinder(LRFinder):
         self.trainer.set_trainer_params(self.load_trainer_params())
         print('[FIND_LR] : restoring model state')
         self.trainer.model.set_net_state_dict(self.load_model_params())
+
+        # If there is a tb_writer, add some plots to it
+        if self.trainer.tb_writer is not None:
+            lr_loss_fig, lr_loss_ax = plt.subplots()
+            self.plot_lr_vs_loss(lr_loss_ax)
+            self.trainer.tb_writer.add_figure('lr_find/lr_vs_loss', lr_loss_fig)
+
+            lr_acc_fig, lr_acc_ax = plt.subplots()
+            self.plot_lr_vs_acc(lr_acc_ax)
+            self.trainer.tb_writer.add_figure('lr_find/lr_vs_acc', lr_acc_fig)
 
         return self.get_lr_range()
 
@@ -393,6 +410,11 @@ class LogFinder(LRFinder):
                 (avg_val_loss, correct, len(data_loader.dataset),
                 100.0 * acc)
             )
+
+        # Update summary writer, if we have one
+        if self.trainer.tb_writer is not None:
+            self.trainer.tb_writer.add_scalar('lr_find/val_acc', acc, len(self.acc_history))
+            self.trainer.tb_writer.add_scalar('lr_find/avg_val_loss', avg_val_loss, len(self.acc_history))
 
 
 # Rather than try to have the LFFinder promote itself to the correct class when

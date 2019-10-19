@@ -292,6 +292,7 @@ class InvTriangularScheduler(LRScheduler):
         self._update_lr_history(rate)
         return rate
 
+
 class TriangularExpScheduler(LRScheduler):
     def __init__(self, **kwargs) -> None:
         self.k :float = kwargs.pop('k', EXP_DEFAULT_K)
@@ -585,6 +586,7 @@ class DecayToEpoch(LRScheduler):
             self.learning_rate = self.learning_rate * self.lr_decay
 
         return self.learning_rate
+
 
 #class DecayWhenEpochAfter(LRScheduler):
 #    """

@@ -15,8 +15,6 @@ from lernomatic.train import trainer
 from lernomatic.models import resnets
 from lernomatic.models import common
 
-# debug
-#from pudb import set_trace; set_trace()
 
 
 class ResnetTrainer(trainer.Trainer):
@@ -149,7 +147,7 @@ class ResnetTrainer(trainer.Trainer):
         """
         Load all data from a checkpoint
         """
-        checkpoint_data = torch.load(fname)
+        checkpoint_data = torch.load(fname, map_location='cpu')
         self.set_trainer_params(checkpoint_data['trainer_params'])
         # here we just load the object that derives from LernomaticModel. That
         # object will in turn load the actual nn.Module data from the

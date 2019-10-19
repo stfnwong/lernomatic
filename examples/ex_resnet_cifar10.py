@@ -106,7 +106,8 @@ def main() -> None:
         print('Found learning rate range as %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     # get a scheduler
-    lr_scheduler = schedule.TriangularScheduler(
+    lr_sched_obj = getattr(schedule, GLOBAL_OPTS['sched_type'])
+    lr_scheduler = lr_sched_obj(
         stepsize = int(len(sched_trainer.train_loader) / 4),
         lr_min = lr_find_min,
         lr_max = lr_find_max
@@ -163,6 +164,11 @@ def get_parser() -> argparse.ArgumentParser:
                         default=None,
                         type=str,
                         help='Directory to save tensorboard runs to. If None, tensorboard is not used. (default: None)'
+                        )
+    parser.add_argument('--sched-type',
+                        type=str,
+                        default='TriangularScheduler',
+                        help='Type of learning rate scheduler to use. Must be the name of a class in lernomatic.train.schedule. (default: TriangularScheduler)'
                         )
 
     return parser
