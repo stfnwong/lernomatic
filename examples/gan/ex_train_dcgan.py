@@ -9,6 +9,8 @@ import argparse
 # timing
 import time
 from datetime import timedelta
+# tensorboard
+from torch.utils import tensorboard
 # visions
 from torchvision import datasets
 from torchvision import transforms
@@ -81,6 +83,12 @@ def main() -> None:
         device_id       = GLOBAL_OPTS['device_id']
     )
 
+    # add a summary writer
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter()
+        gan_trainer.set_tb_writer(writer)
+
+    # load a checkpoint?
     if GLOBAL_OPTS['load_checkpoint'] is not None:
         gan_trainer.load_checkpoint(GLOBAL_OPTS['load_checkpoint'])
 

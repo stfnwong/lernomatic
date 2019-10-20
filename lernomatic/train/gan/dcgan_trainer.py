@@ -8,6 +8,7 @@ Stefan Wong 2019
 import importlib
 import torch
 import torch.nn as nn
+import torchvision
 import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import common
@@ -17,7 +18,7 @@ from lernomatic.models.gan import dcgan
 from typing import Tuple
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 class DCGANTrainer(trainer.Trainer):
@@ -216,6 +217,13 @@ class DCGANTrainer(trainer.Trainer):
                 print('[TRAIN] : D(x)     D(G(z)) [1/2]')
                 print('          %.4f      %.4f / %.4f' % (d_x, dg_z2, dg_z1))
 
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('generator/loss',     err_g.item(), self.loss_iter)
+                    self.tb_writer.add_scalar('discriminator/loss', err_d.item(), self.loss_iter)
+                    self.tb_writer.add_scalar('discriminator/x',    d_x,          self.loss_iter)
+                    self.tb_writer.add_scalar('discriminator/gx',   dg_z2,        self.loss_iter)
+                    self.tb_writer.add_scalar('discriminator/gx2',  dg_z1,        self.loss_iter)
+
             # save
             if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
                 ck_name = self.checkpoint_dir + self.checkpoint_name + \
@@ -226,6 +234,18 @@ class DCGANTrainer(trainer.Trainer):
 
         if self.lr_scheduler is not None:
             self.apply_lr_schedule()
+
+        # If we have a summary writer then show some example images
+        if self.tb_writer is not None:
+            self.generator.set_eval()
+
+            zvec = torch.randn(self.batch_size, self.generator.get_zvec_dim(), 1, 1)
+            zvec = zvec.to(self.device)
+            fake = self.generator.forward(zvec).detach()
+            fake = fake.to('cpu')
+
+            grid = torchvision.utils.make_grid(fake)
+            self.tb_writer.add_image('dcgan/generated', grid, self.cur_epoch)
 
     def val_epoch(self) -> None:
         pass
