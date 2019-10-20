@@ -19,8 +19,6 @@ from lernomatic.options import options
 
 GLOBAL_OPTS = dict()
 
-#from pudb import set_trace; set_trace()
-
 
 def main() -> None:
     # Get a model
@@ -47,10 +45,6 @@ def main() -> None:
 
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
         writer = tensorboard.SummaryWriter()
-        #data, label = next(iter(trainer.train_loader))
-        #grid = torchvision.utils.make_grid(data)
-        #writer.add_image('data', grid, 0)
-        #writer.add_graph(model.net, data)
         trainer.set_tb_writer(writer)
 
     # train the model
@@ -83,11 +77,6 @@ def get_parser() -> argparse.ArgumentParser:
                         type=str,
                         default='mnist',
                         help='Name to prepend to all checkpoints'
-                        )
-    parser.add_argument('--tensorboard-dir',
-                        default=None,
-                        type=str,
-                        help='Directory to save tensorboard runs to. If None, tensorboard is not used. (default: None)'
                         )
 
     return parser

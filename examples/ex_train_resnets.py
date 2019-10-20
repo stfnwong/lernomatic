@@ -99,11 +99,6 @@ def get_parser() -> argparse.ArgumentParser:
                         default='resnet-cifar10',
                         help='Name to prepend to all checkpoints'
                         )
-    parser.add_argument('--tensorboard-dir',
-                        default=None,
-                        type=str,
-                        help='Directory to save tensorboard runs to. If None, tensorboard is not used. (default: None)'
-                        )
 
     return parser
 

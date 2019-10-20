@@ -91,6 +91,11 @@ def get_trainer_options(parser:argparse.ArgumentParser=None) -> argparse.Argumen
                         default=5.0,
                         help='Clip gradients at this (absolute) value'
                         )
+    parser.add_argument('--tensorboard-dir',
+                        default=None,
+                        type=str,
+                        help='Directory to save tensorboard runs to. If None, tensorboard is not used. (default: None)'
+                        )
 
     return parser
 

@@ -79,6 +79,10 @@ def main() -> None:
         test_dataset    = test_dataset,
     )
 
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter()
+        trainer.set_tb_writer(writer)
+
     # prepare lr_finder
     lr_finder = learning_rate.LogFinder(
         trainer,

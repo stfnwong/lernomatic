@@ -13,6 +13,8 @@ from datetime import timedelta
 from torchvision import transforms
 from torchvision import datasets
 import torch.nn as nn
+# Tensorboard
+from torch.utils import tensorboard
 # models, etc
 from lernomatic.data import hdf5_dataset
 from lernomatic.train import trainer
@@ -102,6 +104,13 @@ def main() -> None:
         verbose         = GLOBAL_OPTS['verbose']
     )
 
+    # Add a tensorboard writer
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter()
+        cvd_train.set_tb_writer(writer)
+
+    # TODO : add lr_finder options?
+
     # train the model
     train_start_time = time.time()
     cvd_train.train()
@@ -112,8 +121,6 @@ def main() -> None:
             (repr(cvd_train), cvd_train.cur_epoch,
              str(timedelta(seconds = train_total_time)))
     )
-
-
 
     # Show results
     fig, ax = vis_loss_history.get_figure_subplots(num_subplots=2)

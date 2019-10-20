@@ -367,7 +367,7 @@ class Trainer(object):
     def val_epoch(self) -> None:
         """
         VAL_EPOCH
-        Run a single epoch on the val dataset
+        Run a single epoch on the test dataset
         """
         self.model.set_eval()
         val_loss = 0.0
@@ -418,11 +418,8 @@ class Trainer(object):
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+    # TODO: what to do with test set? Forward pass only?
     def test_epoch(self) -> None:
-        """
-        TEST_EPOCH
-        Run a single epoch on the test dataset
-        """
         pass
 
     def train(self) -> None:
@@ -443,7 +440,14 @@ class Trainer(object):
             )
 
             if self.val_loader is not None:
+                val_epoch_start_time = time.time()
                 self.val_epoch()
+                val_epoch_end_time = time.time()
+                val_epoch_total_time = val_epoch_end_time - val_epoch_start_time
+                print('Epoch %d (validation) [%s] took %s' %\
+                        (epoch+1, repr(self), str(timedelta(seconds = val_epoch_total_time)))
+                )
+
 
             if self.test_loader is not None:
                 self.test_epoch()

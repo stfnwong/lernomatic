@@ -5,6 +5,7 @@ Train a classifier on the CIFAR10 dataset
 Stefan Wong 2019
 """
 
+import sys
 import argparse
 from lernomatic.train import cifar_trainer
 from lernomatic.models import cifar
@@ -39,8 +40,13 @@ def main() -> None:
         save_every = GLOBAL_OPTS['save_every'],
         verbose = GLOBAL_OPTS['verbose']
     )
-    train_start_time = time.time()
+
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter()
+        trainer.set_tb_writer(writer)
+
     # train the model
+    train_start_time = time.time()
     trainer.train()
     train_end_time = time.time()
     train_total_time = train_end_time - train_start_time
@@ -66,7 +72,6 @@ def main() -> None:
 
 
 def get_parser() -> argparse.ArgumentParser:
-
     parser = options.get_trainer_options()
     # add some extra options for this particular example
     parser.add_argument('-v', '--verbose',
@@ -109,7 +114,7 @@ if __name__ == '__main__':
         GLOBAL_OPTS[k] = v
 
     if GLOBAL_OPTS['verbose'] is True:
-        print(' ---- GLOBAL OPTIONS ---- ')
+        print(' ---- GLOBAL OPTIONS (%s) ---- ' % str(sys.argv[0]))
         for k,v in GLOBAL_OPTS.items():
             print('\t[%s] : %s' % (str(k), str(v)))
 
