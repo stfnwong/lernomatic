@@ -69,7 +69,6 @@ class AAEInferrer(inferrer.Inferrer):
         return z
 
 
-
 class AAEUnsupervisedInferrer(AAEInferrer):
     def __init__(self,
                  q_net:common.LernomaticModel=None,
@@ -90,7 +89,6 @@ class AAEUnsupervisedInferrer(AAEInferrer):
         z = self.p_net.forward(q_out)
 
         return z
-
 
 
 class AAESemiInferrer(AAEInferrer):

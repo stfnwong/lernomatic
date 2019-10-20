@@ -10,6 +10,8 @@ import torchvision
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+# tensorboard
+from torch.utils import tensorboard
 # timing stuff
 import time
 from datetime import timedelta
@@ -156,7 +158,7 @@ def infer_aae(
         print('Processing validation example [%d / %d]' % (batch_idx+1, len(val_loader)), end='\r')
         #data.resize_(batch_size, inferrer.q_net.get_x_dim())
         gen_img = inferrer.forward(data)
-        img_filename = 'figures/aae/aae_%s_batch_%d.png' % (str(aae_mode), int(batch_idx))
+        img_filename = 'figures/aae_%s_batch_%d.png' % (str(aae_mode), int(batch_idx))
         recon_to_plt(ax, data.cpu(), gen_img.cpu())
         fig.savefig(img_filename, bbox_inches='tight')
 
@@ -189,6 +191,11 @@ def unsupervised() -> None:
         device_id     = GLOBAL_OPTS['device_id'],
         verbose       = GLOBAL_OPTS['verbose']
     )
+    # Optionally get a summary writer
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter()
+        trainer.set_tb_writer(writer)
+
     # We would do parameter search and scheduling here, but I will leave these
     # for now since I need to read more about how to train effectively with
     # GANs
@@ -235,7 +242,7 @@ def semisupervised() -> None:
     train_label_dataset, val_label_dataset, train_unlabel_dataset = \
         get_semilabel_datasets(GLOBAL_OPTS['data_dir'])
 
-
+    # get a trainer
     trainer = aae_semisupervised_trainer.AAESemiTrainer(
         q_net,
         p_net,
@@ -254,7 +261,19 @@ def semisupervised() -> None:
         device_id     = GLOBAL_OPTS['device_id'],
         verbose       = GLOBAL_OPTS['verbose']
     )
+
+    # Optionally get a summary writer
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter()
+        trainer.set_tb_writer(writer)
+
+    train_start_time = time.time()
     trainer.train()
+    train_end_time = time.time()
+    train_total_time = train_end_time - train_start_time
+    print('Trained [%s] for %d epochs, total time : %s' %\
+          (repr(trainer), trainer.cur_epoch, str(timedelta(seconds = train_total_time)))
+    )
 
     # now do an inference pass...
     infer_aae(
@@ -298,6 +317,13 @@ def get_parser() -> argparse.ArgumentParser:
                         default='aae',
                         help='Name to prepend to all checkpoints'
                         )
+    parser.add_argument('--tensorboard-dir',
+                        default=None,
+                        type=str,
+                        help='Directory to save tensorboard runs to. If None, tensorboard is not used. (default: None)'
+                        )
+
+
 
     return parser
 

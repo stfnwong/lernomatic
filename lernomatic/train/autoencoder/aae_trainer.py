@@ -8,6 +8,7 @@ Stefan Wong 2019
 import importlib
 import torch
 import torch.nn.functional as F
+import torchvision
 import numpy as np
 from lernomatic.models import common
 from lernomatic.train import trainer
@@ -15,7 +16,7 @@ from lernomatic.train import trainer
 import time
 from datetime import timedelta
 
-#debug
+# debug
 #from pudb import set_trace; set_trace()
 
 
@@ -167,6 +168,10 @@ class AAETrainer(trainer.Trainer):
                        g_loss.item(), d_loss.item(), recon_loss.item() )
                 )
 
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('generator/loss', g_loss.item(), self.loss_iter)
+                    self.tb_writer.add_scalar('discriminator/loss', d_loss.item(), self.loss_iter)
+
             # save loss history
             self.g_loss_history[self.loss_iter] = g_loss.item()
             self.d_loss_history[self.loss_iter] = d_loss.item()
@@ -180,6 +185,28 @@ class AAETrainer(trainer.Trainer):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
+
+        # If we have a summary writer, visualize some of the outputs at the end
+        # of the epoch.
+        if self.tb_writer is not None:
+            self.p_net.set_eval()
+            self.q_net.set_eval()
+
+            #X = torch.randn(self.batch_size, self.q_net.get_x_dim())
+            X, _ = next(iter(self.train_loader))
+            X.resize_(X.shape[0], self.q_net.get_x_dim())
+            X = X.to(self.device)
+            q_out = self.q_net.forward(X)
+
+            if type(q_out) is tuple:
+                z_in = torch.cat((q_out[0], q_out[1]), 1)
+                z = self.p_net.forward(z_in)
+            else:
+                z = self.p_net.forward(q_out)
+
+            z = z.to('cpu')
+            grid = torchvision.utils.make_grid(z)
+            self.tb_writer.add_image('aae/generated', grid, 0)
 
 
     # Don't do anything for validation

@@ -6,6 +6,7 @@ Stefan Wong 2019
 """
 
 import importlib
+import torchvision
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -13,7 +14,7 @@ from lernomatic.models import common
 from lernomatic.train import trainer
 
 #debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 def sample_categorical(batch_size:int, num_classes:int=10) -> torch.Tensor:
@@ -326,6 +327,11 @@ class AAESemiTrainer(trainer.Trainer):
                                 str(labelled), g_loss.item(), d_loss.item(), recon_loss.item() )
                         )
 
+                        # update summary writer, if we have one
+                        if self.tb_writer is not None:
+                            self.tb_writer.add_scalar('aae_semi/g_loss', g_loss.item(), self.loss_iter)
+                            self.tb_writer.add_scalar('aae_semi/d_loss', d_loss.item(), self.loss_iter)
+
                 # ==== Semi-supervised phase ==== #
                 if labelled:
                     pred, _    = self.q_net.forward(X)
@@ -343,7 +349,26 @@ class AAESemiTrainer(trainer.Trainer):
                                 str(labelled), class_loss.item())
                         )
 
+                    if self.tb_writer is not None:
+                        self.tb_writer.add_scalar('aae_semi/class_loss', class_loss.item(), self.loss_iter)
+
             self.loss_iter += 1
+
+        if self.tb_writer is not None:
+            self.p_net.set_eval()
+            self.q_net.set_eval()
+
+            X, _ = next(iter(self.train_label_loader))
+            X.resize_(X.shape[0], self.q_net.get_x_dim())
+            X = X.to(self.device)
+
+            q_out = self.q_net.forward(X)
+            z_in = torch.cat((q_out[0], q_out[1]), 1)
+            z = self.p_net.forward(z_in)
+            z = z.to('cpu')
+
+            grid = torchvision.utils.make_grid(z)
+            self.tb_writer.add_image('aae_semi/train_label_generated', grid, 0)
 
     def val_epoch(self) -> None:
         """
@@ -373,6 +398,9 @@ class AAESemiTrainer(trainer.Trainer):
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_label_loader), val_loss.item()))
 
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('aae_semi/val_loss', val_loss.item(), self.val_loss_iter)
+
             self.val_loss_history[self.val_loss_iter] = val_loss.item()
             self.val_loss_iter += 1
 
@@ -384,6 +412,9 @@ class AAESemiTrainer(trainer.Trainer):
               (avg_val_loss, correct, len(self.val_label_loader.dataset), 100.0 * acc)
         )
 
+        if self.tb_writer is not None:
+            self.tb_writer.add_scalar('aae_semi/val_acc', acc, self.acc_iter)
+
         # save the best weights
         if acc > self.best_acc:
             self.best_acc = acc
@@ -392,6 +423,23 @@ class AAESemiTrainer(trainer.Trainer):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
+
+        # Visualize output
+        if self.tb_writer is not None:
+            self.p_net.set_eval()
+            self.q_net.set_eval()
+
+            X, _ = next(iter(self.val_label_loader))
+            X.resize_(X.shape[0], self.q_net.get_x_dim())
+            X = X.to(self.device)
+
+            q_out = self.q_net.forward(X)
+            z_in = torch.cat((q_out[0], q_out[1]), 1)
+            z = self.p_net.forward(z_in)
+            z = z.to('cpu')
+
+            grid = torchvision.utils.make_grid(z)
+            self.tb_writer.add_image('aae_semi/val_generated', grid, 0)
 
 
     def train_val_epoch(self) -> None:
@@ -422,6 +470,9 @@ class AAESemiTrainer(trainer.Trainer):
                 print('                  [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_unlabel_loader), train_u_loss.item()))
 
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('aae_semi/train_u_loss', train_u_loss.item(), self.train_val_loss_iter)
+
             self.train_val_loss_history[self.train_val_loss_iter] = train_u_loss.item()
             self.train_val_loss_iter += 1
 
@@ -432,6 +483,9 @@ class AAESemiTrainer(trainer.Trainer):
         print('[VAL ]  : Avg. T(u) Loss : %.4f, Train (U) Accuracy : %d / %d (%.4f%%)' %\
               (avg_val_loss, correct, len(self.train_unlabel_loader.dataset), 100.0 * acc)
         )
+
+        if self.tb_writer is not None:
+            self.tb_writer.add_scalar('aae_semi/train_acc', acc, self.acc_iter)
 
         # save the best weights
         if acc > self.best_acc:

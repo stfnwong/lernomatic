@@ -367,7 +367,7 @@ class Trainer(object):
     def val_epoch(self) -> None:
         """
         VAL_EPOCH
-        Run a single epoch on the test dataset
+        Run a single epoch on the val dataset
         """
         self.model.set_eval()
         val_loss = 0.0
@@ -418,6 +418,13 @@ class Trainer(object):
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+    def test_epoch(self) -> None:
+        """
+        TEST_EPOCH
+        Run a single epoch on the test dataset
+        """
+        pass
+
     def train(self) -> None:
         """
         TRAIN
@@ -437,6 +444,9 @@ class Trainer(object):
 
             if self.val_loader is not None:
                 self.val_epoch()
+
+            if self.test_loader is not None:
+                self.test_epoch()
 
             # save history at the end of each epoch
             if self.save_hist:
