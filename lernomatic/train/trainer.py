@@ -377,8 +377,7 @@ class Trainer(object):
             data = data.to(self.device)
             labels = labels.to(self.device)
 
-            with torch.no_grad():
-                output = self.model.forward(data)
+            output = self.model.forward(data)
             loss = self.criterion(output, labels)
             val_loss += loss.item()
 
@@ -392,7 +391,7 @@ class Trainer(object):
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
 
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('val/loss', val_loss, self.val_loss_iter)
+                    self.tb_writer.add_scalar('val/loss', loss.item(), self.val_loss_iter)
 
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
@@ -420,7 +419,33 @@ class Trainer(object):
 
     # TODO: what to do with test set? Forward pass only?
     def test_epoch(self) -> None:
-        pass
+
+        self.model.set_eval()
+        test_loss = 0.0
+        correct = 0
+
+        for batch_idx, (data, labels) in enumerate(self.test_loader):
+            data = data.to(self.device)
+            labels = labels.to(self.device)
+
+            output = self.model.forward(data)
+            loss = self.criterion(output, labels)
+            test_loss += loss.item()
+
+            # accuracy
+            pred = output.data.max(1, keepdim=True)[1]
+            correct += pred.eq(labels.data.view_as(pred)).sum().item()
+
+            if (batch_idx % self.print_every) == 0:
+                print('[VAL ]  :   Epoch       iteration         Val Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
+
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('test/loss', loss.item(), self.test_loss_iter)
+
+            self.val_loss_history[self.val_loss_iter] = loss.item()
+            self.val_loss_iter += 1
 
     def train(self) -> None:
         """
@@ -447,7 +472,6 @@ class Trainer(object):
                 print('Epoch %d (validation) [%s] took %s' %\
                         (epoch+1, repr(self), str(timedelta(seconds = val_epoch_total_time)))
                 )
-
 
             if self.test_loader is not None:
                 self.test_epoch()

@@ -5,9 +5,13 @@ Train a de-noising autoencoder
 Stefan Wong 2019
 """
 
+import sys
 import torch
 import torchvision
 from torchvision import datasets
+from torchvision import transforms
+# tensorboard
+from torch.utils import tensorboard
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -59,6 +63,9 @@ def get_folder_dataset(dataset_root:str, image_size:int) -> datasets.ImageFolder
 
 def main() -> None:
 
+    if GLOBAL_OPTS['dataset'] is None and GLOBAL_OPTS['dataset_root'] is None:
+        raise ValueError('No dataset (HDF5) or dataset-root (folder) specified. \nUse one of --dataset or --dataset-root to specify data')
+
     if GLOBAL_OPTS['dataset'] is not None:
         train_dataset = get_hdf5_dataset(GLOBAL_OPTS['dataset'])
     else:
@@ -68,6 +75,7 @@ def main() -> None:
     encoder = denoise_ae.DAEEncoder(num_channels = GLOBAL_OPTS['num_channels'])
     decoder = denoise_ae.DAEDecoder(num_channels = GLOBAL_OPTS['num_channels'])
 
+    # get a trainer
     trainer = dae_trainer.DAETrainer(
         encoder,
         decoder,
@@ -85,6 +93,14 @@ def main() -> None:
         print_every     = GLOBAL_OPTS['print_every'],
         verbose         = GLOBAL_OPTS['verbose']
     )
+
+    # Add a summary writer
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        if GLOBAL_OPTS['verbose']:
+            print('Adding tensorboard writer to [%s]' % repr(trainer))
+        writer = tensorboard.SummaryWriter()
+        trainer.set_tb_writer(writer)
+
     # train the model
     train_start_time = time.time()
     trainer.train()
@@ -178,6 +194,11 @@ def get_parser() -> argparse.ArgumentParser:
                         default=None,
                         help='Path to dataset in HDF5 format (default: None)'
                         )
+    parser.add_argument('--dataset-root',
+                        type=str,
+                        default=None,
+                        help='Path to dataset folder (default: None)'
+                        )
     parser.add_argument('--loss-history-file',
                         type=str,
                         default='figures/dae_loss_history.png',
@@ -201,6 +222,11 @@ def get_parser() -> argparse.ArgumentParser:
                         help='Amount of noise to add to image overall (default: 0.1)'
                         )
     # Data options
+    parser.add_argument('--image-size',
+                        type=int,
+                        default=64,
+                        help='Size of image to use (default: 64)'
+                        )
     parser.add_argument('--checkpoint-dir',
                         type=str,
                         default='./checkpoint',
@@ -223,7 +249,7 @@ if __name__ == '__main__':
         GLOBAL_OPTS[k] = v
 
     if GLOBAL_OPTS['verbose'] is True:
-        print(' ---- GLOBAL OPTIONS ---- ')
+        print(' ---- GLOBAL OPTIONS (%s)---- ' % str(sys.argv[0]))
         for k,v in GLOBAL_OPTS.items():
             print('\t[%s] : %s' % (str(k), str(v)))
 

@@ -47,6 +47,8 @@ def main() -> None:
         writer = tensorboard.SummaryWriter()
         trainer.set_tb_writer(writer)
 
+    # TODO : optionally do a search pass here and add a scheduler
+
     # train the model
     train_start_time = time.time()
     trainer.train()

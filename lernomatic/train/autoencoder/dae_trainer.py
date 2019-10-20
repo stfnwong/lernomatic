@@ -8,12 +8,17 @@ Stefan Wong 2019
 import importlib
 import torch
 import torch.nn as nn
+import torchvision
 import numpy as np
 from lernomatic.train import trainer
 from lernomatic.models import common
 
 
 class DAETrainer(trainer.Trainer):
+    """
+    DAETrainer
+    Trainer object for a denoising autoencoder.
+    """
     def __init__(self,
                  encoder:common.LernomaticModel=None,
                  decoder:common.LernomaticModel=None,
@@ -24,7 +29,7 @@ class DAETrainer(trainer.Trainer):
         self.noise_factor:float = kwargs.pop('noise_factor', 0.1)
 
         super(DAETrainer, self).__init__(None, **kwargs)
-        self.loss_function = 'MSELoss'
+        self.loss_function = 'MSELoss'      # only for printing really since we force MSELoss in _init_optimizer()
 
     def __repr__(self) -> str:
         return 'DAETrainer'
@@ -86,6 +91,9 @@ class DAETrainer(trainer.Trainer):
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
 
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('train/loss', loss.item(), self.loss_iter)
+
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
 
@@ -104,9 +112,18 @@ class DAETrainer(trainer.Trainer):
             if self.mtm_scheduler is not None:
                 self.apply_mtm_schedule()
 
-    def val_epoch(self) -> None:
-        # no validation for this trainer
-        pass
+        # Render generated/denoised image
+        if self.tb_writer is not None:
+            X, _ = next(iter(self.train_loader))
+            X = torch.mul(X + self.noise_bias, self.noise_factor + torch.randn(*X.shape))
+            X = X.to(self.device)
+
+            output = self.encoder.forward(X)
+            output = self.decoder.forward(output)
+            output = output.detach()
+            outout = output.to('cpu')
+            grid   = torchvision.utils.make_grid(output)
+            self.tb_writer.add_image('dae/denoised', grid, self.cur_epoch)
 
     def save_checkpoint(self, fname:str) -> None:
         checkpoint_data = {
@@ -117,7 +134,6 @@ class DAETrainer(trainer.Trainer):
             # Optimizers
             'optim' : self.optimizer.state_dict(),
         }
-
         torch.save(checkpoint_data, fname)
 
     def load_checkpoint(self, fname:str) -> None:
