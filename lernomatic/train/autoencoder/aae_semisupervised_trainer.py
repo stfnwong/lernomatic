@@ -329,8 +329,8 @@ class AAESemiTrainer(trainer.Trainer):
 
                         # update summary writer, if we have one
                         if self.tb_writer is not None:
-                            self.tb_writer.add_scalar('aae_semi/g_loss', g_loss.item(), self.loss_iter)
-                            self.tb_writer.add_scalar('aae_semi/d_loss', d_loss.item(), self.loss_iter)
+                            self.tb_writer.add_scalar('loss/g_loss', g_loss.item(), self.loss_iter)
+                            self.tb_writer.add_scalar('loss/d_loss', d_loss.item(), self.loss_iter)
 
                 # ==== Semi-supervised phase ==== #
                 if labelled:
@@ -350,7 +350,7 @@ class AAESemiTrainer(trainer.Trainer):
                         )
 
                     if self.tb_writer is not None:
-                        self.tb_writer.add_scalar('aae_semi/class_loss', class_loss.item(), self.loss_iter)
+                        self.tb_writer.add_scalar('loss/class_loss', class_loss.item(), self.loss_iter)
 
             self.loss_iter += 1
 
@@ -399,7 +399,7 @@ class AAESemiTrainer(trainer.Trainer):
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_label_loader), val_loss.item()))
 
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('aae_semi/val_loss', val_loss.item(), self.val_loss_iter)
+                    self.tb_writer.add_scalar('loss/val_loss', val_loss.item(), self.val_loss_iter)
 
             self.val_loss_history[self.val_loss_iter] = val_loss.item()
             self.val_loss_iter += 1
@@ -413,7 +413,7 @@ class AAESemiTrainer(trainer.Trainer):
         )
 
         if self.tb_writer is not None:
-            self.tb_writer.add_scalar('aae_semi/val_acc', acc, self.acc_iter)
+            self.tb_writer.add_scalar('acc/val_acc', acc, self.acc_iter)
 
         # save the best weights
         if acc > self.best_acc:
@@ -471,7 +471,7 @@ class AAESemiTrainer(trainer.Trainer):
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_unlabel_loader), train_u_loss.item()))
 
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('aae_semi/train_u_loss', train_u_loss.item(), self.train_val_loss_iter)
+                    self.tb_writer.add_scalar('loss/train_u_loss', train_u_loss.item(), self.train_val_loss_iter)
 
             self.train_val_loss_history[self.train_val_loss_iter] = train_u_loss.item()
             self.train_val_loss_iter += 1
@@ -485,7 +485,7 @@ class AAESemiTrainer(trainer.Trainer):
         )
 
         if self.tb_writer is not None:
-            self.tb_writer.add_scalar('aae_semi/train_acc', acc, self.acc_iter)
+            self.tb_writer.add_scalar('acc/train_acc', acc, self.acc_iter)
 
         # save the best weights
         if acc > self.best_acc:

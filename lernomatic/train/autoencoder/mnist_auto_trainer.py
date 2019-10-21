@@ -83,6 +83,8 @@ class MNISTAutoTrainer(trainer.Trainer):
             shuffle = self.shuffle
         )
 
+        self.test_loader = None
+
     def _init_history(self):
         self.loss_history = np.zeros(len(self.train_loader) * self.num_epochs)
         self.loss_iter = 0
@@ -128,16 +130,27 @@ class MNISTAutoTrainer(trainer.Trainer):
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, n, len(self.train_loader), loss.item()))
 
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('loss/train', loss.item(), self.loss_iter)
+
             # Save the output images
-            if n % self.save_img_every == 0 and n > 0:
-                x = to_img(img.cpu().data)
-                x_hat = to_img(output.cpu().data)
-                save_image(x, '%sx_%d.png' % (self.save_img_dir, self.cur_epoch))
-                save_image(x_hat, '%s/xhat_%d.png' % (self.save_img_dir, self.cur_epoch))
+            #if n % self.save_img_every == 0 and n > 0:
+            #    x = to_img(img.cpu().data)
+            #    x_hat = to_img(output.cpu().data)
+            #    save_image(x, '%sx_%d.png' % (self.save_img_dir, self.cur_epoch))
+            #    save_image(x_hat, '%s/xhat_%d.png' % (self.save_img_dir, self.cur_epoch))
 
             # Record loss
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
+
+            if (self.tb_writer is not None) and (n % self.save_img_every == 0):
+                x = to_img(img.cpu().data)
+                x_hat = to_img(output.cpu().data)
+                self.tb_writer.add_image('x', x, self.cur_epoch)
+                self.tb_writer.add_image('x_hat', x_hat, self.cur_epoch)
+                #save_image(x, '%sx_%d.png' % (self.save_img_dir, self.cur_epoch))
+                #save_image(x_hat, '%s/xhat_%d.png' % (self.save_img_dir, self.cur_epoch))
 
     def train(self) -> None:
         if self.train_loader is None:

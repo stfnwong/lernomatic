@@ -73,7 +73,7 @@ class CVDTrainer(trainer.Trainer):
                 )
 
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('val/loss', loss.item(), self.val_loss_iter)
+                    self.tb_writer.add_scalar('loss/val', loss.item(), self.val_loss_iter)
 
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
@@ -87,7 +87,7 @@ class CVDTrainer(trainer.Trainer):
         )
 
         if self.tb_writer is not None:
-            self.tb_writer.add_scalar('val/acc', acc, self.acc_iter)
+            self.tb_writer.add_scalar('acc/val', acc, self.acc_iter)
 
         # save the best weights
         if acc > self.best_acc:

@@ -114,6 +114,8 @@ class ResnetTrainer(trainer.Trainer):
             num_workers = self.num_workers
         )
 
+        self.test_loader = None
+
     def save_history(self, fname: str) -> None:
         history = dict()
         history['loss_history']      = self.loss_history

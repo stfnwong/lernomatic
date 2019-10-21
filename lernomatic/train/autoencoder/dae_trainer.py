@@ -92,7 +92,7 @@ class DAETrainer(trainer.Trainer):
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
 
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('train/loss', loss.item(), self.loss_iter)
+                    self.tb_writer.add_scalar('loss/train', loss.item(), self.loss_iter)
 
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
@@ -124,6 +124,10 @@ class DAETrainer(trainer.Trainer):
             outout = output.to('cpu')
             grid   = torchvision.utils.make_grid(output)
             self.tb_writer.add_image('dae/denoised', grid, self.cur_epoch)
+
+    # TODO : we should do a pass on the validation data if we have some...
+    def val_epoch(self) -> None:
+        pass
 
     def save_checkpoint(self, fname:str) -> None:
         checkpoint_data = {

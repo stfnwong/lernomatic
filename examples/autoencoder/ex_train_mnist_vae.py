@@ -41,6 +41,10 @@ def main() -> None:
         verbose = GLOBAL_OPTS['verbose']
     )
 
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter()
+        trainer.set_tb_writer(writer)
+
     train_start_time = time.time()
     trainer.train()
     train_end_time = time.time()

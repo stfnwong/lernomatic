@@ -166,8 +166,8 @@ class AAETrainer(trainer.Trainer):
                 )
 
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('generator/loss', g_loss.item(), self.loss_iter)
-                    self.tb_writer.add_scalar('discriminator/loss', d_loss.item(), self.loss_iter)
+                    self.tb_writer.add_scalar('loss/generator', g_loss.item(), self.loss_iter)
+                    self.tb_writer.add_scalar('loss/discriminator', d_loss.item(), self.loss_iter)
 
             # save loss history
             self.g_loss_history[self.loss_iter] = g_loss.item()
