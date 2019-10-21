@@ -13,13 +13,55 @@ import torchvision
 from torch.utils import tensorboard
 # lernomatic
 from lernomatic.train import mnist_trainer
+from lernomatic.train import schedule
 from lernomatic.models import mnist
 from lernomatic.options import options
+# params
+from lernomatic.param import lr_common
 
 
 GLOBAL_OPTS = dict()
 
+# Helper function for finder
+def get_lr_finder(trainer, find_type='LogFinder') -> lr_common.LRFinder:
+    if not hasattr(lr_common, find_type):
+        raise ValueError('Unknown learning rate finder type [%s]' % str(find_type))
 
+    lr_find_obj = getattr(lr_common, find_type)
+    lr_finder = lr_find_obj(
+        trainer,
+        lr_min         = GLOBAL_OPTS['find_lr_min'],
+        lr_max         = GLOBAL_OPTS['find_lr_max'],
+        lr_select_method = GLOBAL_OPTS['find_lr_select_method'],
+        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
+        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
+        print_every    = GLOBAL_OPTS['find_print_every']
+    )
+
+    return lr_finder
+
+
+def get_scheduler(lr_min:float,
+                  lr_max:float,
+                  stepsize:int,
+                  sched_type:str='TriangularScheduler') -> schedule.LRScheduler:
+    if sched_type is None:
+        return None
+
+    if not hasattr(schedule, sched_type):
+        raise ValueError('Unknown scheduler type [%s]' % str(sched_type))
+
+    lr_sched_obj = getattr(schedule, sched_type)
+    lr_scheduler = lr_sched_obj(
+        lr_min = lr_min,
+        lr_max = lr_max,
+        stepsize = stepsize
+    )
+
+    return lr_scheduler
+
+
+# ======== EXPERIMENT ======== #
 def main() -> None:
     # Get a model
     model = mnist.MNISTNet()
@@ -47,7 +89,30 @@ def main() -> None:
         writer = tensorboard.SummaryWriter()
         trainer.set_tb_writer(writer)
 
-    # TODO : optionally do a search pass here and add a scheduler
+    # Optionally do a search pass here and add a scheduler
+    if GLOBAL_OPTS['find_lr']:
+        lr_finder = get_lr_finder(trainer)
+        lr_find_start_time = time.time()
+        lr_finder.find()
+        lr_find_min, lr_find_max = lr_finder.get_lr_range()
+        lr_find_end_time = time.time()
+        lr_find_total_time = lr_find_end_time - lr_find_start_time
+        print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
+        print('Total find time [%s] ' %\
+                str(timedelta(seconds = lr_find_total_time))
+        )
+
+        # Now get a scheduler
+        stepsize = len(trainer.train_loader) // 2
+        # get scheduler
+        lr_scheduler = get_scheduler(
+            lr_find_min,
+            lr_find_max,
+            stepsize,
+            sched_type='TriangularScheduler'
+        )
+
+        trainer.set_lr_scheduler(lr_scheduler)
 
     # train the model
     train_start_time = time.time()
@@ -63,11 +128,17 @@ def main() -> None:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = options.get_trainer_options()
+    parser = options.get_lr_finder_options(parser)
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
+                        )
+    parser.add_argument('--find-lr',
+                        action='store_true',
+                        default=False,
+                        help='Search for optimal learning rate'
                         )
     # Data options
     parser.add_argument('--checkpoint-dir',

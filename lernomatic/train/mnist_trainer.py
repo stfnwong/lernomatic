@@ -64,6 +64,8 @@ class MNISTTrainer(trainer.Trainer):
             shuffle = self.shuffle
         )
 
+        self.test_loader = None
+
     def train_epoch(self) -> None:
         super(MNISTTrainer, self).train_epoch()
 

@@ -372,11 +372,11 @@ class LogFinder(LRFinder):
         # If there is a tb_writer, add some plots to it
         if self.trainer.tb_writer is not None:
             lr_loss_fig, lr_loss_ax = plt.subplots()
-            self.plot_lr_vs_loss(lr_loss_ax)
+            self.plot_lr_vs_loss(lr_loss_ax, log=True)
             self.trainer.tb_writer.add_figure('lr_find/lr_vs_loss', lr_loss_fig)
 
             lr_acc_fig, lr_acc_ax = plt.subplots()
-            self.plot_lr_vs_acc(lr_acc_ax)
+            self.plot_lr_vs_acc(lr_acc_ax, log=True)
             self.trainer.tb_writer.add_figure('lr_find/lr_vs_acc', lr_acc_fig)
 
         return self.get_lr_range()

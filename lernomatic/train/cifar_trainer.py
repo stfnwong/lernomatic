@@ -75,6 +75,8 @@ class CIFAR10Trainer(trainer.Trainer):
             shuffle = self.shuffle
         )
 
+        self.test_loader = None
+
     def save_history(self, fname):
         history = dict()
         history['loss_history']   = self.loss_history

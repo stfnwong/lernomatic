@@ -10,6 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from lernomatic.param import lr_common
 from lernomatic.vis import vis_lr
+# tensorboard
+from torch.utils import tensorboard
 # we use CIFAR-10 for this example
 from lernomatic.models import common
 from lernomatic.models import cifar
@@ -19,6 +21,8 @@ from lernomatic.train import cifar_trainer
 from lernomatic.train import schedule
 # vis tools
 from lernomatic.vis import vis_loss_history
+# command line options
+from lernomatic.options import options
 
 # debug
 #from pudb import set_trace; set_trace()
@@ -50,12 +54,12 @@ def get_lr_finder(trainer, find_type='LogFinder') -> lr_common.LRFinder:
     lr_find_obj = getattr(lr_common, find_type)
     lr_finder = lr_find_obj(
         trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
-        lr_select_method = GLOBAL_OPTS['lr_select_method'],
-        num_epochs     = GLOBAL_OPTS['find_num_epochs'],
-        explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
-        print_every    = GLOBAL_OPTS['find_print_every']
+        lr_min           = GLOBAL_OPTS['find_lr_min'],
+        lr_max           = GLOBAL_OPTS['find_lr_max'],
+        lr_select_method = GLOBAL_OPTS['find_lr_select_method'],
+        num_epochs       = GLOBAL_OPTS['find_num_epochs'],
+        explode_thresh   = GLOBAL_OPTS['find_explode_thresh'],
+        print_every      = GLOBAL_OPTS['find_print_every']
     )
 
     return lr_finder
@@ -126,7 +130,7 @@ def run_schedule(trainer, sched_type, checkpoint_name, lr_min=None, lr_max=None)
     if GLOBAL_OPTS['find_only'] is True:
         return lr_finder
 
-    stepsize = len(trainer.train_loader)
+    stepsize = len(trainer.train_loader) // 2
     # get scheduler
     lr_scheduler = get_scheduler(
         lr_min,
@@ -174,7 +178,8 @@ def generate_plot(trainer, loss_title, acc_title, fig_filename):
 
 
 def get_parser():
-    parser = argparse.ArgumentParser()
+    parser = options.get_trainer_options()
+    parser = options.get_lr_finder_options(parser)
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
@@ -185,21 +190,6 @@ def get_parser():
                         default=False,
                         action='store_true',
                         help='Display plots'
-                        )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=100,
-                        help='Print output every N epochs'
-                        )
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=-1,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
                         )
     parser.add_argument('--find-only',
                         action='store_true',
@@ -217,37 +207,6 @@ def get_parser():
                         default=58,
                         help='Depth of resnet to use for resnet models'
                         )
-    # Learning rate finder options
-    parser.add_argument('--find-print-every',
-                        type=int,
-                        default=20,
-                        help='How often to print output from learning rate finder'
-                        )
-    parser.add_argument('--find-num-epochs',
-                        type=int,
-                        default=8,
-                        help='Maximum number of epochs to attempt to find learning rate'
-                        )
-    parser.add_argument('--find-explode-thresh',
-                        type=float,
-                        default=4.5,
-                        help='Threshold at which to stop increasing learning rate'
-                        )
-    parser.add_argument('--lr-min',
-                        type=float,
-                        default=2e-4,
-                        help='Minimum range to search for learning rate'
-                        )
-    parser.add_argument('--lr-max',
-                        type=float,
-                        default=1e-1,
-                        help='Maximum range to search for learning rate'
-                        )
-    parser.add_argument('--lr-select-method',
-                        type=str,
-                        default='min_loss',
-                        help='Method to use for selecting LR range'
-                        )
     # Schedule options
     parser.add_argument('--exp-decay',
                         type=float,
@@ -258,44 +217,6 @@ def get_parser():
                         type=int,
                         default=4000,
                         help='Size of step for learning rate scheduler'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
-                        )
-    # Network options
-    # Training options
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--val-batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during testing'
-                        )
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=20,
-                        help='Epoch to stop training at'
-                        )
-
-    parser.add_argument('--weight-decay',
-                        type=float,
-                        default=0.0,
-                        help='Weight decay to use for optimizer'
-                        )
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=1e-3,
-                        help='Learning rate for optimizer'
                         )
     # Data options
     parser.add_argument('--checkpoint-dir',

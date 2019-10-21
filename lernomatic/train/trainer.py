@@ -344,7 +344,7 @@ class Trainer(object):
 
                 # if we have a tensorboard writer, update that as well
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('train/loss', loss.item(), self.loss_iter)
+                    self.tb_writer.add_scalar('loss/train', loss.item(), self.loss_iter)
 
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
@@ -391,7 +391,7 @@ class Trainer(object):
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
 
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('val/loss', loss.item(), self.val_loss_iter)
+                    self.tb_writer.add_scalar('loss/val', loss.item(), self.val_loss_iter)
 
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
@@ -406,7 +406,7 @@ class Trainer(object):
         )
 
         if self.tb_writer is not None:
-            self.tb_writer.add_scalar('val/acc', acc, self.acc_iter)
+            self.tb_writer.add_scalar('acc/val', acc, self.acc_iter)
 
         # save the best weights
         if acc > self.best_acc:
@@ -417,9 +417,7 @@ class Trainer(object):
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
-    # TODO: what to do with test set? Forward pass only?
     def test_epoch(self) -> None:
-
         self.model.set_eval()
         test_loss = 0.0
         correct = 0
@@ -442,10 +440,14 @@ class Trainer(object):
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
 
                 if self.tb_writer is not None:
-                    self.tb_writer.add_scalar('test/loss', loss.item(), self.test_loss_iter)
+                    self.tb_writer.add_scalar('loss/test', loss.item(), self.test_loss_iter)
 
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
+
+        if self.tb_writer is not None:
+            self.tb_writer.add_scalar('acc/test', acc, self.test_loss_iter)
+
 
     def train(self) -> None:
         """
