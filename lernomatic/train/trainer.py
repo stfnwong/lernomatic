@@ -275,28 +275,38 @@ class Trainer(object):
         self.tb_writer = writer
 
     def apply_lr_schedule(self) -> None:
-        if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
-            new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
-        elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or \
-             isinstance(self.lr_scheduler, schedule.DecayWhenEpoch) or \
-             isinstance(self.lr_scheduler, schedule.DecayToEpoch):
-            new_lr = self.lr_scheduler.get_lr(self.cur_epoch)
-        elif isinstance(self.lr_scheduler, schedule.DecayWhenAcc):
-            new_lr = self.lr_scheduler.get_lr(self.acc_history[self.acc_iter])
-        else:
-            new_lr = self.lr_scheduler.get_lr(self.loss_iter)
-        self.set_learning_rate(new_lr)
+        if self.lr_scheduler is not None:
+            if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
+                new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
+            elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or \
+                isinstance(self.lr_scheduler, schedule.DecayWhenEpoch) or \
+                isinstance(self.lr_scheduler, schedule.DecayToEpoch):
+                new_lr = self.lr_scheduler.get_lr(self.cur_epoch)
+            elif isinstance(self.lr_scheduler, schedule.DecayWhenAcc):
+                new_lr = self.lr_scheduler.get_lr(self.acc_history[self.acc_iter])
+            else:
+                new_lr = self.lr_scheduler.get_lr(self.loss_iter)
+            self.set_learning_rate(new_lr)
+
+            if self.tb_writer is not None:
+                scalar_tag = 'schedule/lr_%s' % repr(self.lr_scheduler)
+                self.tb_writer.add_scalar(scalar_tag, new_lr, self.loss_iter)
 
     def apply_mtm_schedule(self) -> None:
-        if isinstance(self.mtm_scheduler, schedule.TriangularDecayWhenAcc):
-            new_mtm = self.mtm_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
-        elif isinstance(self.mtm_scheduler, schedule.EpochSetScheduler) or isinstance(self.mtm_scheduler, schedule.DecayWhenEpoch):
-            new_mtm = self.mtm_scheduler.get_lr(self.cur_epoch)
-        elif isinstance(self.mtm_scheduler, schedule.DecayWhenAcc):
-            new_mtm = self.mtm_scheduler.get_lr(self.acc_history[self.acc_iter])
-        else:
-            new_mtm = self.mtm_scheduler.get_lr(self.loss_iter)
-        self.set_momentum(new_mtm)
+        if self.mtm_scheduler is not None:
+            if isinstance(self.mtm_scheduler, schedule.TriangularDecayWhenAcc):
+                new_mtm = self.mtm_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
+            elif isinstance(self.mtm_scheduler, schedule.EpochSetScheduler) or isinstance(self.mtm_scheduler, schedule.DecayWhenEpoch):
+                new_mtm = self.mtm_scheduler.get_lr(self.cur_epoch)
+            elif isinstance(self.mtm_scheduler, schedule.DecayWhenAcc):
+                new_mtm = self.mtm_scheduler.get_lr(self.acc_history[self.acc_iter])
+            else:
+                new_mtm = self.mtm_scheduler.get_lr(self.loss_iter)
+            self.set_momentum(new_mtm)
+
+            if self.tb_writer is not None:
+                scalar_tag = 'schedule/mtm_%s' % repr(self.mtm_scheduler)
+                self.tb_writer.add_scalar(scalar_tag, new_mtm, self.loss_iter)
 
     # Layer freeze / unfreeze
     def freeze_to(self, layer_num: int) -> None:
@@ -357,12 +367,9 @@ class Trainer(object):
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
-            # perform any scheduling
-            if self.lr_scheduler is not None:
-                self.apply_lr_schedule()
-
-            if self.mtm_scheduler is not None:
-                self.apply_mtm_schedule()
+            # apply scheduling
+            self.apply_lr_schedule()
+            self.apply_mtm_schedule()
 
     def val_epoch(self) -> None:
         """

@@ -41,7 +41,7 @@ def main() -> None:
     )
 
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
-        writer = tensorboard.SummaryWriter()
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
         trainer.set_tb_writer(writer)
 
     train_start_time = time.time()

@@ -85,7 +85,7 @@ def main() -> None:
 
     # add a summary writer
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
-        writer = tensorboard.SummaryWriter()
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
         gan_trainer.set_tb_writer(writer)
 
     # load a checkpoint?

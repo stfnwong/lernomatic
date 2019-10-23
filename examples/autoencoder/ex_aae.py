@@ -193,7 +193,7 @@ def unsupervised() -> None:
     )
     # Optionally get a summary writer
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
-        writer = tensorboard.SummaryWriter()
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
         trainer.set_tb_writer(writer)
 
     # We would do parameter search and scheduling here, but I will leave these
@@ -264,7 +264,7 @@ def semisupervised() -> None:
 
     # Optionally get a summary writer
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
-        writer = tensorboard.SummaryWriter()
+        writer=tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS[tensorboard])
         trainer.set_tb_writer(writer)
 
     train_start_time = time.time()

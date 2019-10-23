@@ -7,10 +7,15 @@ Stefan Wong 2019
 
 import sys
 import argparse
+# Tensorboard
+import torchvision
+from torch.utils import tensorboard
+# lernomatic
 from lernomatic.train import cifar_trainer
 from lernomatic.models import cifar
 from lernomatic.vis import vis_loss_history
 from lernomatic.options import options
+from lernomatic.util import expr_util
 
 import time
 from datetime import timedelta
@@ -42,8 +47,32 @@ def main() -> None:
     )
 
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
-        writer = tensorboard.SummaryWriter()
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
         trainer.set_tb_writer(writer)
+
+    # Optionally do a search pass here and add a scheduler
+    if GLOBAL_OPTS['find_lr']:
+        lr_finder = expr_util.get_lr_finder(trainer)
+        lr_find_start_time = time.time()
+        lr_finder.find()
+        lr_find_min, lr_find_max = lr_finder.get_lr_range()
+        lr_find_end_time = time.time()
+        lr_find_total_time = lr_find_end_time - lr_find_start_time
+        print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
+        print('Total find time [%s] ' %\
+                str(timedelta(seconds = lr_find_total_time))
+        )
+
+        # Now get a scheduler
+        stepsize = trainer.get_num_epochs() * len(trainer.train_loader) // 2
+        # get scheduler
+        lr_scheduler = expr_util.get_scheduler(
+            lr_find_min,
+            lr_find_max,
+            stepsize,
+            sched_type='TriangularScheduler'
+        )
+        trainer.set_lr_scheduler(lr_scheduler)
 
     # train the model
     train_start_time = time.time()
@@ -78,6 +107,11 @@ def get_parser() -> argparse.ArgumentParser:
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
+                        )
+    parser.add_argument('--find-lr',
+                        action='store_true',
+                        default=False,
+                        help='Search for optimal learning rate'
                         )
     # Figure output
     parser.add_argument('--fig-name',

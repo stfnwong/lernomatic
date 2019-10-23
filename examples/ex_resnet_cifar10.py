@@ -64,7 +64,7 @@ def main() -> None:
     ref_trainer = get_trainer(ref_model, 'ex_cifar10_lr_find_schedule_')
 
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
-        ref_writer = tensorboard.SummaryWriter()
+        ref_writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
         ref_trainer.set_tb_writer(ref_writer)
 
     ref_train_start_time = time.time()
@@ -81,7 +81,7 @@ def main() -> None:
     sched_trainer = get_trainer(sched_model, 'ex_cifar10_lr_find_schedule_')
 
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
-        sched_writer = tensorboard.SummaryWriter()
+        sched_writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
         sched_trainer.set_tb_writer(sched_writer)
 
     # get an LRFinder object

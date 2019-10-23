@@ -95,6 +95,14 @@ def main() -> None:
         print_every     = GLOBAL_OPTS['print_every'],
         verbose         = GLOBAL_OPTS['verbose']
     )
+
+    # Add a summary writer
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        if GLOBAL_OPTS['verbose']:
+            print('Adding tensorboard writer to [%s]' % repr(trainer))
+        writer=tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
+        trainer.set_tb_writer(writer)
+
     # train the model
     train_start_time = time.time()
     trainer.train()
