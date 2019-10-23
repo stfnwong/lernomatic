@@ -180,6 +180,13 @@ class Trainer(object):
     def load_checkpoint(self, fname: str) -> None:
         raise NotImplementedError
 
+    def restart_history(self) -> None:
+        self.cur_epoch = 0
+        self.loss_iter = 0
+        self.test_loss_iter = 0
+        self.val_loss_iter = 0
+        self.acc_iter = 0
+
     def set_num_epochs(self, num_epochs:int) -> None:
         if num_epochs > self.num_epochs:
             # resize history
@@ -444,15 +451,27 @@ class Trainer(object):
             return None
         return self.loss_history[0 : self.loss_iter]
 
+    def get_cur_loss(self) -> float:
+        return self.loss_history[self.loss_iter]
+
     def get_val_loss_history(self) -> np.ndarray:
         if self.val_loss_iter == 0:
             return None
         return self.val_loss_history[0 : self.val_loss_iter]
 
+    def get_cur_val_loss(self) -> float:
+        return self.val_loss_history[self.val_loss_iter]
+
     def get_acc_history(self) -> np.ndarray:
         if self.acc_iter == 0:
             return None
         return self.acc_history[0 : self.acc_iter]
+
+    def get_best_acc(self) -> float:
+        return np.max(self.acc_history)
+
+    def get_cur_acc(self) -> float:
+        return self.acc_history[self.acc_iter]
 
     # model checkpoints
     def save_checkpoint(self, fname : str) -> None:

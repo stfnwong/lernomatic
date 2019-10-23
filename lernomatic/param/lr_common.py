@@ -180,6 +180,8 @@ class LRFinder(object):
     def get_lr_range(self) -> tuple:
         if self.lr_select_method == 'max_acc':
             lr_min, lr_max = self._max_acc_loss()
+        elif self.lr_select_method == 'thresh_acc':
+            lr_min, lr_max = self._thresh_acc_loss()
         elif self.lr_select_method == 'min_loss':
             lr_max = self.log_lr_history[self.best_loss_idx] * self.lr_max_scale
             lr_min = lr_max * self.lr_min_factor

@@ -115,8 +115,6 @@ def get_trainer(model, checkpoint_name):
 
 # perform the required schedule
 def run_schedule(trainer, sched_type, checkpoint_name, lr_min=None, lr_max=None):
-    # get model and trainer
-
     # get finder
     # NOTE : the finder doesn't need to be re-run each time. While we do need a
     # new trainer object (to have seperate history files for each run) the way
@@ -133,7 +131,7 @@ def run_schedule(trainer, sched_type, checkpoint_name, lr_min=None, lr_max=None)
     if GLOBAL_OPTS['find_only'] is True:
         return lr_finder
 
-    stepsize = len(trainer.train_loader)
+    stepsize = len(trainer.train_loader) // 2
     # get scheduler
     lr_scheduler = get_scheduler(
         lr_min,
