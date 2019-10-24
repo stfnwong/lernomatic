@@ -31,6 +31,7 @@ class SearchResult(object):
         for k, v in self.params.items():
             s.append('\t[%s] : %s\n' % (str(k), str(v)))
         s.append('acc : %f\n' % self.acc)
+        s.append('num epochs : %d\n' % len(self.acc_history))
 
         return ''.join(s)
 

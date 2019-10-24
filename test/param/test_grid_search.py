@@ -91,7 +91,7 @@ class TestGridSearcher(unittest.TestCase):
         }
 
         gsearcher.search(test_params)
-        print('Created %d grid results from %d parameters' % len(gsearcher.param_history))
+        print('Created %d grid results' % len(gsearcher.param_history))
         gsearcher.save_history(prefix='data/')
 
         # TODO: make a plot of accuracy?
