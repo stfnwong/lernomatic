@@ -7,8 +7,20 @@ Stefan Wong 2018
 
 import torch
 import importlib
+from lernomatic.util import model_util
 
 
+# Weight init
+#def init_xavier_uniform(model:torch.nn.Module, bias:float=0.0) -> None:
+#    if isinstance(model, nn.Conv2d):
+#        torch.nn.init.xavier_uniform(module.weight)
+#        module.bias.data.fill_(bias)
+#    elif isinstance(model, nn.Linear):
+#        torch.nn.init.xavier_uniform(module.weight)
+
+
+
+# Model base class
 class LernomaticModel(object):
     """
     LERNOMATICMODEL
@@ -28,6 +40,10 @@ class LernomaticModel(object):
 
     def __repr__(self) -> str:
         return 'LernomaticModel'
+
+    #def init_weights(self, init_method:str='uniform') -> None:
+    def init_weights(self) -> None:
+        model_util.weight_init(self.net)
 
     def get_model_parameters(self) -> dict:
         """

@@ -473,6 +473,13 @@ class Trainer(object):
     def get_cur_acc(self) -> float:
         return self.acc_history[self.acc_iter]
 
+    # TODO : supposed to be for comparing differences in accuracy over training
+    def get_acc_since(self, since:int) -> float:
+        if abs(since) > self.acc_iter:
+            return abs(self.acc_history[self.acc_iter] - self.acc_history[0])
+
+        return abs(self.acc_history[self.acc_iter] - self.acc_history[self.acc_iter - abs(since)])
+
     # model checkpoints
     def save_checkpoint(self, fname : str) -> None:
         if self.verbose:

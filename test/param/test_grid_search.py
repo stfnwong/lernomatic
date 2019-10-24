@@ -62,7 +62,7 @@ def get_trainer(model, checkpoint_name:str):
 
 class TestGridSearcher(unittest.TestCase):
     def setUp(self):
-        self.test_num_params:int = 8
+        self.test_num_params:int = 4
         self.test_max_num_epochs:int = 24
         self.test_min_num_epochs:int = 2
         self.test_min_req_acc:float = 0.65
@@ -70,7 +70,7 @@ class TestGridSearcher(unittest.TestCase):
     def test_init(self):
         print('======== TestGridSearcher.test_init ')
 
-        # get something to train one
+        # get something to train on
         model = get_model()
         trainer = get_trainer(model, GLOBAL_OPTS['checkpoint_name'])
         # get a grid searcher
@@ -81,7 +81,7 @@ class TestGridSearcher(unittest.TestCase):
             max_num_epochs = self.test_max_num_epochs,
             min_num_epochs = self.test_min_num_epochs,
             min_req_acc    = self.test_min_req_acc,
-            #dont_train = True
+            verbose = True
         )
 
         # specify the ranges to search with a param dict
@@ -91,6 +91,13 @@ class TestGridSearcher(unittest.TestCase):
         }
 
         gsearcher.search(test_params)
+        print('Created %d grid results from %d parameters' % len(gsearcher.param_history))
+        gsearcher.save_history(prefix='data/')
+
+        # TODO: make a plot of accuracy?
+
+        for n, result in enumerate(gsearcher.param_history):
+            print(n, str(result))
 
         print('======== TestGridSearcher.test_init <END>')
 
