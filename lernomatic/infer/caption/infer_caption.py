@@ -9,9 +9,15 @@ import importlib
 import torch
 import torch.nn.functional as F
 from lernomatic.infer import inferrer
+from lernomatic.infer import beam_search
 from lernomatic.models import common
 from lernomatic.models import image_caption
 from lernomatic.data.text import word_map
+
+
+# debug
+from pudb import set_trace; set_trace()
+
 
 
 class CaptionInferrer(inferrer.Inferrer):
@@ -23,19 +29,30 @@ class CaptionInferrer(inferrer.Inferrer):
     def __init__(self, wmap:word_map.WordMap,
                  encoder:common.LernomaticModel=None,
                  decoder:common.LernomaticModel=None,
+                 atten_net:common.LernomaticModel=None,
                  **kwargs) -> None:
         self.word_map = wmap
-        self.encoder = kwargs.pop('encoder', None)
-        self.decoder = kwargs.pop('decoder', None)
-        self.beam_size = kwargs.pop('beam_size', 1) # TODO : default here should be zero (when that is implemented)
-        self.max_steps = kwargs.pop('max_steps', 50)
+        self.encoder = encoder
+        self.decoder = decoder
+        self.atten_net = atten_net
+
+        # Collect keyword args
+        self.beam_size:int = kwargs.pop('beam_size', 1) # TODO : default here should be zero (when that is implemented)
+        self.max_steps:int = kwargs.pop('max_steps', 50)
+        self.device_id:int = kwargs.pop('device_id', -1)
 
         super(CaptionInferrer, self).__init__(None, **kwargs)
-        self._send_to_device()
-        if self.encoder is None:
-            self.encoder = common.LernomaticModel()
-        if self.decoder is None:
-            self.decoder = common.LernomaticModel()
+
+        # Add a beam searcher here
+        self.beam_searcher =  beam_search.BeamSearcher(
+            encoder = self.encoder,
+            decoder = self.decoder,
+            atten_net = self.atten_net,
+            beam_size = self.beam_size,
+            device_id = self.device_id
+        )
+
+        #self._send_to_device()
 
     def __repr__(self) -> str:
         return 'CaptionInferrer'
@@ -46,8 +63,17 @@ class CaptionInferrer(inferrer.Inferrer):
         if self.decoder is not None:
             self.decoder.send_to(self.device)
 
-    # TODO : this needs to go
     def gen_caption(self, image:torch.Tensor) -> list:
+        image = image.to(self.device)
+        image = image.unsqueeze(0)
+
+        enc_img = self.encoder.forward(image)
+        enc_img_size = enc_img.size(1)
+        enc_dim = enc_img.size(3)
+
+
+    # TODO : this needs to go
+    def gen_caption_old(self, image:torch.Tensor) -> list:
         image = image.to(self.device)
         image = image.unsqueeze(0)
 

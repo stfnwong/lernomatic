@@ -15,9 +15,9 @@ INITIAL_BATCH_SIZE=32
 FINE_TUNE_BATCH_SIZE=32
 INITIAL_NUM_EPOCHS=20
 # Device
-DEVICE_ID=1
+DEVICE_ID=0
 
-time $PYTHON examples/ex_train_image_capt.py \
+time $PYTHON examples/caption/ex_train_image_capt.py \
     --verbose \
     --device-id=$DEVICE_ID \
     --train-data-path=$COCO_TRAIN_DATA \

@@ -17,19 +17,7 @@ So a beam search is where you explore a graph by expanding only the most
 promising nodes. We can therefore think of a 'beam' as a path through this
 graph.
 
-The beam width is the number of beams that are 'in-flight' at one time.
 """
-
-class Beam(object):
-    def __init__(self) -> None:
-        self.beam_size:int = 0
-
-    def __repr__(self) -> str:
-        return 'Beam'
-
-    def __len__(self) -> int:
-        return self.beam_size
-
 
 
 class BeamSearcher(object):

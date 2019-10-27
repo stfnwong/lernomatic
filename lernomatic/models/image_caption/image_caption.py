@@ -24,7 +24,7 @@ from lernomatic.util import caption_util
 
 
 # TODO : decoder without attention
-# ======== LERNOMATIC MODELS ======== #
+# ======== Decoders ======== #
 class DecoderAtten(common.LernomaticModel):
     """
     DecoderAtten
@@ -114,51 +114,6 @@ class DecoderAtten(common.LernomaticModel):
         self.net.load_state_dict(params['model_state_dict'])
 
 
-class Encoder(common.LernomaticModel):
-    def __init__(self, **kwargs) -> None:
-        self.net = EncoderModule(**kwargs)
-        self.model_name = 'Encoder'
-        self.module_name = 'EncoderModule'
-        self.import_path = 'lernomatic.models.image_caption.image_caption'
-        self.module_import_path = 'lernomatic.models.image_caption.image_caption'
-
-    def __repr__(self) -> str:
-        return 'Encoder'
-
-    def send_to(self, device:torch.device) -> None:
-        self.net.send_to(device)
-
-    def do_fine_tune(self) -> bool:
-        return self.net.do_fine_tune
-
-    def set_fine_tune(self) -> None:
-        self.net.fine_tune(True)
-
-    def unset_fine_tune(self) -> None:
-        self.net.fine_tune(False)
-
-    def get_params(self) -> dict:
-        params = {
-            'model_state_dict'   : self.net.state_dict(),
-            'model_name'         : self.get_model_name(),
-            'model_import_path'  : self.get_model_path(),
-            'module_name'        : self.get_module_name(),
-            'module_import_path' : self.get_module_import_path(),
-            'enc_params'       : self.net.get_params()
-        }
-        return params
-
-    def set_params(self, params : dict) -> None:
-        self.import_path = params['model_import_path']
-        self.model_name  = params['model_name']
-        self.module_name = params['module_name']
-        self.module_import_path = params['module_import_path']
-        # Import the actual network module
-        imp = importlib.import_module(self.module_import_path)
-        mod = getattr(imp, self.module_name)
-        self.net = mod()
-        self.net.set_params(params['enc_params'])
-        self.net.load_state_dict(params['model_state_dict'])
 
 
 # ======== MODULES ======== #
@@ -196,6 +151,7 @@ class DecoderAttenModule(nn.Module):
 
     def _init_network(self) -> None:
         # Create an Attention network
+        # TODO : pass in a seperate attention network?
         self.atten_net   = linear_atten.AttentionNetModule(self.enc_dim, self.dec_dim, self.atten_dim)
         # Create internal layers
         self.embedding   = nn.Embedding(self.vocab_size, self.embed_dim)
@@ -252,6 +208,10 @@ class DecoderAttenModule(nn.Module):
         # Create tensors to hold word prediction scores and alphas
         predictions = torch.zeros(N, max(decode_lengths), vocab_size).to(self.device)
         alphas      = torch.zeros(N, max(decode_lengths), num_pixels).to(self.device)
+
+        # TODO : Check if we are in train or eval mode here. If we are in train
+        # mode then run the loop where we manually apply the attention network
+        # to each step of the RNN. If we are in eval mode then just run a step
 
         # At each time step we decode the sequence by
         # 1) Attention-weighting the encoded features based the on the previous
@@ -405,6 +365,56 @@ class DecoderAttenModule(nn.Module):
         c = self.init_c(mean_enc_out)
 
         return (h, c)
+
+
+
+# ======== Encoders ======== #
+class Encoder(common.LernomaticModel):
+    def __init__(self, **kwargs) -> None:
+        self.net = EncoderModule(**kwargs)
+        self.model_name = 'Encoder'
+        self.module_name = 'EncoderModule'
+        self.import_path = 'lernomatic.models.image_caption.image_caption'
+        self.module_import_path = 'lernomatic.models.image_caption.image_caption'
+
+    def __repr__(self) -> str:
+        return 'Encoder'
+
+    def send_to(self, device:torch.device) -> None:
+        self.net.send_to(device)
+
+    def do_fine_tune(self) -> bool:
+        return self.net.do_fine_tune
+
+    def set_fine_tune(self) -> None:
+        self.net.fine_tune(True)
+
+    def unset_fine_tune(self) -> None:
+        self.net.fine_tune(False)
+
+    def get_params(self) -> dict:
+        params = {
+            'model_state_dict'   : self.net.state_dict(),
+            'model_name'         : self.get_model_name(),
+            'model_import_path'  : self.get_model_path(),
+            'module_name'        : self.get_module_name(),
+            'module_import_path' : self.get_module_import_path(),
+            'enc_params'       : self.net.get_params()
+        }
+        return params
+
+    def set_params(self, params : dict) -> None:
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod()
+        self.net.set_params(params['enc_params'])
+        self.net.load_state_dict(params['model_state_dict'])
+
 
 
 class EncoderModule(nn.Module):

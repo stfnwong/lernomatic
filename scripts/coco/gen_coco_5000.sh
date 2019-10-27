@@ -2,7 +2,7 @@
 # Process the first 5000 elements of the COCO dataset
 
 # Name of python 3.6 interpreter
-PYTHON=python3
+PYTHON=python
 
 time $PYTHON tools/proc_coco_data.py \
     --train-dataset-fname=hdf5/coco_train_5000.h5 \

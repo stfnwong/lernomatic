@@ -20,7 +20,7 @@ from lernomatic.models import common
 from lernomatic.util import util
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 
 def ica_accuracy(scores, targets, k) -> float:
@@ -221,8 +221,8 @@ class ImageCaptTrainer(trainer.Trainer):
         self.decoder.set_train()
 
         for batch_idx, (imgs, caps, caplens) in enumerate(self.train_loader):
-            imgs = imgs.to(self.device)
-            caps = caps.to(self.device)
+            imgs    = imgs.to(self.device)
+            caps    = caps.to(self.device)
             caplens = caplens.to(self.device)
 
             # forward pass
@@ -287,8 +287,8 @@ class ImageCaptTrainer(trainer.Trainer):
 
         for batch_idx, (imgs, caps, caplens, allcaps) in enumerate(self.val_loader):
             # move data to device
-            imgs = imgs.to(self.device)
-            caps = caps.to(self.device)
+            imgs    = imgs.to(self.device)
+            caps    = caps.to(self.device)
             caplens = caplens.to(self.device)
 
             imgs = self.encoder.forward(imgs)

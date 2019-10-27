@@ -16,12 +16,12 @@ from lernomatic.data.text import word_map
 from lernomatic.infer.caption import infer_caption
 
 # debug
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-
 def main() -> None:
+
     # Read in input files
     img = cv2.imread(GLOBAL_OPTS['input'])
     if len(img.shape) == 2:

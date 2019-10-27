@@ -29,6 +29,12 @@ class LernomaticModel(object):
     def __repr__(self) -> str:
         return 'LernomaticModel'
 
+    def is_train(self) -> bool:
+        return self.net.training
+
+    def is_eval(self) -> bool:
+        return not self.net.training
+
     def get_model_parameters(self) -> dict:
         """
         Returns torch model parameters (state_dict)
