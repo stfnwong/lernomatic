@@ -8,27 +8,26 @@ Stefan Wong 2019
 import os
 import argparse
 import torchvision
+import time
+from datetime import timedelta
 from torchvision import transforms
 from torchvision import datasets
 import torch.nn as nn
-
-from lernomatic.models import cvdnet
-from lernomatic.train import trainer
-from lernomatic.train import cvd_trainer
+# models, etc
 from lernomatic.data import hdf5_dataset
-
+from lernomatic.train import trainer
+from lernomatic.train.cvd import cvd_trainer
+from lernomatic.models.cvd import cvdnet
+from lernomatic.options import options
+# vis
 from lernomatic.vis import vis_loss_history
 
-# debug
-from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
-
-
 GLOBAL_USE_HDF5 = True      # until I figure out what is up with HDF5 data
 
-def main():
 
+def main() -> None:
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225])
@@ -57,7 +56,7 @@ def main():
             transform=normalize
         )
 
-        cvd_test_dataset = hdf5_dataset.HDF5Dataset(
+        cvd_val_dataset = hdf5_dataset.HDF5Dataset(
             GLOBAL_OPTS['test_dataset'],
             feature_name = 'images',
             label_name = 'labels',
@@ -72,21 +71,19 @@ def main():
             train_dataset_transform
         )
 
-        cvd_test_dir = '/home/kreshnik/ml-data/cats-vs-dogs/test'
-        cvd_test_dataset = datasets.ImageFolder(
-            cvd_test_dir,
+        csv_val_dir = '/home/kreshnik/ml-data/cats-vs-dogs/test'
+        cvd_val_dataset = datasets.ImageFolder(
+            csv_val_dir,
             test_dataset_transform
         )
 
     # get a network
     model = cvdnet.CVDNet2()
-
-    #cvd_train = trainer.Trainer(
     cvd_train = cvd_trainer.CVDTrainer(
         model,
         # dataset options
         train_dataset   = cvd_train_dataset,
-        test_dataset    = cvd_test_dataset,
+        val_dataset     = cvd_val_dataset,
         # training options
         loss_function   = 'CrossEntropyLoss',
         learning_rate   = GLOBAL_OPTS['learning_rate'],
@@ -94,7 +91,7 @@ def main():
         momentum        = GLOBAL_OPTS['momentum'],
         num_epochs      = GLOBAL_OPTS['num_epochs'],
         batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
+        val_batch_size  = GLOBAL_OPTS['val_batch_size'],
         # checkpoint
         checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
         save_every      = GLOBAL_OPTS['save_every'],
@@ -105,7 +102,18 @@ def main():
         verbose         = GLOBAL_OPTS['verbose']
     )
 
+    # train the model
+    train_start_time = time.time()
     cvd_train.train()
+    train_end_time = time.time()
+    train_total_time = train_end_time - train_start_time
+
+    print('Total scheduled training time [%s] (%d epochs)  %s' %\
+            (repr(cvd_train), cvd_train.cur_epoch,
+             str(timedelta(seconds = train_total_time)))
+    )
+
+
 
     # Show results
     fig, ax = vis_loss_history.get_figure_subplots(num_subplots=2)
@@ -122,76 +130,13 @@ def main():
     fig.savefig('figures/cvd_train.png')
 
 
-def get_parser():
-    parser = argparse.ArgumentParser()
+def get_parser() -> argparse.ArgumentParser:
+    parser = options.get_trainer_options()
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
-                        )
-    parser.add_argument('--draw-plot',
-                        default=False,
-                        action='store_true',
-                        help='Display plots'
-                        )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=100,
-                        help='Print output every N epochs'
-                        )
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=1000,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
-                        )
-    # Network options
-    # Training options
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--test-batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during testing'
-                        )
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=20,
-                        help='Epoch to stop training at'
-                        )
-
-    parser.add_argument('--weight-decay',
-                        type=float,
-                        default=0.0,
-                        help='Weight decay to use for optimizer'
-                        )
-    parser.add_argument('--momentum',
-                        type=float,
-                        default=0.0,
-                        help='Momentum decay to use for optimizer'
-                        )
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=1e-3,
-                        help='Learning rate for optimizer'
                         )
     # Dataset options
     parser.add_argument('--train-dataset',
@@ -220,16 +165,6 @@ def get_parser():
                         default='cvd_',
                         help='Name to prepend to all checkpoints'
                         )
-    parser.add_argument('--load-checkpoint',
-                        type=str,
-                        default=None,
-                        help='Load a given checkpoint'
-                        )
-    parser.add_argument('--overwrite',
-                        action='store_true',
-                        default=False,
-                        help='Overwrite existing processed data files'
-                        )
 
     return parser
 
@@ -244,6 +179,6 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()

@@ -2,3 +2,13 @@
 *.pyc
 *.swp
 *.pkl
+
+# Ignore image files in the root directory
+*.png
+*.jpg
+
+# Ignore video files in root
+*.mp4
+
+# Ignore audio files in root
+*.mp3

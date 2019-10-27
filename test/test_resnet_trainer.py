@@ -15,8 +15,6 @@ from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
 from lernomatic.vis import vis_loss_history
 
-# debug
-#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -45,15 +43,15 @@ class TestResnetTrainer(unittest.TestCase):
         src_tr = resnet_trainer.ResnetTrainer(
             model,
             # training parameters
-            batch_size = self.test_batch_size,
-            num_epochs = self.test_num_epochs,
+            batch_size    = self.test_batch_size,
+            num_epochs    = self.test_num_epochs,
             learning_rate = self.test_learning_rate,
             # device
-            device_id = GLOBAL_OPTS['device_id'],
+            device_id     = GLOBAL_OPTS['device_id'],
             # display,
-            print_every = GLOBAL_OPTS['print_every'],
-            save_every = 0,
-            verbose = self.verbose
+            print_every   = GLOBAL_OPTS['print_every'],
+            save_every    = 0,
+            verbose       = self.verbose
         )
 
         if self.verbose:
@@ -79,7 +77,6 @@ class TestResnetTrainer(unittest.TestCase):
         self.assertEqual(src_tr.weight_decay, dst_tr.weight_decay)
         self.assertEqual(src_tr.print_every, dst_tr.print_every)
         self.assertEqual(src_tr.save_every, dst_tr.save_every)
-        self.assertEqual(src_tr.device_id, dst_tr.device_id)
 
         print('\t Comparing model parameters ')
         src_model_params = src_tr.get_model_params()
@@ -105,10 +102,10 @@ class TestResnetTrainer(unittest.TestCase):
             self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
 
         # test loss history
-        self.assertEqual(len(src_tr.test_loss_history), len(dst_tr.test_loss_history))
-        self.assertEqual(src_tr.test_loss_iter, dst_tr.test_loss_iter)
-        for n in range(len(src_tr.test_loss_history)):
-            self.assertEqual(src_tr.test_loss_history[n], dst_tr.test_loss_history[n])
+        self.assertEqual(len(src_tr.val_loss_history), len(dst_tr.val_loss_history))
+        self.assertEqual(src_tr.val_loss_iter, dst_tr.val_loss_iter)
+        for n in range(len(src_tr.val_loss_history)):
+            self.assertEqual(src_tr.val_loss_history[n], dst_tr.val_loss_history[n])
 
         # test acc history
         self.assertEqual(len(src_tr.acc_history), len(dst_tr.acc_history))
@@ -133,11 +130,11 @@ class TestResnetTrainer(unittest.TestCase):
 
         test_checkpoint_name = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_train_checkpoint.pkl'
         test_history_name    = GLOBAL_OPTS['checkpoint_dir'] + 'resnet_trainer_train_history.pkl'
-        train_num_epochs = 10
+        train_num_epochs = 4
         train_batch_size = 128
         # get a model
         model = resnets.WideResnet(
-            depth =self.resnet_depth,
+            depth = self.resnet_depth,
             num_classes = 10,     # using CIFAR-10 data
             input_channels=3,
             w_factor=1
@@ -146,8 +143,8 @@ class TestResnetTrainer(unittest.TestCase):
         trainer = resnet_trainer.ResnetTrainer(
             model,
             # training parameters
-            batch_size = train_batch_size,
-            num_epochs = train_num_epochs,
+            batch_size    = train_batch_size,
+            num_epochs    = train_num_epochs,
             learning_rate = self.test_learning_rate,
             # device
             device_id = GLOBAL_OPTS['device_id'],

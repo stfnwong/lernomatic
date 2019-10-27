@@ -289,7 +289,6 @@ class TestEpochSetScheduler(unittest.TestCase):
         print('Setting schedule in trainer and training')
         trainer.set_lr_scheduler(lr_schedule)
         trainer.set_num_epochs(train_num_epochs)
-        #trainer.checkpoint_name = test_checkpoint_name
         trainer.save_every = 0
         trainer.print_every = 200
         trainer.train()
