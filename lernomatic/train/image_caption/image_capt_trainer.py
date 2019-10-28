@@ -20,7 +20,7 @@ from lernomatic.models import common
 from lernomatic.util import util
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
 def ica_accuracy(scores, targets, k) -> float:

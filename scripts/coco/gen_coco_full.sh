@@ -1,14 +1,18 @@
 #!/bin/bash
 # Process all COCO data 
 
+# Name of Python 3.6 compatible python interpreter
 PYTHON=python
+
+# Adjust to match dataset root
+DATASET_ROOT="/mnt/ml-data/datasets/COCO"
 WORDMAP='coco_wordmap.json'
 OVERFIT_SIZE=500
 OVERFIT_NAME='overfit'
 MAX_CAPT_LEN=64
 MIN_WORD_FREQ=4
 OUTPUT_PREFIX="hdf5"
-COCO_JSON="/mnt/ml-data/datasets/COCO/dataset_coco.json"
+COCO_JSON="$DATASET_ROOT/dataset_coco.json"
 
 time $PYTHON tools/proc_coco_data.py \
     --train-dataset-fname="$OUTPUT_PREFIX/coco-train.h5" \
