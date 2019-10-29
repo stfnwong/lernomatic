@@ -8,7 +8,13 @@ Stefan Wong 2019
 import torch.nn as nn
 from torch.autograd import Variable
 
+from lernomatic.models import common
 
+
+
+
+
+# NOTE: meant to be a sort of generic RNN for text
 class TextRNN(nn.Module):
     def __init__(self, num_tokens, **kwargs):
         self.input_dim  = kwargs.pop('input_dim', 200)

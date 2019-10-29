@@ -68,23 +68,23 @@ class QRSeq2SeqTrainer(trainer.Trainer):
     def _init_optimizer(self) -> None:
         if self.encoder is not None:
             if hasattr(torch.optim, self.optim_function):
-                self.enc_optim = getattr(torch.optim, self.optim_function)(
+                self.encoder_optim = getattr(torch.optim, self.optim_function)(
                     self.encoder.get_model_parameters(),
                     lr = self.learning_rate,
                     weight_decay = self.weight_decay
                 )
             else:
-                self.enc_optim = None
+                self.encoder_optim = None
 
         if self.decoder is not None:
             if hasattr(torch.optim, self.optim_function):
-                self.dec_optim = getattr(torch.optim, self.optim_function)(
+                self.decoder_optim = getattr(torch.optim, self.optim_function)(
                     self.decoder.get_model_parameters(),
                     lr = self.learning_rate,
                     weight_decay = self.weight_decay
                 )
             else:
-                self.dec_optim = None
+                self.decoder_optim = None
 
     def maskNLLLoss(self,
                     inp:torch.Tensor,
@@ -170,12 +170,12 @@ class QRSeq2SeqTrainer(trainer.Trainer):
                     loss += mask_loss
                     totals += n_total
 
-            self.enc_optim.zero_grad()
-            self.dec_optim.zero_grad()
+            self.encoder_optim.zero_grad()
+            self.decoder_optim.zero_grad()
             loss.backward()
 
-            self.enc_optim.step()
-            self.dec_optim.step()
+            self.encoder_optim.step()
+            self.decoder_optim.step()
 
             # save loss history
             self.loss_history[self.loss_iter] = loss.item()
@@ -183,9 +183,10 @@ class QRSeq2SeqTrainer(trainer.Trainer):
 
             # display
             if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
-                print('[TRAIN] :   Epoch       iteration         Loss          Forced')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f     %s [%f]' %\
-                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item(), str(tf_this_batch), tf_chance))
+                print('[TRAIN] :   Epoch       iteration         Loss          Forced  chnc/rate')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f     %s [%.3f / %.3f]' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader),
+                       loss.item(), str(tf_this_batch), tf_chance, self.tf_rate))
 
     def val_epoch(self) -> None:
         """
@@ -224,7 +225,7 @@ class QRSeq2SeqTrainer(trainer.Trainer):
         dec_model_path = checkpoint_data['decoder']['model_import_path']
         imp = importlib.import_module(dec_model_path)
         mod = getattr(imp, checkpoint_data['decoder']['model_name'])
-        self.decoder = mod()
+        self.decoder = mod(1, 1)
         self.decoder.set_params(checkpoint_data['decoder'])
 
         # load encoder optimizer
@@ -255,14 +256,16 @@ class QRSeq2SeqTrainer(trainer.Trainer):
         history = dict()
         history['loss_history']      = self.loss_history
         history['loss_iter']         = self.loss_iter
-        history['test_loss_history'] = self.test_loss_history
-        history['test_loss_iter']    = self.test_loss_iter
         history['acc_history']       = self.acc_history
-        history['acc_iter']          = self.acc_iter
         history['cur_epoch']         = self.cur_epoch
         history['iter_per_epoch']    = self.iter_per_epoch
         if self.test_loss_history is not None:
             history['test_loss_history'] = self.test_loss_history
+            history['test_loss_iter']    = self.test_loss_iter
+
+        if self.val_loss_history is not None:
+            history['val_loss_history'] = self.val_loss_history
+            history['acc_iter']          = self.acc_iter
 
         torch.save(history, fname)
 

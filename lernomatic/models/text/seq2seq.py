@@ -5,18 +5,20 @@ Some seq2seq models for Text
 Stefan Wong 2019
 """
 
+import importlib
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from lernomatic.models import common
 
 # debug
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 
+# TODO : move attention networks to sub-module
 class EncoderRNN(common.LernomaticModel):
-    def __init__(self, hidden_size:int, **kwargs) -> None:
-        self.net = EncoderRNNModule(hidden_size, **kwargs)
+    def __init__(self, **kwargs) -> None:
+        self.net = EncoderRNNModule(**kwargs)
         self.import_path = 'lernomatic.models.text.seq2seq'
         self.model_name = 'EncoderRNN'
         self.module_name = 'EncoderRNNModule'
@@ -37,12 +39,40 @@ class EncoderRNN(common.LernomaticModel):
     def get_num_layers(self) -> int:
         return self.net.num_layers
 
+    def get_params(self) -> dict:
+        params = super(EncoderRNN, self).get_params()
+        params['init_params'] = {
+            'hidden_size': self.net.hidden_size,
+            'num_layers' : self.net.num_layers,
+            'num_words'  : self.net.num_words,
+            'dropout'    : self.net.dropout,
+        }
+
+        return params
+
+    def set_params(self, params:dict) -> None:
+        # regular model stuff
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod(
+            hidden_size = params['init_params']['hidden_size'],
+            num_layers  = params['init_params']['num_layers'],
+            num_words   = params['init_params']['num_words'],
+            dropout     = params['init_params']['dropout'],
+        )
+        self.net.load_state_dict(params['model_state_dict'])
+
 
 # Produce encoded context vectors
 class EncoderRNNModule(nn.Module):
-    def __init__(self, hidden_size:int, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         super(EncoderRNNModule, self).__init__()
-        self.hidden_size :int       = hidden_size
+        self.hidden_size :int       = kwargs.pop('hidden_size', 512)
         self.num_layers  :int       = kwargs.pop('num_layers', 1)
         self.num_words   :int       = kwargs.pop('num_words', 1000)
         self.dropout     :float     = kwargs.pop('dropout', 0.0)
@@ -79,7 +109,7 @@ class EncoderRNNModule(nn.Module):
 
 # Calculates attention weightings over all encoder hidden states
 class GlobalAttentionNet(common.LernomaticModel):
-    def __init__(self, hidden_size:int, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         self.net = GlobalAttentionNetModule(hidden_size, **kwargs)
         self.import_path        = 'lernomatic.models.text.seq2seq'
         self.model_name         = 'GlobalAttentionNet'
@@ -100,11 +130,35 @@ class GlobalAttentionNet(common.LernomaticModel):
     def get_score_method(self) -> str:
         return self.net.score_method
 
+    def get_params(self) -> dict:
+        params = super(GlobalAttentionNet, self).get_params()
+        params['init_params'] = {
+            'hidden_size' : self.net.hidden_size,
+            'score_method' : self.net.score_method,
+        }
+
+        return params
+
+    def set_params(self, params:dict) -> None:
+        # regular model stuff
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        self.net = mod(
+            hidden_size  = params['init_params']['hidden_size'],
+            score_method = params['init_params']['score_method'],
+        )
+        self.net.load_state_dict(params['model_state_dict'])
+
 
 class GlobalAttentionNetModule(nn.Module):
-    def __init__(self, hidden_size:int, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         super(GlobalAttentionNetModule, self).__init__()
-        self.hidden_size:int  = hidden_size
+        self.hidden_size:int  = kwargs.pop('hidden_size', 512)
         self.score_method:str = kwargs.pop('score_method', 'dot')
 
         # check score_method
@@ -196,6 +250,40 @@ class LuongAttenDecoderRNN(common.LernomaticModel):
     def get_score_method(self) -> str:
         return self.net.get_score_method()
 
+    def get_params(self) -> dict:
+        params = super(LuongAttenDecoderRNN, self).get_params()
+        params['init_params'] = {
+            'hidden_size'  : self.net.hidden_size,
+            'output_size'  : self.net.output_size,
+            'embedding'    : self.net.embedding,
+            'num_layers'   : self.net.num_layers,
+            'dropout'      : self.net.dropout,
+            'score_method' : self.net.score_method
+        }
+
+        return params
+
+    def set_params(self, params:dict) -> None:
+        # regular model stuff
+        self.import_path = params['model_import_path']
+        self.model_name  = params['model_name']
+        self.module_name = params['module_name']
+        self.module_import_path = params['module_import_path']
+        # Import the actual network module
+        imp = importlib.import_module(self.module_import_path)
+        mod = getattr(imp, self.module_name)
+        # TODO : check that the state dict restores the embedding params
+        # correctly
+        self.net = mod(
+            params['init_params']['hidden_size'],
+            params['init_params']['output_size'],
+            embedding = params['init_params']['embedding'],
+            num_layers = params['init_params']['num_layers'],
+            dropout = params['init_params']['dropout'],
+            score_method = params['init_params']['score_method'],
+        )
+        self.net.load_state_dict(params['model_state_dict'])
+
 
 """
 Method:
@@ -224,7 +312,7 @@ class LuongAttenDecoderRNNModule(nn.Module):
         self.embedding    :nn.Module = kwargs.pop('embedding', None)
         self.num_layers   :int       = kwargs.pop('num_layers', 1)
         self.dropout      :float     = kwargs.pop('dropout', 0.0)
-        score_method      :str       = kwargs.pop('score_method', 'dot')
+        self.score_method :str       = kwargs.pop('score_method', 'dot')
 
         if self.embedding is None:
             self.embedding = nn.Embedding(self.output_size, self.hidden_size)
@@ -241,7 +329,10 @@ class LuongAttenDecoderRNNModule(nn.Module):
         )
         self.concat = nn.Linear(2 * self.hidden_size, self.hidden_size)
         self.out    = nn.Linear(self.hidden_size, self.output_size)
-        self.atten  = GlobalAttentionNetModule(self.hidden_size, score_method=score_method)
+        self.atten  = GlobalAttentionNetModule(
+            hidden_size = self.hidden_size,
+            score_method=self.score_method
+        )
 
     def forward(self,
                 input_step:torch.Tensor,

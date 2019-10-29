@@ -41,6 +41,7 @@ class Seq2SeqTrainer(trainer.Trainer):
             use_tf = np.random.random() < self.tf_rate
 
     """
+    # TODO : Is voc a generic parameter?
     def __init__(self,
                  voc:vocab.Vocabulary=None,
                  encoder:common.LernomaticModel=None,
@@ -52,7 +53,7 @@ class Seq2SeqTrainer(trainer.Trainer):
         # get subclass specific keyword args
         self.tf_rate   :float = kwargs.pop('tf_rate', 0.0)
         self.grad_clip :float = kwargs.pop('grad_clip', 0.0)
-        #self.use_teacher_forcing:bool = kwargs.pop('use_teacher_forcing', True)
+
         super(Seq2SeqTrainer, self).__init__(None, **kwargs)
 
     def __repr__(self) -> str:
@@ -127,7 +128,8 @@ class Seq2SeqTrainer(trainer.Trainer):
             dec_hidden = enc_hidden[0 : self.decoder.get_num_layers()]
 
             # decide if we are using teacher forcing this iteration
-            if np.random.random() < self.tf_rate:
+            tf_chance = np.random.random()
+            if tf_chance < self.tf_rate:
                 tf_this_batch = True
             else:
                 tf_this_batch = False
@@ -178,9 +180,10 @@ class Seq2SeqTrainer(trainer.Trainer):
 
             # display
             if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
-                print('[TRAIN] :   Epoch       iteration         Loss          Forced')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f     %s' %\
-                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item(), str(tf_this_batch)))
+                print('[TRAIN] :   Epoch       iteration         Loss          Forced  chnc/rate')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f     %s [%.3f / %.3f]' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader),
+                       loss.item(), str(tf_this_batch), tf_chance, self.tf_rate))
 
     def val_epoch(self) -> None:
         """

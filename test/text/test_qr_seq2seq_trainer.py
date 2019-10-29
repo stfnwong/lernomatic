@@ -29,7 +29,7 @@ def get_models(hidden_size:int,
                num_words:int,
                embedding:nn.Module=None) -> tuple:
     encoder = seq2seq.EncoderRNN(
-        hidden_size,
+        hidden_size = hidden_size,
         num_layers = enc_num_layers,
         num_words  = num_words,
         dropout = 0.0,
@@ -68,8 +68,8 @@ class TestQRSeq2SeqTrainer(unittest.TestCase):
 
         test_checkpoint_file = 'checkpoint/qr_seq2seq_trainer_test_checkpoint.pkl'
         test_history_file = 'checkpoint/qr_seq2seq_trainer_test_history.pkl'
-        test_batch_size = 16
-        test_num_epochs = 4
+        test_batch_size = 128
+        test_num_epochs = 2
 
         # get some data
         train_dataset = qr_dataset.QRDataset(
