@@ -1,6 +1,6 @@
 """
-GRID_SEARCH
-Tools to perform grid search of hyperparameters
+PARAM_SEARCH
+Tools to search for hyperparameters
 
 Stefan Wong 2019
 """
@@ -14,6 +14,10 @@ from lernomatic.train import trainer
 
 
 class SearchResult(object):
+    """
+    SearchResult.
+    Namspace class to hold information about a partocular iteration of search.
+    """
     def __init__(self, param:dict=None, acc:float=0.0) -> None:
         self.params:dict              = param
         self.acc:float               = acc
@@ -53,6 +57,11 @@ class SearchResult(object):
 
 
 class GridSearcher(object):
+    """
+    GridSearcher
+    Perform grid search over a set of parameters
+
+    """
     def __init__(self,
                  model:common.LernomaticModel=None,
                  tr:trainer.Trainer=None,
@@ -150,7 +159,9 @@ class GridSearcher(object):
         total_num_param = len(lr_range) * len(wd_range) * len(dp_range) * len(mn_range)
         self.total_num_params = total_num_param
         cur_param = 0
-        # TODO : prepare all the params (eg: into a list) and then run the search?
+        # TODO : prepare all the params ahead of time (eg: into a list) and then run the search?
+        # One potential benefit here might be that we can divide the list up
+        # and send parts of it to different threads, nodes, etc.
         for lr in lr_range:
             for wd in wd_range:
                 for dp in dp_range:
@@ -210,3 +221,89 @@ class GridSearcher(object):
 
         # reset the trainer params
         self.trainer.set_trainer_params(self.original_trainer_params)
+
+
+
+
+class RandomSearcher(object):
+    """
+    RandomSearcher
+    Module to perform random searches over hyperparameter space.
+    """
+    def __init__(self,
+                 model:common.LernomaticModel=None,
+                 tr:trainer.Trainer=None,
+                 **kwargs) -> None:
+        valid_params = ('learning_rate', 'weight_decay', 'dropout', 'momentum')
+        self.model   = model
+        self.trainer = tr
+        self.params:dict     = kwargs.pop('params', None)
+        self.dont_train:bool = kwargs.pop('dont_train', False)   # really only useful for testing
+        self.verbose:bool    = kwargs.pop('verbose', False)
+
+        # history
+        self.param_history = []
+
+        # how many params to search over
+        self.num_params:int     = kwargs.pop('num_params', 8)
+        # cycle parameters
+        self.max_num_epochs:int = kwargs.pop('max_num_epochs', 10)
+        self.min_num_epochs:int = kwargs.pop('min_num_epochs', 4)
+        self.min_req_acc:float  = kwargs.pop('min_req_acc', 0.4)    # reject acc less than this after min_num_epochs
+
+        self.original_trainer_params = dict()
+
+    def __repr__(self) -> str:
+        return 'RandomSearcher'
+
+    def _init_history(self) -> None:
+        self.param_history = []
+
+    def save_history(self, prefix:str=None) -> None:
+        for n, result in enumerate(self.param_history):
+            if prefix is not None:
+                fname = prefix + '_search_result_' + str(n) + '.pkl'
+            else:
+                fname = 'search_result' + str(n) + '.pkl'
+            with open(fname, 'w') as fp:
+                pickle.dumps(result)
+
+    def search(self, params:dict) -> None:
+        # I seem to remember something about using logarithmic params
+        if 'learning_rate' in params:
+            lr_range = 10 * np.random.uniform(
+                params['learning_rate'][0],
+                params['learning_rate'][1],
+                self.num_params
+            )
+        else:
+            lr_range = [0.0]
+
+        if 'weight_decay' in params:
+            wd_range = 10 ** np.random.uniform(
+                params['weight_decay'][0],
+                params['weight_decay'][1],
+                self.num_params
+            )
+        else:
+            wd_range = [0.0]
+
+        if 'dropout' in params:
+            dp_range = 10 ** np.random.uniform(
+                params['dropout'][0],
+                params['dropout'][1],
+                self.num_params
+            )
+        else:
+            dp_range = [0.0]
+
+        if 'momentum' in params:
+            mn_range = 10 ** np.random.uniform(
+                params['momentum'][0],
+                params['momentum'][1],
+                self.num_params
+            )
+        else:
+            mn_range = [0.0]
+
+        self.original_trainer_params = self.trainer.get_trainer_params()

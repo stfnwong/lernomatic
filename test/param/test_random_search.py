@@ -1,6 +1,6 @@
 """
-TEST_GRID_SEARCH
-Unit tests for GridSearcher
+TEST_RANDOM_SEARCH
+Unit tests for RandomSearcher
 
 Stefan Wong 2019
 """
@@ -18,7 +18,6 @@ from lernomatic.train import cifar_trainer
 
 
 GLOBAL_OPTS = dict()
-
 
 # Get models, etc
 def get_model() -> common.LernomaticModel:
@@ -59,8 +58,7 @@ def get_trainer(model, checkpoint_name:str):
     return trainer
 
 
-
-class TestGridSearcher(unittest.TestCase):
+class TestRandomSearcher(unittest.TestCase):
     def setUp(self):
         self.test_num_params:int = 4
         self.test_max_num_epochs:int = 24
@@ -68,13 +66,13 @@ class TestGridSearcher(unittest.TestCase):
         self.test_min_req_acc:float = 0.65
 
     def test_init(self):
-        print('======== TestGridSearcher.test_init ')
+        print('======== TestRandomSearcher.test_init ')
 
         # get something to train on
         model = get_model()
         trainer = get_trainer(model, GLOBAL_OPTS['checkpoint_name'])
         # get a grid searcher
-        gsearcher = param_search.GridSearcher(
+        gsearcher = param_search.RandomSearcher(
             model,
             trainer,
             num_params     = self.test_num_params,
@@ -99,7 +97,7 @@ class TestGridSearcher(unittest.TestCase):
         for n, result in enumerate(gsearcher.param_history):
             print(n, str(result))
 
-        print('======== TestGridSearcher.test_init <END>')
+        print('======== TestRandomSearcher.test_init <END>')
 
 
 
