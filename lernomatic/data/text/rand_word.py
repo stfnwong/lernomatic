@@ -6,6 +6,7 @@ Stefan Wong 2019
 """
 
 import torch
+import numpy as np
 
 # custom batch object for this trainer
 class RandBatch(object):

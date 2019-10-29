@@ -1,6 +1,6 @@
 """
-TEST_SEQ2SEQ_TRAINER
-Unit tests for Seq2SeqTrainer module
+TEST_QRSEQ2SEQ_TRAINER
+Unit tests for QRSeq2SeqTrainer module
 
 Stefan Wong 2019
 """
@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 # units under test
-from lernomatic.train.text import seq2seq_trainer
+from lernomatic.train.text import qr_seq2seq_trainer
 from lernomatic.models.text import seq2seq
 from lernomatic.data.text import qr_dataset
 from lernomatic.data.text import vocab
@@ -54,7 +54,7 @@ def get_embed_layer(num_words:int, hidden_size:int, filename:str=None) -> nn.Mod
     return embedding
 
 
-class TestSeq2SeqTrainer(unittest.TestCase):
+class TestQRSeq2SeqTrainer(unittest.TestCase):
     def setUp(self):
         self.hidden_size = 512
         self.enc_num_layers = 1
@@ -64,10 +64,10 @@ class TestSeq2SeqTrainer(unittest.TestCase):
         self.voc_data_path = 'hdf5/test_vocab.json'
 
     def test_save_load(self):
-        print('======== TestSeq2SeqTrainer.test_save_load ')
+        print('======== TestQRSeq2SeqTrainer.test_save_load ')
 
-        test_checkpoint_file = 'checkpoint/seq2seq_trainer_test_checkpoint.pkl'
-        test_history_file = 'checkpoint/seq2seq_trainer_test_history.pkl'
+        test_checkpoint_file = 'checkpoint/qr_seq2seq_trainer_test_checkpoint.pkl'
+        test_history_file = 'checkpoint/qr_seq2seq_trainer_test_history.pkl'
         test_batch_size = 16
         test_num_epochs = 4
 
@@ -98,7 +98,7 @@ class TestSeq2SeqTrainer(unittest.TestCase):
         voc.load(self.voc_data_path)
 
         # get a trainer
-        src_trainer = seq2seq_trainer.Seq2SeqTrainer(
+        src_trainer = qr_seq2seq_trainer.QRSeq2SeqTrainer(
             voc,        # where to get voc from?
             encoder,
             decoder,
@@ -117,16 +117,18 @@ class TestSeq2SeqTrainer(unittest.TestCase):
         src_trainer.save_history(test_history_file)
 
         # Get a new trainer object and load params there
-        dst_trainer = seq2seq_trainer.Seq2SeqTrainer(
+        dst_trainer = qr_seq2seq_trainer.QRSeq2SeqTrainer(
             None,
             None
         )
         print('Loading checkpoint data from file [%s] ' % str(test_checkpoint_file))
         dst_trainer.load_checkpoint(test_checkpoint_file)
 
+        # Check model parameters
+        self.assertIsNotNone(dst_trainer.encoder)
+        self.assertIsNotNone(dst_trainer.decoder)
 
-
-        print('======== TestSeq2SeqTrainer.test_save_load <END>')
+        print('======== TestQRSeq2SeqTrainer.test_save_load <END>')
 
 
 

@@ -21,7 +21,7 @@ class LernomaticModel(object):
     """
     def __init__(self, **kwargs) -> None:
         self.net               : torch.nn.Module = None
-        self.import_path       : str             = 'lernomatic.model.common'
+        self.import_path       : str             = 'lernomatic.models.common'
         self.model_name        : str             = 'LernomaticModel'
         self.module_name       : str             = None
         self.module_import_path: str             = None

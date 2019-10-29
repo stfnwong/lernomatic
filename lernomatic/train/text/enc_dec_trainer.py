@@ -72,7 +72,7 @@ class EncDecTrainer(trainer.Trainer):
     def _init_dataloaders(self) -> None:
         # Need to implement this such that we use the batch/data_gen objects
         # above rather than the usual pytorch dataloaders
-        self.train_loader = RandWordBatchGenerator(
+        self.train_loader = rand_word.RandWordBatchGenerator(
             batch_size = self.batch_size,
             num_batches = self.num_epochs,
             num_words = self.num_words,      # TODO : make settable from vocab

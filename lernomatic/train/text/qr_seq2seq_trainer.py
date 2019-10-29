@@ -16,10 +16,11 @@ from lernomatic.data.text import vocab
 #from pudb import set_trace; set_trace()
 
 
-class Seq2SeqTrainer(trainer.Trainer):
+# TODO : maybe this can eventually derive from trainer.text.Seq2SeqTrainer ?
+class QRSeq2SeqTrainer(trainer.Trainer):
     """
-    Seq2SeqTrainer
-    A Trainer for Generic Sequence to Sequence models
+    QRSeq2SeqTrainer
+    Seq2Seq Trainer for Query/Response models (eg: chatbots)
 
 
     ARGUMENTS:
@@ -53,10 +54,10 @@ class Seq2SeqTrainer(trainer.Trainer):
         self.tf_rate   :float = kwargs.pop('tf_rate', 0.0)
         self.grad_clip :float = kwargs.pop('grad_clip', 0.0)
         #self.use_teacher_forcing:bool = kwargs.pop('use_teacher_forcing', True)
-        super(Seq2SeqTrainer, self).__init__(None, **kwargs)
+        super(QRSeq2SeqTrainer, self).__init__(None, **kwargs)
 
     def __repr__(self) -> str:
-        return 'Seq2SeqTrainer'
+        return 'QRSeq2SeqTrainer'
 
     def _send_to_device(self) -> None:
         if self.encoder is not None:
@@ -102,11 +103,6 @@ class Seq2SeqTrainer(trainer.Trainer):
         self.decoder.set_train()
         decoder_initial_state = [[self.voc.get_sos() for _ in range(self.batch_size)]]
 
-        # TODO : The seq2seq_trainer should be more generic than this. These
-        # routines are for the QR chatbot program, and not for seq1seq modules
-        # generally. In fact, once this branch is matured enough this traning
-        # might be moved into its own submodule so that more generic sequences
-        # (for example, sequences of images, sounds etc) can be trained.
         for batch_idx, (query, qlen, response, rlen) in enumerate(self.train_loader):
             loss     = 0        # this becomes a tensor later...?
             totals   = 0
@@ -119,6 +115,14 @@ class Seq2SeqTrainer(trainer.Trainer):
 
             query = query.transpose(0, 1)
             response = response.transpose(0, 1)
+            resp_mask = torch.where(
+                response > self.voc.get_pad(),
+                torch.ByteTensor([1]),
+                torch.ByteTensor([0]),
+            ).bool()
+            resp_mask = resp_mask.to(self.device)
+            query    = query.to(self.device)
+            response = response.to(self.device)
 
             # pass oriented data to models
             enc_output, enc_hidden = self.encoder.forward(query, qlen)
@@ -127,7 +131,8 @@ class Seq2SeqTrainer(trainer.Trainer):
             dec_hidden = enc_hidden[0 : self.decoder.get_num_layers()]
 
             # decide if we are using teacher forcing this iteration
-            if np.random.random() < self.tf_rate:
+            tf_chance = np.random.random()
+            if tf_chance < self.tf_rate:
                 tf_this_batch = True
             else:
                 tf_this_batch = False
@@ -179,8 +184,8 @@ class Seq2SeqTrainer(trainer.Trainer):
             # display
             if (batch_idx > 0) and (batch_idx % self.print_every) == 0:
                 print('[TRAIN] :   Epoch       iteration         Loss          Forced')
-                print('            [%3d/%3d]   [%6d/%6d]  %.6f     %s' %\
-                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item(), str(tf_this_batch)))
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f     %s [%f]' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item(), str(tf_this_batch), tf_chance))
 
     def val_epoch(self) -> None:
         """
