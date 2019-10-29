@@ -5,6 +5,7 @@ Resnet trained on CIFAR-10 with LRFinder and Scheduling
 Stefan Wong 2019
 """
 
+import os
 import sys
 import argparse
 import matplotlib.pyplot as plt
@@ -81,6 +82,8 @@ def main() -> None:
     sched_trainer = get_trainer(sched_model, 'ex_cifar10_lr_find_schedule_')
 
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        if not os.path.isdir(GLOBAL_OPTS['tensorboard_dir']):
+            os.mkdir(GLOBAL_OPTS['tensorboard_dir'])
         sched_writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
         sched_trainer.set_tb_writer(sched_writer)
 

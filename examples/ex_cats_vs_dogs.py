@@ -107,6 +107,8 @@ def main() -> None:
 
     # Add a tensorboard writer
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        if not os.path.isdir(GLOBAL_OPTS['tensorboard_dir']):
+            os.mkdir(GLOBAL_OPTS['tensorboard_dir'])
         writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
         cvd_train.set_tb_writer(writer)
 

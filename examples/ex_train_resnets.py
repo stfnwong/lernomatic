@@ -5,6 +5,7 @@ Train a resnet classifier on CIFAR10 (for now)
 Stefan Wong 2019
 """
 
+import os
 import argparse
 import time
 from datetime import timedelta
@@ -50,6 +51,9 @@ def main() -> None:
     )
 
     if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        if not os.path.isdir(GLOBAL_OPTS['tensorboard_dir']):
+            os.mkdir(GLOBAL_OPTS['tensorboard_dir'])
+
         writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
         trainer.set_tb_writer(writer)
 
