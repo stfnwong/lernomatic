@@ -7,3 +7,7 @@ python:
 install:
     pip install -r requirements.txt 
 
+# Unit test list 
+script:
+    - python3 test/test_trainer.py
+    - python3 test/test_splitter.py
