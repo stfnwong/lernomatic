@@ -26,28 +26,33 @@ class SegnetTrainer(trainer.Trainer):
         return 'SegnetTrainer'
 
     def _init_optimizer(self) -> None:
-
-       if self.encoder is None:
-           self.enc_optim = None
-       else:
-           if hasattr(torch.optim, self.optim_function):
-               self.enc_optim = getattr(torch.optim, self.optim_function)(
-                   self.encoder.get_model_parameters(),
-                   lr = self.learning_rate,
-                   weight_decay = self.weight_decay,
-               )
-           else:
-               raise ValueError('Cannot find optim function %s' % str(self.optim_function))
+        if self.encoder is None:
+            self.enc_optim = None
+        else:
+            if hasattr(torch.optim, self.optim_function):
+                self.enc_optim = getattr(torch.optim, self.optim_function)(
+                    self.encoder.get_model_parameters(),
+                    lr = self.learning_rate,
+                    weight_decay = self.weight_decay,
+                )
+            else:
+                raise ValueError('Cannot find optim function %s' % str(self.optim_function))
 
         if self.decoder is None:
             self.dec_optim = None
         else:
-           if hasattr(torch.optim, self.optim_function):
-               self.dec_optim = getattr(torch.optim, self.optim_function)(
-                   self.encoder.get_model_parameters(),
-                   lr = self.learning_rate,
-                   weight_decay = self.weight_decay,
-               )
-           else:
-               raise ValueError('Cannot find optim function %s' % str(self.optim_function))
+            if hasattr(torch.optim, self.optim_function):
+                self.dec_optim = getattr(torch.optim, self.optim_function)(
+                    self.encoder.get_model_parameters(),
+                    lr = self.learning_rate,
+                    weight_decay = self.weight_decay,
+                )
+            else:
+                raise ValueError('Cannot find optim function %s' % str(self.optim_function))
+
+
+    def train_epoch(self) -> None:
+        for batch_idx, (data, label) in enumerate(self.train_loader):
+            data = data.to(self.device)
+            label = label.to(self.device)
 
