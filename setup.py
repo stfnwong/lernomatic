@@ -26,7 +26,7 @@ install_requirements = to_list("""
 """)
 
 setup(
-    name = "lernomatic",
+    name = "Lernomatic",
     version = "0.333333",
 
     install_requires = install_requirements,
@@ -37,6 +37,8 @@ setup(
     description = 'Lernomatic',
     author = 'Stefan Wong',
     author_email = 'stfnwong@gmail.com',
+
+    packages=['lernomatic'],
 
     zip_safe = False,
 )
