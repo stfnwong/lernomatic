@@ -1,5 +1,7 @@
 # LERNOMATIC ™ 
 
+[![Build Status](https://travis-ci.org/stfnwong/lernomatic.svg?branch=master)](https://travis-ci.org/stfnwong/lernomatic)
+
 ## A machine learning library built on Pytorch.
 
 ##### What people are saying about *LERNOMATIC*
