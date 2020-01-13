@@ -10,7 +10,8 @@ branches:
         - travis-ci
 
 install:
-    - pip install --upgrade pip && pip install -r requirements.txt
+    #- pip install --upgrade pip 
+    - pip install -r requirements.txt
     - ./setup.sh
 
 # TODO : flake8/pylint
