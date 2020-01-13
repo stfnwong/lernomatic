@@ -29,7 +29,7 @@ install_requirements = to_list("""
 
 setup(
     name = "Lernomatic",
-    version = __version__,
+    version = '0.333333",
 
     install_requires = install_requirements,
     python_requires = '>=3.4',
