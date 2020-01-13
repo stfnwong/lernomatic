@@ -4,8 +4,17 @@ python:
     - "3.7"
     - "3.8"
 
+branches:
+    only:
+        - master 
+        - travis-ci
+
 install:
-    pip install -r requirements.txt 
+    - pip install --upgrade pip && pip install -r requirements.txt
+    - ./setup.sh
+
+# TODO : flake8/pylint
+# TODO : coverage
 
 # Unit test list 
 script:
