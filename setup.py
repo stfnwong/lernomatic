@@ -20,7 +20,6 @@ install_requirements = to_list("""
     torch
     torchvision
     matplotlib
-    json
     h5py
     pillow
     numpy >=1.12
