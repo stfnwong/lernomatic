@@ -5,4 +5,4 @@
 
 PYTHON=python3
 
-$PYTHON setup.py
+$PYTHON setup.py install
