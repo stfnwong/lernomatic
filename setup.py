@@ -26,7 +26,7 @@ install_requirements = to_list("""
 """)
 
 setup(
-    name = "Lernomatic",
+    name = "lernomatic",
     version = "0.333333",
 
     install_requires = install_requirements,
