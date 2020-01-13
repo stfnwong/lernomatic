@@ -23,7 +23,6 @@ install_requirements = to_list("""
     json
     h5py
     pillow
-    unittest
     numpy >=1.12
 """)
 
