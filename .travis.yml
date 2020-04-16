@@ -10,4 +10,5 @@ install:
 # Unit test list 
 script:
     - python3 test/test_trainer.py
+    - python3 test/test_model.py
     - python3 test/test_splitter.py

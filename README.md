@@ -2,6 +2,8 @@
 
 ## A machine learning library built on Pytorch.
 
+[![Build Status](https://travis-ci.org/stfnwong/smips.svg?branch=master)](https://travis-ci.org/stfnwong/smips)
+
 ##### What people are saying about *LERNOMATIC*
 - *"Its' like a poor-man's fast.ai"* - Heremy Joward
 - *"Without Pytorch, this project is nothing"* - Jangqing Yia
