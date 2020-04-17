@@ -6,7 +6,6 @@ Stefan Wong 2019
 """
 
 import sys
-import unittest
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
