@@ -5,8 +5,6 @@ Units tests for Scheduler objects
 Stefan Wong 2019
 """
 
-import sys
-import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
