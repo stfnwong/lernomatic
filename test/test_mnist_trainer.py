@@ -6,7 +6,7 @@ Stefan Wong 2018
 """
 
 import sys
-import unittest
+import pytest
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,14 +18,28 @@ from lernomatic.models import mnist as mnist_net
 
 GLOBAL_OPTS = dict()
 
-class TestMNISTTrainer(unittest.TestCase):
-    def setUp(self):
-        self.verbose         = GLOBAL_OPTS['verbose']
-        self.draw_plot       = GLOBAL_OPTS['draw_plot']
-        self.test_num_epochs = 3
-        self.test_batch_size = 16
+# TODO: not the correct way to use these...
+@pytest.fixture
+def test_num_epochs() -> int:
+    return 3
 
-    def test_save_load_checkpoint_train(self):
+@pytest.fixture
+def test_batch_size() -> int:
+    return 16
+
+def test_device_id() -> int:
+    if torch.cuda.is_available():
+        return 0
+    return -1
+
+
+class TestMNISTTrainer:
+    verbose         :bool = True #GLOBAL_OPTS['verbose']
+    draw_plot       :bool = True #GLOBAL_OPTS['draw_plot']
+    test_num_epochs :int  = 3
+    test_batch_size :int  = 16
+
+    def test_save_load_checkpoint_train(self) -> None:
         print('======== TestMNISTTrainer.test_save_load_checkpoint_train ')
 
         test_dataset_file = 'hdf5/trainer_unit_test.h5'
@@ -38,11 +52,12 @@ class TestMNISTTrainer(unittest.TestCase):
             num_epochs = self.test_num_epochs,
             save_every = 0,
             print_every = 250,
-            device_id = GLOBAL_OPTS['device_id'],
+            device_id = test_device_id(),
             # dataload options
             checkpoint_name = 'save_load_test',
             batch_size = 16,
-            num_workers = GLOBAL_OPTS['num_workers']
+            num_workers = 1
+            #num_workers = GLOBAL_OPTS['num_workers']
         )
 
         if self.verbose:
@@ -58,35 +73,35 @@ class TestMNISTTrainer(unittest.TestCase):
         new_model = mnist_net.MNISTNet()
         dst_tr = mnist_trainer.MNISTTrainer(
             new_model,
-            device_id = GLOBAL_OPTS['device_id']
+            device_id = test_device_id()
         )
         dst_tr.load_checkpoint(test_checkpoint_name)
 
         # Test object parameters
-        self.assertEqual(src_tr.num_epochs, dst_tr.num_epochs)
-        self.assertEqual(src_tr.learning_rate, dst_tr.learning_rate)
-        self.assertEqual(src_tr.weight_decay, dst_tr.weight_decay)
-        self.assertEqual(src_tr.print_every, dst_tr.print_every)
-        self.assertEqual(src_tr.save_every, dst_tr.save_every)
-        self.assertEqual(src_tr.device_id, dst_tr.device_id)
+        assert src_tr.num_epochs == dst_tr.num_epochs
+        assert src_tr.learning_rate == dst_tr.learning_rate
+        assert src_tr.weight_decay == dst_tr.weight_decay
+        assert src_tr.print_every == dst_tr.print_every
+        assert src_tr.save_every == dst_tr.save_every
+        assert src_tr.device_id == dst_tr.device_id
 
         print('\t Comparing model parameters ')
         src_model_params = src_tr.get_model_params()
         dst_model_params = dst_tr.get_model_params()
-        self.assertEqual(len(src_model_params.items()), len(dst_model_params.items()))
+        assert len(src_model_params.items()) == len(dst_model_params.items())
 
         # p1, p2 are k,v tuple pairs of each model parameters
         # k = str
         # v = torch.Tensor
         for n, (p1, p2) in enumerate(zip(src_model_params.items(), dst_model_params.items())):
-            self.assertEqual(p1[0], p2[0])
+            assert p1[0] == p2[0]
             print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(src_model_params.items())), end='\r')
-            self.assertEqual(True, torch.equal(p1[1], p2[1]))
+            assert torch.equal(p1[1], p2[1]) == True
         print('\n ...done')
 
         print('======== TestMNISTTrainer.test_save_load_checkpoint_train <END>')
 
-    def save_load_checkpoint_train_test(self):
+    def save_load_checkpoint_train_test(self) -> None:
         print('======== TestMNISTTrainer.save_load_checkpoint_train_test ')
 
         test_dataset_file = 'hdf5/trainer_unit_test.h5'
@@ -99,11 +114,11 @@ class TestMNISTTrainer(unittest.TestCase):
             save_every = 0,
             print_every = 250,
             checkpoint_name = 'save_load_test',
-            device_id = GLOBAL_OPTS['device_id'],
+            device_id = test_device_id(),
             # loader options,
             num_epochs = self.test_num_epochs,
-            batch_size = GLOBAL_OPTS['batch_size'],
-            num_workers = GLOBAL_OPTS['num_workers'],
+            batch_size = self.test_batch_size,
+            num_workers = 1
             # Need to provide both training and test datasets
         )
 
@@ -118,42 +133,42 @@ class TestMNISTTrainer(unittest.TestCase):
         # acc history attribute that is not None
         dst_tr = mnist_trainer.MNISTTrainer(
             model,
-            device_id = GLOBAL_OPTS['device_id']
+            device_id = test_device_id(),
         )
         ck_fname = 'checkpoint/save_load_test_epoch-%d.pkl' % (test_num_epochs-1)
         dst_tr.load_checkpoint(ck_fname)
 
         # Test object parameters
-        self.assertEqual(src_tr.num_epochs, dst_tr.num_epochs)
-        self.assertEqual(src_tr.learning_rate, dst_tr.learning_rate)
-        self.assertEqual(src_tr.weight_decay, dst_tr.weight_decay)
-        self.assertEqual(src_tr.print_every, dst_tr.print_every)
-        self.assertEqual(src_tr.save_every, dst_tr.save_every)
-        self.assertEqual(src_tr.device_id, dst_tr.device_id)
+        assert src_tr.num_epochs == dst_tr.num_epochs
+        assert src_tr.learning_rate == dst_tr.learning_rate
+        assert src_tr.weight_decay == dst_tr.weight_decay
+        assert src_tr.print_every == dst_tr.print_every
+        assert src_tr.save_every == dst_tr.save_every
+        assert src_tr.device_id == dst_tr.device_id
 
         print('\t Comparing model parameters ')
         src_model_params = src_tr.get_model_params()
         dst_model_params = dst_tr.get_model_params()
-        self.assertEqual(len(src_model_params.items()), len(dst_model_params.items()))
+        assert len(src_model_params.items()) == len(dst_model_params.items())
 
         print('\t Comparing model parameters ')
         src_model_params = src_tr.get_model_params()
         dst_model_params = dst_tr.get_model_params()
-        self.assertEqual(len(src_model_params.items()), len(dst_model_params.items()))
+        assert len(src_model_params.items()) == len(dst_model_params.items())
 
         # p1, p2 are k,v tuple pairs of each model parameters
         # k = str
         # v = torch.Tensor
         for n, (p1, p2) in enumerate(zip(src_model_params.items(), dst_model_params.items())):
-            self.assertEqual(p1[0], p2[0])
+            assert p1[0] == p2[0]
             print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n, len(src_model_params.items())), end='\r')
-            self.assertEqual(True, torch.equal(p1[1], p2[1]))
+            assert torch.equal(p1[1], p2[1]) == True
         print('\n ...done')
 
         print('======== TestMNISTTrainer.save_load_checkpoint_train_test <END>')
 
 
-    def test_save_load_history(self):
+    def test_save_load_history(self) -> None:
         print('======== TestMNISTTrainer.test_save_load_history ')
 
         test_history_name = 'checkpoint/test_history.pkl'
@@ -165,11 +180,11 @@ class TestMNISTTrainer(unittest.TestCase):
             num_epochs = self.test_num_epochs,
             save_every = 0,
             print_every = 250,
-            device_id = GLOBAL_OPTS['device_id'],
+            device_id = test_device_id(),
             # dataload options
             checkpoint_name = 'save_load_test',
             batch_size = 16,
-            num_workers = GLOBAL_OPTS['num_workers']
+            num_workers = 1
         )
 
         if self.verbose:
@@ -183,23 +198,23 @@ class TestMNISTTrainer(unittest.TestCase):
         # Load history into new object
         dst_tr = mnist_trainer.MNISTTrainer(
             model,
-            device_id = GLOBAL_OPTS['device_id']
+            device_id = test_device_id(),
         )
         dst_tr.load_history(test_history_name)
 
         # Test loss history
         print('\t Comparing loss history....')
-        self.assertEqual(src_tr.loss_iter, dst_tr.loss_iter)
+        assert src_tr.loss_iter == dst_tr.loss_iter
         for n in range(src_tr.loss_iter):
             print('Checking loss element [%d/%d]' % (n, src_tr.loss_iter), end='\r')
-            self.assertEqual(src_tr.loss_history[n], dst_tr.loss_history[n])
+            assert src_tr.loss_history[n] == dst_tr.loss_history[n]
 
         print('\n ...done')
 
         print('======== TestMNISTTrainer.test_save_load_history <END>')
 
 
-# Entry point
+# TODO : this will go...
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose',

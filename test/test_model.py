@@ -16,8 +16,6 @@ from lernomatic.models import cifar
 from lernomatic.models import alexnet
 from lernomatic.train import cifar_trainer
 
-# debug
-from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
