@@ -28,7 +28,6 @@ class TestMNISTTrainer:
     test_batch_size :int  = 16
 
     def test_save_load_checkpoint_train(self) -> None:
-
         test_dataset_file = 'hdf5/trainer_unit_test.h5'
         test_checkpoint_name = 'checkpoint/save_load_test_checkpoint.pkl'
 
