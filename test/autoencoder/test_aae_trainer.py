@@ -35,7 +35,7 @@ def get_mnist_datasets(data_dir:str) -> tuple:
     return (train_dataset, val_dataset)
 
 
-class TestAAETrainer(unittest.TestCase):
+class TestAAETrainer:
     # MNIST sizes - unit testing on MNIST should be relatively fast
     num_classes     = 10
     hidden_size     = 1000

@@ -5,9 +5,6 @@ Unit tests for Denoising Autoencoder Trainer
 Stefan Wong 2019
 """
 
-import sys
-import argparse
-import unittest
 import torch
 import torchvision
 import time
