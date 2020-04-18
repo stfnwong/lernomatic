@@ -14,6 +14,7 @@ from lernomatic.models import common
 from lernomatic.models import cifar
 from lernomatic.models import alexnet
 from lernomatic.train import cifar_trainer
+from test import util
 
 
 def get_model() -> common.LernomaticModel:

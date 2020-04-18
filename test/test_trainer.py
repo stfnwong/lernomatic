@@ -35,7 +35,7 @@ class TestTrainer:
     draw_plot        = False #GLOBAL_OPTS['draw_plot']
     test_batch_size  = 16
     test_num_workers = 2
-    test_num_epochs  = 2
+    test_num_epochs  = 1
     shuffle          = True
     data_dir         = 'data/'
 
@@ -44,10 +44,9 @@ class TestTrainer:
         # get a model
         model = cifar.CIFAR10Net()
         # get a trainer
-        test_num_epochs = 1
         src_tr = cifar_trainer.CIFAR10Trainer(
             model,
-            num_epochs  = test_num_epochs,
+            num_epochs  = self.test_num_epochs,
             save_every  = 0,
             device_id   = util.get_device_id(),
             batch_size  = self.test_batch_size,
@@ -117,14 +116,13 @@ class TestTrainer:
 
         model = cifar.CIFAR10Net()
         # Get trainer object
-        test_num_epochs = 10
         src_tr = cifar_trainer.CIFAR10Trainer(
             model,
             save_every  = 0,
             print_every = 50,
             device_id   = util.get_device_id(),
             # loader options,
-            num_epochs  = self.test_num_epochs,
+            num_epochs  = 2 * self.test_num_epochs,
             batch_size  = self.test_batch_size,
             num_workers = self.test_num_workers,
         )
@@ -272,7 +270,6 @@ class TestTrainer:
 
         model = cifar.CIFAR10Net()
         # Get trainer object
-        test_num_epochs = 10
         src_tr = cifar_trainer.CIFAR10Trainer(
             model,
             save_every  = 0,
@@ -381,8 +378,8 @@ class TestTrainer:
     def test_history_extend(self) -> None:
         test_checkpoint = 'checkpoint/test_history_extend.pkl'
         test_history = 'checkpoint/test_history_extend_history.pkl'
-        test_num_epochs = 4
         model = cifar.CIFAR10Net()
+        # TODO : adjust this so we don't need 10 epochs of training
         # Get trainer object
         test_num_epochs = 10
         trainer = cifar_trainer.CIFAR10Trainer(
