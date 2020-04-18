@@ -112,7 +112,7 @@ class TestDAETrainer:
             src_model_params = src_mod.get_net_state_dict()
             dst_model_params = dst_mod.get_net_state_dict()
 
-            self.assertEqual(len(src_model_params.items()), len(dst_model_params.items()))
+            assert len(src_model_params.items()) == len(dst_model_params.items())
 
             # p1, p2 are k,v tuple pairs of each model parameters
             # k = str
