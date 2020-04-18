@@ -11,6 +11,7 @@ from lernomatic.models import common
 from lernomatic.models import cifar
 from lernomatic.train import cifar_trainer
 from lernomatic.infer import inferrer
+from test import util
 
 
 def get_model() -> common.LernomaticModel:
@@ -25,7 +26,7 @@ def get_trainer(model:common.LernomaticModel,
         model,
         batch_size = batch_size,
         test_batch_size = 1,
-        device_id = get_device_id(),
+        device_id = util.get_device_id(),
         checkpoint_name = checkpoint_name,
         save_every = save_every,
         save_hist = False,
@@ -36,11 +37,6 @@ def get_trainer(model:common.LernomaticModel,
 
     return trainer
 
-
-def get_device_id() -> int:
-    if torch.cuda.is_available():
-        return 0
-    return -1
 
 
 class TestInferrer:
@@ -56,7 +52,7 @@ class TestInferrer:
         # save a training checkpoint to disk and load it into an inferrer
         trainer.save_checkpoint(infer_test_checkpoint)
 
-        infer = inferrer.Inferrer(device_id = get_device_id())
+        infer = inferrer.Inferrer(device_id = util.get_device_id())
         infer.load_model(infer_test_checkpoint)
 
         infer_model = infer.get_model()

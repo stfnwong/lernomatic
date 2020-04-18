@@ -12,9 +12,8 @@ from lernomatic.param import lr_common
 from lernomatic.train import cifar_trainer
 from lernomatic.models import cifar
 from lernomatic.vis import vis_loss_history
+from test import util
 
-
-GLOBAL_OPTS = dict()
 
 # helper function for plotting
 def plot_lr_find_results(ax,
@@ -42,11 +41,6 @@ def get_figure() -> tuple:
     fig, ax = plt.subplots()
     return (fig, ax)
 
-
-def get_device_id() -> int:
-    if torch.cuda.is_available():
-        return 0
-    return -1
 
 
 GLOBAL_TEST_PARAMS = {
@@ -77,7 +71,7 @@ def get_trainer() -> cifar_trainer.CIFAR10Trainer:
         # training options
         learning_rate = GLOBAL_TEST_PARAMS['test_learning_rate'],
         num_epochs = GLOBAL_TEST_PARAMS['train_num_epochs'],
-        device_id = get_device_id(),
+        device_id = util.get_device_id(),
     )
 
     return trainer

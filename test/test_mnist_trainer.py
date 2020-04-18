@@ -13,12 +13,8 @@ import torch
 # unit(s) under test
 from lernomatic.train import mnist_trainer
 from lernomatic.models import mnist as mnist_net
+from test import util
 
-
-def test_device_id() -> int:
-    if torch.cuda.is_available():
-        return 0
-    return -1
 
 
 class TestMNISTTrainer:
@@ -38,7 +34,7 @@ class TestMNISTTrainer:
             num_epochs = self.test_num_epochs,
             save_every = 0,
             print_every = 250,
-            device_id = test_device_id(),
+            device_id = util.get_device_id(),
             # dataload options
             checkpoint_name = 'save_load_test',
             batch_size = 16,
@@ -59,7 +55,7 @@ class TestMNISTTrainer:
         new_model = mnist_net.MNISTNet()
         dst_tr = mnist_trainer.MNISTTrainer(
             new_model,
-            device_id = test_device_id()
+            device_id = util.get_device_id()
         )
         dst_tr.load_checkpoint(test_checkpoint_name)
 
@@ -95,7 +91,7 @@ class TestMNISTTrainer:
             save_every = 0,
             print_every = 250,
             checkpoint_name = 'save_load_test',
-            device_id = test_device_id(),
+            device_id = util.get_device_id(),
             # loader options,
             num_epochs = self.test_num_epochs,
             batch_size = self.test_batch_size,
@@ -114,7 +110,7 @@ class TestMNISTTrainer:
         # acc history attribute that is not None
         dst_tr = mnist_trainer.MNISTTrainer(
             model,
-            device_id = test_device_id(),
+            device_id = util.get_device_id(),
         )
         ck_fname = 'checkpoint/save_load_test_epoch-%d.pkl' % (test_num_epochs-1)
         dst_tr.load_checkpoint(ck_fname)
@@ -157,7 +153,7 @@ class TestMNISTTrainer:
             num_epochs = self.test_num_epochs,
             save_every = 0,
             print_every = 250,
-            device_id = test_device_id(),
+            device_id = util.get_device_id(),
             # dataload options
             checkpoint_name = 'save_load_test',
             batch_size = 16,
@@ -175,7 +171,7 @@ class TestMNISTTrainer:
         # Load history into new object
         dst_tr = mnist_trainer.MNISTTrainer(
             model,
-            device_id = test_device_id(),
+            device_id = util.get_device_id(),
         )
         dst_tr.load_history(test_history_name)
 

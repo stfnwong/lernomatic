@@ -16,11 +16,6 @@ from lernomatic.models import alexnet
 from lernomatic.train import cifar_trainer
 
 
-def get_device_id() -> int:
-    if torch.cuda.is_available():
-        return 0
-    return -1
-
 def get_model() -> common.LernomaticModel:
     model = cifar.CIFAR10Net()
     return model
@@ -42,7 +37,7 @@ def get_trainer(model : common.LernomaticModel,
         save_every = 0,
         print_every = 50,
         batch_size = batch_size,
-        device_id = get_device_id(),
+        device_id = util.get_device_id(),
         verbose = True
     )
     return trainer

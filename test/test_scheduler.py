@@ -14,6 +14,7 @@ from lernomatic.train import cifar_trainer
 from lernomatic.models import cifar
 # visualizations
 from lernomatic.vis import vis_loss_history
+from test import util
 
 
 GLOBAL_OPTS = dict()
@@ -21,7 +22,6 @@ GLOBAL_OPTS['num_workers'] = 1
 GLOBAL_OPTS['batch_size'] = 32
 GLOBAL_OPTS['learning_rate'] = 0.0001
 GLOBAL_OPTS['num_epochs'] = 20
-GLOBAL_OPTS['device_id'] = -1
 GLOBAL_OPTS['verbose'] =  True
 GLOBAL_OPTS['draw_plot'] = False
 
@@ -66,7 +66,7 @@ def get_trainer(learning_rate:float = None) -> cifar_trainer.CIFAR10Trainer:
         # other options
         save_every = 0,
         print_every = 200,
-        device_id = GLOBAL_OPTS['device_id'],
+        device_id = util.get_device_id(),
         verbose = GLOBAL_OPTS['verbose']
     )
 

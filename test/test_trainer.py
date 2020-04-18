@@ -14,6 +14,7 @@ from lernomatic.train import cifar_trainer
 from lernomatic.models import cifar
 # vis tools
 from lernomatic.vis import vis_loss_history
+from test import util
 
 
 GLOBAL_OPTS = dict()
@@ -26,12 +27,6 @@ def get_figure_subplots(num_subplots:int=2) -> tuple:
         ax.append(sub_ax)
 
     return (fig, ax)
-
-
-def get_device_id() -> int:
-    if torch.cuda.is_available():
-        return 0
-    return -1
 
 
 
@@ -54,7 +49,7 @@ class TestTrainer:
             model,
             num_epochs  = test_num_epochs,
             save_every  = 0,
-            device_id   = get_device_id(),
+            device_id   = util.get_device_id(),
             batch_size  = self.test_batch_size,
             num_workers = self.test_num_workers
         )
@@ -70,7 +65,7 @@ class TestTrainer:
         # I guess we need to put some kind of loader and model here...
         dst_tr = cifar_trainer.CIFAR10Trainer(
             model,
-            device_id = get_device_id()
+            device_id = util.get_device_id()
         )
         dst_tr.load_checkpoint(test_checkpoint)
 
@@ -127,7 +122,7 @@ class TestTrainer:
             model,
             save_every  = 0,
             print_every = 50,
-            device_id   = get_device_id(),
+            device_id   = util.get_device_id(),
             # loader options,
             num_epochs  = self.test_num_epochs,
             batch_size  = self.test_batch_size,
@@ -148,7 +143,7 @@ class TestTrainer:
         # acc history attribute that is not None
         dst_tr = cifar_trainer.CIFAR10Trainer(
             model,
-            device_id = get_device_id(),
+            device_id = util.get_device_id(),
             verbose = self.verbose
         )
         dst_tr.load_checkpoint(test_checkpoint)
@@ -205,7 +200,7 @@ class TestTrainer:
             model,
             save_every  = 0,
             print_every = 50,
-            device_id   = get_device_id(),
+            device_id   = util.get_device_id(),
             # loader options,
             num_epochs  = self.test_num_epochs,
             batch_size  = self.test_batch_size,
@@ -282,7 +277,7 @@ class TestTrainer:
             model,
             save_every  = 0,
             print_every = 50,
-            device_id   = get_device_id(),
+            device_id   = util.get_device_id(),
             # loader options,
             num_epochs  = self.test_num_epochs,
             batch_size  = self.test_batch_size,
@@ -354,7 +349,7 @@ class TestTrainer:
             model,
             save_every    = 0,
             print_every   = 50,
-            device_id     = get_device_id(),
+            device_id     = util.get_device_id(),
             # loader options,
             num_epochs    = self.test_num_epochs,
             learning_rate = 3e-4,
@@ -394,7 +389,7 @@ class TestTrainer:
             model,
             save_every    = 0,
             print_every   = 50,
-            device_id     = get_device_id(),
+            device_id     = util.get_device_id(),
             # loader options,
             num_epochs    = test_num_epochs,
             learning_rate = 3e-4,
@@ -411,7 +406,7 @@ class TestTrainer:
             model,
             save_every    = 0,
             print_every   = 50,
-            device_id     = get_device_id(),
+            device_id     = util.get_device_id(),
             # loader options,
             num_epochs    = 10,
             learning_rate = 3e-4,

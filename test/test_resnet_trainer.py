@@ -11,14 +11,10 @@ import matplotlib.pyplot as plt
 from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
 from lernomatic.vis import vis_loss_history
+from test import util
 
 
 GLOBAL_OPTS = dict()
-
-def get_device_id() -> int:
-    if torch.cuda.is_available():
-        return 0
-    return -1
 
 
 class TestResnetTrainer:
@@ -48,7 +44,7 @@ class TestResnetTrainer:
             num_epochs    = self.test_num_epochs,
             learning_rate = self.test_learning_rate,
             # device
-            device_id     = get_device_id(),
+            device_id     = util.get_device_id(),
             # display,
             print_every   = self.print_every,
             save_every    = 0,
@@ -145,7 +141,7 @@ class TestResnetTrainer:
             num_epochs    = train_num_epochs,
             learning_rate = self.test_learning_rate,
             # device
-            device_id = get_device_id(),
+            device_id = util.get_device_id(),
             # checkpoint
             checkpoint_dir = self.checkpoint_dir,
             checkpoint_name = 'resnet_trainer_test',
