@@ -67,7 +67,7 @@ class TestAAETrainer:
             val_dataset   = val_dataset,
             # train options
             num_epochs    = self.test_num_epochs,
-            batch_size    = self.batch_size,
+            batch_size    = self.test_batch_size,
             # misc
             print_every   = self.print_every,
             save_every    = 0,

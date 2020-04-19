@@ -76,7 +76,7 @@ class TestDCGANTrainer:
         print('\t Comparing generator model parameters ')
         src_g = src_trainer.generator.get_net_state_dict()
         dst_g = dst_trainer.generator.get_net_state_dict()
-        assert len(src_g.items()) == len(dst_g.items()
+        assert len(src_g.items()) == len(dst_g.items())
 
         # p1, p2 are k,v tuple pairs of each model parameters
         # k = str

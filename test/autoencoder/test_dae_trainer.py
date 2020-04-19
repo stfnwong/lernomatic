@@ -117,7 +117,7 @@ class TestDAETrainer:
             for n, (p1, p2) in enumerate(zip(src_model_params.items(), dst_model_params.items())):
                 assert  p1[0] == p2[0]
                 print('Checking parameter %s [%d/%d] \t\t' % (str(p1[0]), n+1, len(src_model_params.items())), end='\r')
-                assert torch.equal(p1[1], p2[1])) is True
+                assert torch.equal(p1[1], p2[1]) is True
             print('\n ...done')
 
         print('Checking history...')

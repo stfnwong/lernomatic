@@ -5,6 +5,7 @@ Unit tests for Pix2PixTrainer module
 Stefan Wong 2019
 """
 
+import os
 import torch
 import torchvision
 from torchvision import transforms
