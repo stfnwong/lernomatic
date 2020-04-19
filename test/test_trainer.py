@@ -5,6 +5,7 @@ Unit tests for trainer object
 Stefan Wong 2018
 """
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import torch

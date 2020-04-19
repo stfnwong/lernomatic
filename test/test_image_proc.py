@@ -7,10 +7,7 @@ Numpy ndarray or a PIL Image.
 Stefan Wong 2019
 """
 
-import sys
 import os
-import argparse
-import unittest
 import torch
 import cv2
 import PIL
@@ -22,26 +19,18 @@ from lernomatic.data import hdf5_dataset
 
 from typing import Tuple
 
-# debug
-#from pudb import set_trace; set_trace()
-
-
-GLOBAL_OPTS = dict()
-
 
 # Helper function to check files
 def check_files(img_paths:list) -> Tuple[list, int]:
     num_err = 0
     for n, path in enumerate(img_paths):
-        if GLOBAL_OPTS['verbose']:
-            print('Checking file [%d / %d] ' % (n+1, len(img_paths)), end='\r')
+        print('Checking file [%d / %d] ' % (n+1, len(img_paths)), end='\r')
 
         # If there are any exceptions then just remove the file that caused
         # them and continue
         img = cv2.imread(path)
         if img is None:
-            if GLOBAL_OPTS['verbose']:
-                print('Failed to load image [%d/%d] <%s>' % (n, len(img_paths), str(path)))
+            print('Failed to load image [%d/%d] <%s>' % (n, len(img_paths), str(path)))
             img_paths.pop(n)
             num_err += 1
 
@@ -60,21 +49,18 @@ def get_split(img_paths:str, split_name:str) -> data_split.DataSplit:
     return s
 
 
-class TestImageProc(unittest.TestCase):
-    def setUp(self):
-        self.dataset_root    = GLOBAL_OPTS['dataset_root']
-        self.verbose         = GLOBAL_OPTS['verbose']
-        self.test_image_size = 128
-        # output files
-        self.ndarray_test_outfile = 'hdf5/image_proc_ndarray_test.h5'
-        self.pil_test_outfile = 'hdf5/image_proc_pil_test.h5'
-        # expected output shapes
-        self.expected_ndarray_shape = (3, 128, 128)
-        self.expected_pil_shape     = (128, 128, 3)
+class TestImageProc:
+    dataset_root    = 'mnt/ml-data/datasets/cyclegan/night2day/val/',
+    verbose         = True
+    test_image_size = 128
+    # output files
+    ndarray_test_outfile = 'hdf5/image_proc_ndarray_test.h5'
+    pil_test_outfile     = 'hdf5/image_proc_pil_test.h5'
+    # expected output shapes
+    expected_ndarray_shape = (3, 128, 128)
+    expected_pil_shape     = (128, 128, 3)
 
-    def test_img_ndarray(self):
-        print('======== TestImageProc.test_img_ndarray ')
-
+    def test_img_ndarray(self) -> None:
         raw_img_paths = [self.dataset_root + str(path) for path in os.listdir(self.dataset_root)]
         print('Found %d files in directory [%s]' % (len(raw_img_paths), str(self.dataset_root)))
         img_paths, num_invalid = check_files(raw_img_paths)
@@ -91,7 +77,7 @@ class TestImageProc(unittest.TestCase):
             to_pil = False,
             verbose = self.verbose
         )
-        self.assertEqual(False, proc.to_pil)
+        assert proc.to_pil is False
         proc.proc(s, self.ndarray_test_outfile)
 
         print('Processed file [%s], checking...' % str(self.ndarray_test_outfile))
@@ -104,17 +90,12 @@ class TestImageProc(unittest.TestCase):
 
         for idx, (image, label) in enumerate(test_data):
             print('Checking element [%d / %d]' % (idx+1, len(test_data)), end='\r')
-            self.assertEqual(self.expected_ndarray_shape, image.shape)
-            self.assertTrue(isinstance(image, np.ndarray))
-
+            assert self.expected_ndarray_shape == image.shape
+            assert isinstance(image, np.ndarray) is True
         print('\n OK')
 
-        print('======== TestImageProc.test_img_ndarray <END>')
 
-    def test_img_pil(self):
-        print('======== TestImageProc.test_img_pil ')
-
-        #raw_img_paths = os.listdir(self.dataset_root)
+    def test_img_pil(self) -> None:
         raw_img_paths = [self.dataset_root + str(path) for path in os.listdir(self.dataset_root)]
         print('Found %d files in directory [%s]' % (len(raw_img_paths), str(self.dataset_root)))
         img_paths, num_invalid = check_files(raw_img_paths)
@@ -123,7 +104,6 @@ class TestImageProc(unittest.TestCase):
             print('Found %d invalid images in directory [%s]' % (num_invalid, str(self.dataset_root)))
 
         s = get_split(img_paths, 'pil_test')
-
         # NOTE: because this isa PIL image, we need to ensure that the dataset
         # shape has the number of channels at the end of the tuple
         proc = image_proc.ImageDataProc(
@@ -132,7 +112,7 @@ class TestImageProc(unittest.TestCase):
             to_pil = True,
             verbose = self.verbose
         )
-        self.assertEqual(True, proc.to_pil)
+        assert proc.to_pil is True
         proc.proc(s, self.pil_test_outfile)
 
         print('Processed file [%s], checking...' % str(self.pil_test_outfile))
@@ -147,39 +127,6 @@ class TestImageProc(unittest.TestCase):
         # we ought to convert when reading...
         for idx, (image, label) in enumerate(test_data):
             print('Checking element [%d / %d]' % (idx+1, len(test_data)), end='\r')
-            self.assertEqual(self.expected_pil_shape[0:2], image.size)
-            self.assertTrue(isinstance(image, PIL.Image.Image))
-
+            assert self.expected_pil_shape[0:2] == image.size
+            assert isinstance(image, PIL.Image.Image) is True
         print('\n OK')
-
-        print('======== TestImageProc.test_img_pil <END>')
-
-
-# Entry point
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--verbose',
-                        action='store_true',
-                        default=False,
-                        help='Sets verbose mode'
-                        )
-    # root of data for test
-    parser.add_argument('--dataset-root',
-                        type=str,
-                        default='/mnt/ml-data/datasets/cyclegan/night2day/val/',
-                        help='Path to root of dataset to use for test'
-                        )
-    parser.add_argument('unittest_args', nargs='*')
-
-    args = parser.parse_args()
-    arg_vals = vars(args)
-    for k, v in arg_vals.items():
-        GLOBAL_OPTS[k] = v
-
-    if GLOBAL_OPTS['verbose']:
-        print('-------- GLOBAL OPTS (%s) --------' % str(sys.argv[0]))
-        for k, v in GLOBAL_OPTS.items():
-            print('\t[%s] : %s' % (str(k), str(v)))
-
-    sys.argv[1:] = args.unittest_args
-    unittest.main()

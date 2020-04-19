@@ -12,12 +12,6 @@ from lernomatic.train.autoencoder import aae_trainer
 from lernomatic.infer.autoencoder import aae_inferrer
 
 
-# debug
-#from pudb import set_trace; set_trace()
-
-GLOBAL_OPTS = dict()
-
-
 def get_mnist_datasets(data_dir:str) -> tuple:
     dataset_transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
