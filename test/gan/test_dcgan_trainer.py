@@ -14,10 +14,11 @@ from lernomatic.train.gan import dcgan_trainer
 from lernomatic.data import hdf5_dataset
 from test import util
 
+DATASET_ROOT = 'hdf5/dcgan_unit_test.h5'
 
 def get_dataset(image_size:int = 64):
     dataset = hdf5_dataset.HDF5Dataset(
-        GLOBAL_OPTS['dataset_root'],
+        DATASET_ROOT,
         feature_name = 'images',
         label_name = 'labels',
         #transform = gan_data_transform
