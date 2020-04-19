@@ -30,9 +30,9 @@ def create_dataset(data_root:str,
 
 class TestMelSpectogramExtractor:
     verbose     = True
-    test_data_prefix='/mnt/ml-data/datasets/freesound-kaggle/',
-    test_data_root ='./test/test_data',
-    test_data_file='34363.wav',
+    test_data_prefix='/mnt/ml-data/datasets/freesound-kaggle/'
+    test_data_root ='./test/test_data'
+    test_data_file='34363.wav'
     input_file  = test_data_root + '/' + test_data_file
     sample_rate = 44100
     test_win_length = 2048    # unit is samples
