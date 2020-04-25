@@ -78,6 +78,7 @@ class TestAlignedImageJoin:
     # image properties
     test_image_shape = (3, 256, 256)
     test_out_image_shape = (3, 256, 512)
+    remove = True
 
     def test_proc(self) -> None:
         test_a_paths = file_util.get_file_paths(
@@ -147,6 +148,7 @@ class TestAlignedImageSplit:
     test_data_root = "/mnt/ml-data/datasets/cyclegan/night2day/train/"
     test_size      = 4096
     verbose        = True
+    remove         = True
     # image properties
     test_image_shape = (3, 256, 256)
 

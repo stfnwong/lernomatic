@@ -29,6 +29,8 @@ class TestAAESemiTrainer:
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize( (0.1307,), (0.3081,))
     ])
+    verbose         = True
+    print_every     = 200
 
     def test_save_load(self) -> None:
         test_checkpoint_file = 'checkpoint/test_aae_semi_trainer_checkpoint.pth'

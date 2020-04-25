@@ -41,6 +41,7 @@ class TestDAETrainer:
     verbose = True
     test_num_epochs = 4
     data_dir = './data'
+    batch_size = 16
 
     def test_save_load(self) -> None:
         train_dataset, val_dataset = get_mnist_datasets(self.data_dir)

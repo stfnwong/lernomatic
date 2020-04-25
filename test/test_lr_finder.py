@@ -80,6 +80,7 @@ def get_trainer() -> cifar_trainer.CIFAR10Trainer:
 class TestLogFinder:
     verbose          = True
     test_max_batches = 128
+    draw_plot        = False
 
     def test_find_lr(self) -> None:
         # get an LRFinder
@@ -105,7 +106,7 @@ class TestLogFinder:
         finder_fig, finder_ax = vis_loss_history.get_figure_subplots(2)
         lr_finder.plot_lr_vs_acc(finder_ax[0])
         lr_finder.plot_lr_vs_loss(finder_ax[1])
-        if GLOBAL_OPTS['draw_plot'] is True:
+        if self.draw_plot is True:
             plt.show()
         else:
             plt.savefig('figures/test_find_lr_plots.png', bbox_inches='tight')
@@ -122,7 +123,7 @@ class TestLogFinder:
             iter_per_epoch = trainer.iter_per_epoch,
             cur_epoch = trainer.cur_epoch
         )
-        if GLOBAL_OPTS['draw_plot'] is True:
+        if draw_plot is True:
             plt.show()
         else:
             train_fig.savefig('figures/test_find_lr_train_results.png', bbox_inches='tight')
@@ -150,7 +151,7 @@ class TestLogFinder:
         fig1, ax1 = plt.subplots()
         lr_finder.plot_lr_vs_acc(ax1)
 
-        if GLOBAL_OPTS['draw_plot'] is True:
+        if draw_plot is True:
             plt.show()
         else:
             plt.savefig('figures/test_lr_range_find_lr_vs_acc.png', bbox_inches='tight')
@@ -166,7 +167,7 @@ class TestLogFinder:
             iter_per_epoch = trainer.iter_per_epoch,
             cur_epoch = trainer.cur_epoch
         )
-        if GLOBAL_OPTS['draw_plot'] is True:
+        if draw_plot is True:
             plt.show()
         else:
             plt.savefig('figures/test_lr_range_find_train_results.png', bbox_inches='tight')
@@ -202,7 +203,7 @@ class TestLogFinder:
         # now check that the restored parameters match the copy of the
         # parameters save earlier
 
-        if GLOBAL_OPTS['draw_plot'] is True:
+        if draw_plot is True:
             plt.show()
         else:
             plt.savefig('figures/test_lr_range_find_lr_vs_acc.png', bbox_inches='tight')
@@ -218,7 +219,7 @@ class TestLogFinder:
             iter_per_epoch = trainer.iter_per_epoch,
             cur_epoch = trainer.cur_epoch
         )
-        if GLOBAL_OPTS['draw_plot'] is True:
+        if draw_plot is True:
             plt.show()
         else:
             plt.savefig('figures/test_lr_range_find_train_results.png', bbox_inches='tight')
