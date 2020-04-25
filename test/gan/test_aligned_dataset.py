@@ -74,7 +74,7 @@ class TestAlignedImageJoin:
     test_data_root = '/mnt/ml-data/datasets/cyclegan/monet2photo/'
     # number of path pairs to place into split
     split_size  = 1024
-    verbose     = GLOBAL_OPTS['verbose']
+    verbose     = True
     # image properties
     test_image_shape = (3, 256, 256)
     test_out_image_shape = (3, 256, 512)
@@ -116,8 +116,8 @@ class TestAlignedImageJoin:
         with h5py.File(test_outfile, 'r') as fp:
             dataset_keys = fp.keys()
             assert test_image_dataset_name is dataset_keys
-            assert 'a_ids' in dataset_keys)
-            assert 'b_ids' in dataset_keys)
+            assert 'a_ids' in dataset_keys
+            assert 'b_ids' in dataset_keys
 
         ## Test as HDF5Dataset
         # Note that I am being sneaky here as I am loading the image as both

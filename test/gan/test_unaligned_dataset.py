@@ -46,7 +46,7 @@ class TestUnalignedImageProc:
     test_data_root = '/mnt/ml-data/datasets/cyclegan/monet2photo/'
     # number of path pairs to place into split
     split_size  = 4096
-    verbose     = self.verbose
+    verbose     = True
     # image properties
     test_image_shape = (3, 256, 256)
 

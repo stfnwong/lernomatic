@@ -15,9 +15,6 @@ from lernomatic.train import trainer
 import time
 from datetime import timedelta
 
-#debug
-#from pudb import set_trace; set_trace()
-
 
 class AAETrainer(trainer.Trainer):
     def __init__(self,

@@ -12,9 +12,6 @@ import numpy as np
 from lernomatic.models import common
 from lernomatic.train import trainer
 
-#debug
-from pudb import set_trace; set_trace()
-
 
 def sample_categorical(batch_size:int, num_classes:int=10) -> torch.Tensor:
 
