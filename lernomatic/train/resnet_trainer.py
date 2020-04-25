@@ -16,7 +16,7 @@ from lernomatic.models import resnets
 from lernomatic.models import common
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 
 class ResnetTrainer(trainer.Trainer):

@@ -12,7 +12,7 @@ from lernomatic.vis import vis_loss_history
 from lernomatic.vis.gan import vis_gan_loss
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 GLOBAL_OPTS = dict()
 VALID_TOOL_MODES = ('show', 'probe', 'gan')

@@ -21,7 +21,7 @@ from lernomatic.util import image_util
 GLOBAL_OPTS = dict()
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 
 def write_img_tensor(fig, ax, fname:str, img_tensor:torch.Tensor) -> None:

@@ -8,7 +8,7 @@ Stefan Wong 2019
 import numpy as np
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 EXP_DEFAULT_K = 1e-4
 # TODO : genericized to param sched?
