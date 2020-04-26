@@ -5,6 +5,7 @@ Unit tests for DCGATrainer module
 Stefan Wong 2019
 """
 
+import os
 import torch
 import torchvision
 from torchvision import transforms
@@ -29,8 +30,10 @@ def get_dataset(image_size:int = 64):
 
 class TestDCGANTrainer:
     verbose = True
-    test_num_epochs = 1
+    test_num_epochs    = 1
     test_learning_rate = 2e-4
+    batch_size         = 16
+    print_every        = 250
 
     def test_save_load_checkpoint(self) -> None:
         test_checkpoint = 'checkpoint/dcgan_trainer_test.pkl'
@@ -52,6 +55,7 @@ class TestDCGANTrainer:
             num_epochs    = self.test_num_epochs,
             learning_rate = self.test_learning_rate,
             verbose       = self.verbose,
+            print_every   = self.print_every,
             save_every    = 0,
         )
         src_trainer.train()
@@ -67,12 +71,12 @@ class TestDCGANTrainer:
             device_id = util.get_device_id()
         )
         dst_trainer.load_checkpoint(test_checkpoint)
-        assert  src_trainer.num_epochs, dst_trainer.num_epochs
-        assert  src_trainer.learning_rate, dst_trainer.learning_rate
-        assert  src_trainer.weight_decay, dst_trainer.weight_decay
-        assert  src_trainer.print_every, dst_trainer.print_every
-        assert  src_trainer.save_every, dst_trainer.save_every
-        assert  src_trainer.device_id, dst_trainer.device_id
+        assert  src_trainer.num_epochs == dst_trainer.num_epochs
+        assert  src_trainer.learning_rate == dst_trainer.learning_rate
+        assert  src_trainer.weight_decay == dst_trainer.weight_decay
+        assert  src_trainer.print_every == dst_trainer.print_every
+        assert  src_trainer.save_every == dst_trainer.save_every
+        assert  src_trainer.device_id == dst_trainer.device_id
 
         print('\t Comparing generator model parameters ')
         src_g = src_trainer.generator.get_net_state_dict()

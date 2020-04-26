@@ -44,8 +44,10 @@ class TestPix2PixTrainer:
     # TODO : settable?
     train_data_root = '/mnt/ml-data/datasets/cyclegan/night2day/train/'
     val_data_root   = '/mnt/ml-data/datasets/cyclegan/night2day/val/'
-    test_dataset = 'hdf5/night2day-unittest-256.h5'
+    test_dataset    = 'hdf5/night2day-unittest-256.h5'
     test_num_epochs = 1
+    batch_size      = 16
+    print_every     = 250
 
     def test_save_load(self) -> None:
         # Get some data
@@ -77,7 +79,7 @@ class TestPix2PixTrainer:
             num_epochs    = self.test_num_epochs,
             # checkpoint
             save_every    = 0,
-            print_every   = GLOBAL_OPTS['print_every'],
+            print_every   = self.print_every,
         )
         src_trainer.train()
 
