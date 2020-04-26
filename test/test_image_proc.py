@@ -50,7 +50,8 @@ def get_split(img_paths:str, split_name:str) -> data_split.DataSplit:
 
 
 class TestImageProc:
-    dataset_root    = 'mnt/ml-data/datasets/cyclegan/night2day/val/'
+    # TODO : make this settable...
+    dataset_root    = '/mnt/ml-data/datasets/cyclegan/night2day/val/'
     verbose         = True
     test_image_size = 128
     # output files

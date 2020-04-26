@@ -123,7 +123,7 @@ class TestLogFinder:
             iter_per_epoch = trainer.iter_per_epoch,
             cur_epoch = trainer.cur_epoch
         )
-        if draw_plot is True:
+        if self.draw_plot is True:
             plt.show()
         else:
             train_fig.savefig('figures/test_find_lr_train_results.png', bbox_inches='tight')
@@ -151,7 +151,7 @@ class TestLogFinder:
         fig1, ax1 = plt.subplots()
         lr_finder.plot_lr_vs_acc(ax1)
 
-        if draw_plot is True:
+        if self.draw_plot is True:
             plt.show()
         else:
             plt.savefig('figures/test_lr_range_find_lr_vs_acc.png', bbox_inches='tight')
@@ -167,7 +167,7 @@ class TestLogFinder:
             iter_per_epoch = trainer.iter_per_epoch,
             cur_epoch = trainer.cur_epoch
         )
-        if draw_plot is True:
+        if self.draw_plot is True:
             plt.show()
         else:
             plt.savefig('figures/test_lr_range_find_train_results.png', bbox_inches='tight')
@@ -203,7 +203,7 @@ class TestLogFinder:
         # now check that the restored parameters match the copy of the
         # parameters save earlier
 
-        if draw_plot is True:
+        if self.draw_plot is True:
             plt.show()
         else:
             plt.savefig('figures/test_lr_range_find_lr_vs_acc.png', bbox_inches='tight')
@@ -219,7 +219,7 @@ class TestLogFinder:
             iter_per_epoch = trainer.iter_per_epoch,
             cur_epoch = trainer.cur_epoch
         )
-        if draw_plot is True:
+        if self.draw_plot is True:
             plt.show()
         else:
             plt.savefig('figures/test_lr_range_find_train_results.png', bbox_inches='tight')

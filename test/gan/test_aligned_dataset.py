@@ -116,7 +116,7 @@ class TestAlignedImageJoin:
         # check the dataset contents
         with h5py.File(test_outfile, 'r') as fp:
             dataset_keys = fp.keys()
-            assert test_image_dataset_name is dataset_keys
+            assert test_image_dataset_name in dataset_keys
             assert 'a_ids' in dataset_keys
             assert 'b_ids' in dataset_keys
 

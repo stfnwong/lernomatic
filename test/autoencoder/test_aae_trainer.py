@@ -45,6 +45,8 @@ class TestAAETrainer:
     test_data_dir   = './data'
     test_num_epochs = 4
     test_batch_size = 64
+    print_every     = 200
+    verbose         = True
 
     def test_save_load(self) -> None:
         test_checkpoint_file = 'checkpoint/test_aae_trainer_checkpoint.pth'

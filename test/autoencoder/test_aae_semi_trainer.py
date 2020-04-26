@@ -31,6 +31,7 @@ class TestAAESemiTrainer:
     ])
     verbose         = True
     print_every     = 200
+    batch_size      = 32
 
     def test_save_load(self) -> None:
         test_checkpoint_file = 'checkpoint/test_aae_semi_trainer_checkpoint.pth'
