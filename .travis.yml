@@ -19,4 +19,4 @@ install:
 
 # Unit test list 
 script:
-    - ./run_tests.sh
+    - ./test/run_tests.sh
