@@ -16,7 +16,7 @@ from lernomatic.data import image_proc
 from lernomatic.data import data_split
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 
 GLOBAL_OPTS = dict()

@@ -8,7 +8,7 @@ from lernomatic.train import trainer
 from lernomatic.models import common
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 class MNISTVAETrainer(trainer.Trainer):
     """

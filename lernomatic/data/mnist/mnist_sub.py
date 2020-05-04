@@ -83,8 +83,8 @@ def gen_mnist_subset(data_dir:str, num_elem:int=300, transform=None, verbose=Fal
         transform=transform,
         k=3000
     )
-    trainset_new.train_data = train_data_sub.clone()
-    trainset_new.train_labels = train_label_sub.clone()
+    trainset_new.data = train_data_sub.clone()
+    trainset_new.targets = train_label_sub.clone()
     if verbose:
         print('\n...OK')
 
@@ -105,8 +105,8 @@ def gen_mnist_subset(data_dir:str, num_elem:int=300, transform=None, verbose=Fal
         transform=transform,
         k=10000
     )
-    validset_new.test_data = valid_data_sub.clone()
-    validset_new.test_labels = valid_labels_sub.clone()
+    validset_new.data = valid_data_sub.clone()
+    validset_new.targets = valid_labels_sub.clone()
 
     if verbose:
         print('\n ...OK')
@@ -140,8 +140,8 @@ def gen_mnist_subset(data_dir:str, num_elem:int=300, transform=None, verbose=Fal
         transform=transform,
         k=47000
     )
-    trainset_unl_new.train_data = train_data_sub_unl.clone()
-    trainset_unl_new.train_labels = None
+    trainset_unl_new.data = train_data_sub_unl.clone()
+    #trainset_unl_new.targets = [None]
 
     if verbose:
         print('\n...OK')

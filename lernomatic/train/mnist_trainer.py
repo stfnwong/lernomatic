@@ -11,7 +11,7 @@ from lernomatic.train import trainer
 from lernomatic.models import mnist
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 
 class MNISTTrainer(trainer.Trainer):

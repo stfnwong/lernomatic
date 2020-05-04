@@ -14,7 +14,7 @@ from lernomatic.models.gan import gan_loss
 
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 
 class Pix2PixTrainer(trainer.Trainer):

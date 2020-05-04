@@ -26,7 +26,7 @@ from lernomatic.options import options
 from lernomatic.data.mnist import mnist_sub
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 
 GLOBAL_OPTS = dict()
