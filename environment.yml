@@ -1,15 +1,18 @@
 name: lernomatic
 channels:
+  - anaconda
   - defaults
 dependencies:
   - _libgcc_mutex=0.1=main
   - ca-certificates=2020.1.1=0
   - certifi=2020.4.5.1=py37_0
+  - intel-openmp=2020.1=217
   - ld_impl_linux-64=2.33.1=h53a641e_7
   - libedit=3.1.20181209=hc058e9b_0
   - libffi=3.3=he6710b0_1
   - libgcc-ng=9.1.0=hdf63c60_0
   - libstdcxx-ng=9.1.0=hdf63c60_0
+  - mkl=2020.1=217
   - ncurses=6.2=he6710b0_1
   - openssl=1.1.1g=h7b6447c_0
   - pip=20.0.2=py37_3
