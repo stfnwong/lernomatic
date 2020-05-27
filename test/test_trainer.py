@@ -424,7 +424,7 @@ class TestTrainer:
         assert (10 * len(extend_trainer.train_loader)) ==  len(extend_trainer.loss_history)
 
         extend_trainer.set_num_epochs(20)
-        assert(20 * len(extend_trainer.train_loader), len(extend_trainer.loss_history))
+        assert(20 * len(extend_trainer.train_loader) == len(extend_trainer.loss_history))
         for i in range(10 * len(extend_trainer.train_loader)):
             print('Checking loss iter [%d / %d]' % (i, 20 * len(extend_trainer.train_loader)), end='\r')
             assert trainer.loss_history[i] == extend_trainer.loss_history[i]
