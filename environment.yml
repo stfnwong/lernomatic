@@ -1,0 +1,7 @@
+name: lernomatic
+channels:
+  - defaults
+
+dependencies:
+# python related packages
+- python>=3.6
