@@ -61,6 +61,7 @@ class TestImageProc:
     expected_ndarray_shape = (3, 128, 128)
     expected_pil_shape     = (128, 128, 3)
 
+    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
     def test_img_ndarray(self) -> None:
         raw_img_paths = [self.dataset_root + str(path) for path in os.listdir(self.dataset_root)]
         print('Found %d files in directory [%s]' % (len(raw_img_paths), str(self.dataset_root)))
@@ -96,6 +97,7 @@ class TestImageProc:
         print('\n OK')
 
 
+    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
     def test_img_pil(self) -> None:
         raw_img_paths = [self.dataset_root + str(path) for path in os.listdir(self.dataset_root)]
         print('Found %d files in directory [%s]' % (len(raw_img_paths), str(self.dataset_root)))

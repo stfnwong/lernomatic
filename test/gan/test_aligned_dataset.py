@@ -41,6 +41,7 @@ class TestAlignedDataSplit:
     verbose     = True
     remove      = True
 
+    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
     def test_save_load(self) -> None:
         test_a_paths, test_b_paths = gen_test_file_lists(
             self.test_data_root,
@@ -80,6 +81,7 @@ class TestAlignedImageJoin:
     test_out_image_shape = (3, 256, 512)
     remove = True
 
+    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
     def test_proc(self) -> None:
         test_a_paths = file_util.get_file_paths(
             str(self.test_data_root) + str(self.test_a_path),
@@ -152,6 +154,7 @@ class TestAlignedImageSplit:
     # image properties
     test_image_shape = (3, 256, 256)
 
+    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
     def test_proc(self) -> None:
         dataset_paths = file_util.get_file_paths(
             self.test_data_root,

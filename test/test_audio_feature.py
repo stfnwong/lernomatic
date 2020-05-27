@@ -40,6 +40,7 @@ from lernomatic.feature import audio_loop
 #    test_hop_length_seconds = 1
 #    test_num_mel_bands = 80
 #
+#    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
 #    def test_extract_feature(self) -> None:
 #        print('Reading sample from file %s' % self.input_file)
 #        sample = wav_util.read_wave(self.input_file, self.sample_rate)
@@ -72,6 +73,7 @@ from lernomatic.feature import audio_loop
 #        fig.savefig('figures/test_mel_spect_extractor_mel_spect.png', bbox_inches='tight')
 #
 #
+#    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
 #    def test_feature_shape(self) -> None:
 #        print('Reading sample from file %s' % self.input_file)
 #        sample, sample_meta = wav_util.read_wave(self.input_file, return_meta=True)
@@ -89,6 +91,7 @@ from lernomatic.feature import audio_loop
 #        print('mel_spect shape : %s' % str(mel_spect.shape))
 #
 #
+#    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
 #    def test_hop_window_seconds(self) -> None:
 #        print('Reading sample from file %s' % self.input_file)
 #        sample, sample_meta = wav_util.read_wave(self.input_file, return_meta=True)
@@ -114,6 +117,7 @@ from lernomatic.feature import audio_loop
 #        for n in range(len(pred_feature_shape)):
 #            assert pred_feature_shape[n] == mel_spect.shape[n]
 #
+#    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
 #    def test_stft_shape_prediction(self) -> None:
 #        print('Reading sample from file %s' % self.input_file)
 #        sample, sample_meta = wav_util.read_wave(self.input_file, return_meta=True)
@@ -151,6 +155,7 @@ from lernomatic.feature import audio_loop
 #        assert req_t == mel_spect.shape[1]
 #
 #
+#    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
 #    def test_set_spectogram_t(self) -> None:
 #        # test that we can adjust the hop size such that the output has a given
 #        # shape along the t axis

@@ -49,6 +49,7 @@ class TestPix2PixTrainer:
     batch_size      = 16
     print_every     = 250
 
+    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
     def test_save_load(self) -> None:
         # Get some data
         train_ab_paths = [path for path in os.listdir(self.train_data_root)]

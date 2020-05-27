@@ -5,6 +5,7 @@ Unit tests for un-aligned dataset
 Stefan Wong 2019
 """
 
+import pytest
 import numpy as np
 import h5py
 # unit(s) under test
@@ -50,6 +51,7 @@ class TestUnalignedImageProc:
     # image properties
     test_image_shape = (3, 256, 256)
 
+    @pytest.mark.skip(reason='Need a way to test this without relying on my data path')
     def test_proc(self) -> None:
         # Get some paths
         test_a_paths = file_util.get_file_paths(
