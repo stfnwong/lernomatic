@@ -16,7 +16,7 @@ from lernomatic.models import mnist
 from lernomatic.train import trainer
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 def to_img(X : torch.Tensor) -> torch.Tensor:
     X = X.view(X.size(0), 1, 28, 28)

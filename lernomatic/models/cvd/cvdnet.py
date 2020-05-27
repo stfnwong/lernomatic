@@ -10,7 +10,7 @@ import torchvision
 from lernomatic.models import common
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 class CVDNet(common.LernomaticModel):
     def __init__(self, **kwargs) -> None:

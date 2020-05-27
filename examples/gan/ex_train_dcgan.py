@@ -25,7 +25,7 @@ from lernomatic.util import math_util
 from lernomatic.options import options
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 GLOBAL_OPTS = dict()
 

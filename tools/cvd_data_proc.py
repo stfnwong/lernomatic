@@ -17,7 +17,8 @@ from lernomatic.data.cvd import image_proc
 GLOBAL_OPTS = dict()
 
 
-def main() -> None:
+def main():
+
     # discover files in each path
     if GLOBAL_OPTS['data_root'] is not None and GLOBAL_OPTS['data_root'] != '':
         cats_path = GLOBAL_OPTS['data_root'] + GLOBAL_OPTS['cats_path']
@@ -74,7 +75,6 @@ def main() -> None:
         data_root = GLOBAL_OPTS['data_root'],
         verbose = GLOBAL_OPTS['verbose']
     )
-
     splits = splitter.gen_splits(
         path_list,
         label_list,
@@ -170,6 +170,7 @@ def get_parser() -> argparse.ArgumentParser:
                         help='Method to use when selecting data elements for split'
                         )
 
+
     return parser
 
 
@@ -179,6 +180,11 @@ if __name__ == '__main__':
 
     for k, v in opts.items():
         GLOBAL_OPTS[k] = v
+
+    if GLOBAL_OPTS['verbose'] is True:
+        print(' ---- GLOBAL OPTIONS ---- ')
+        for k,v in GLOBAL_OPTS.items():
+            print('%s : %s' % (str(k), str(v)))
 
     GLOBAL_OPTS['split_names'] = GLOBAL_OPTS['split_names'].split(',')
     split_ratios = GLOBAL_OPTS['split_ratios'].split(',')
@@ -194,10 +200,5 @@ if __name__ == '__main__':
 
     if sum(split_ratio_floats) > 1.0:
         raise ValueError('Sum of split ratios cannot exceed 1.0')
-
-    if GLOBAL_OPTS['verbose'] is True:
-        print(' ---- GLOBAL OPTIONS ---- ')
-        for k,v in GLOBAL_OPTS.items():
-            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()

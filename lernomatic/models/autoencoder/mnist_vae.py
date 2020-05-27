@@ -11,7 +11,7 @@ from torch.autograd import Variable
 from lernomatic.models import common
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 
 class MNISTVAE(common.LernomaticModel):

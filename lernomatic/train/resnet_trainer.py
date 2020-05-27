@@ -16,7 +16,6 @@ from lernomatic.models import resnets
 from lernomatic.models import common
 
 
-
 class ResnetTrainer(trainer.Trainer):
     """
     ResnetTrainer
