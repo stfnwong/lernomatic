@@ -7,7 +7,7 @@ Stefan Wong 2018
 
 import importlib
 import torch
-from torch.utils import tensorboard
+from torch.utils.tensorboard import SummaryWriter
 from torch import nn
 import numpy as np
 from lernomatic.train import schedule
@@ -64,7 +64,7 @@ class Trainer(object):
         self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
         self.early_stop      :dict  = kwargs.pop('early_stop', None)
         # Tensorboard writer
-        self.tb_writer:tensorboard.SummaryWriter = kwargs.pop('tb_writer', None)
+        self.tb_writer:SummaryWriter = kwargs.pop('tb_writer', None)
 
         self.start_epoch = 0
         if self.val_batch_size == 0:
@@ -271,7 +271,7 @@ class Trainer(object):
         self.test_dataset = test_dataset
         self._init_dataloaders()
 
-    def set_tb_writer(self, writer:tensorboard.SummaryWriter) -> None:
+    def set_tb_writer(self, writer:SummaryWriter) -> None:
         self.tb_writer = writer
 
     def apply_lr_schedule(self) -> None:
