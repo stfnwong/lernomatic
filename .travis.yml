@@ -21,7 +21,7 @@ install:
   - conda info -a
     
   # Make a new test env
-  - conda create -n lernomatic-test python=$TRAVIS_PYTHON_VERSION -f environment.yml
+  - conda create -n lernomatic-test python=$TRAVIS_PYTHON_VERSION 
   - conda activate lernomatic-test
   - python setup.py install
 
