@@ -12,7 +12,7 @@ from lernomatic.data import data_split
 from lernomatic.data.cvd import image_proc
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 GLOBAL_OPTS = dict()
 

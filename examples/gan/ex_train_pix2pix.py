@@ -191,6 +191,11 @@ def main() -> None:
             print_every = GLOBAL_OPTS['print_every'],
             save_every = GLOBAL_OPTS['save_every'],
         )
+
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
+        trainer.set_tb_writer(writer)
+
     # Get a scheduler. In the original paper the model is trained for 100
     # epochs with a fixed learning rate, then for another 100 epochs with a
     # learning rate that linearly decays to zero.

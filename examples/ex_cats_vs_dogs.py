@@ -8,19 +8,23 @@ Stefan Wong 2019
 import os
 import argparse
 import torchvision
+import time
+from datetime import timedelta
 from torchvision import transforms
 from torchvision import datasets
 import torch.nn as nn
+# Tensorboard
+from torch.utils import tensorboard
 # models, etc
 from lernomatic.data import hdf5_dataset
 from lernomatic.train import trainer
 from lernomatic.train.cvd import cvd_trainer
 from lernomatic.models.cvd import cvdnet
+from lernomatic.options import options
+from lernomatic.util import expr_util
 # vis
 from lernomatic.vis import vis_loss_history
 
-# debug
-#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 GLOBAL_USE_HDF5 = True      # until I figure out what is up with HDF5 data
@@ -78,8 +82,6 @@ def main() -> None:
 
     # get a network
     model = cvdnet.CVDNet2()
-
-    #cvd_train = trainer.Trainer(
     cvd_train = cvd_trainer.CVDTrainer(
         model,
         # dataset options
@@ -92,7 +94,7 @@ def main() -> None:
         momentum        = GLOBAL_OPTS['momentum'],
         num_epochs      = GLOBAL_OPTS['num_epochs'],
         batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
+        val_batch_size  = GLOBAL_OPTS['val_batch_size'],
         # checkpoint
         checkpoint_name = GLOBAL_OPTS['checkpoint_name'],
         save_every      = GLOBAL_OPTS['save_every'],
@@ -103,7 +105,47 @@ def main() -> None:
         verbose         = GLOBAL_OPTS['verbose']
     )
 
+    # Add a tensorboard writer
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        if not os.path.isdir(GLOBAL_OPTS['tensorboard_dir']):
+            os.mkdir(GLOBAL_OPTS['tensorboard_dir'])
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
+        cvd_train.set_tb_writer(writer)
+
+    # Optionally do a search pass here and add a scheduler
+    if GLOBAL_OPTS['find_lr']:
+        lr_finder = expr_util.get_lr_finder(cvd_train)
+        lr_find_start_time = time.time()
+        lr_finder.find()
+        lr_find_min, lr_find_max = lr_finder.get_lr_range()
+        lr_find_end_time = time.time()
+        lr_find_total_time = lr_find_end_time - lr_find_start_time
+        print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
+        print('Total find time [%s] ' %\
+                str(timedelta(seconds = lr_find_total_time))
+        )
+
+        # Now get a scheduler
+        stepsize = cvd_train.get_num_epochs() * len(trainer.train_loader) // 2
+        # get scheduler
+        lr_scheduler = expr_util.get_scheduler(
+            lr_find_min,
+            lr_find_max,
+            stepsize,
+            sched_type='TriangularScheduler'
+        )
+        cvd_train.set_lr_scheduler(lr_scheduler)
+
+    # train the model
+    train_start_time = time.time()
     cvd_train.train()
+    train_end_time = time.time()
+    train_total_time = train_end_time - train_start_time
+
+    print('Total scheduled training time [%s] (%d epochs)  %s' %\
+            (repr(cvd_train), cvd_train.cur_epoch,
+             str(timedelta(seconds = train_total_time)))
+    )
 
     # Show results
     fig, ax = vis_loss_history.get_figure_subplots(num_subplots=2)
@@ -121,75 +163,17 @@ def main() -> None:
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
+    parser = options.get_trainer_options()
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
                         )
-    parser.add_argument('--draw-plot',
-                        default=False,
+    parser.add_argument('--find-lr',
                         action='store_true',
-                        help='Display plots'
-                        )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=20,
-                        help='Print output every N epochs'
-                        )
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=1000,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
-                        )
-    # Network options
-    # Training options
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--test-batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during testing'
-                        )
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=20,
-                        help='Epoch to stop training at'
-                        )
-
-    parser.add_argument('--weight-decay',
-                        type=float,
-                        default=0.0,
-                        help='Weight decay to use for optimizer'
-                        )
-    parser.add_argument('--momentum',
-                        type=float,
-                        default=0.0,
-                        help='Momentum decay to use for optimizer'
-                        )
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=1e-3,
-                        help='Learning rate for optimizer'
+                        default=False,
+                        help='Search for optimal learning rate'
                         )
     # Dataset options
     parser.add_argument('--train-dataset',
@@ -217,16 +201,6 @@ def get_parser() -> argparse.ArgumentParser:
                         type=str,
                         default='cvd_',
                         help='Name to prepend to all checkpoints'
-                        )
-    parser.add_argument('--load-checkpoint',
-                        type=str,
-                        default=None,
-                        help='Load a given checkpoint'
-                        )
-    parser.add_argument('--overwrite',
-                        action='store_true',
-                        default=False,
-                        help='Overwrite existing processed data files'
                         )
 
     return parser

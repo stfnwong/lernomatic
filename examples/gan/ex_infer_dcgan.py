@@ -20,7 +20,6 @@ GLOBAL_OPTS = dict()
 TOOL_MODES = ('single', 'seed', 'history', 'walk')
 
 
-
 # Get an inferrer object
 def get_inferrer(device_id:int) -> dcgan_inferrer.DCGANInferrer:
     inferrer = dcgan_inferrer.DCGANInferrer(

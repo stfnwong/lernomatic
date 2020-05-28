@@ -11,10 +11,6 @@ import cv2
 import PIL
 from PIL import Image
 
-# debug
-#from pudb import set_trace; set_trace()
-
-
 
 def tensor_to_img(X:torch.Tensor) -> np.ndarray:
     # NOTE: this is dumb.... why does pix2xpix put out ndarray's?

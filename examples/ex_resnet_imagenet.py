@@ -8,10 +8,13 @@ Stefan Wong 2019
 
 import sys
 import argparse
+import time
+from datetime import timedelta
 import matplotlib.pyplot as plt
 from torchvision import datasets
 from torchvision import transforms
 
+from lernomatic.options import options
 from lernomatic.train import schedule
 from lernomatic.train import resnet_trainer
 from lernomatic.models import resnets
@@ -19,12 +22,11 @@ from lernomatic.param import learning_rate
 # vis stuff
 from lernomatic.vis import vis_loss_history
 
-# debug
-from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-def main():
+
+def main() -> None:
     # Transforms for Imagenet
     normalize = transforms.Normalize(
         mean = [0.485, 0.456, 0.406],
@@ -77,6 +79,10 @@ def main():
         test_dataset    = test_dataset,
     )
 
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
+        trainer.set_tb_writer(writer)
+
     # prepare lr_finder
     lr_finder = learning_rate.LogFinder(
         trainer,
@@ -125,7 +131,7 @@ def main():
 
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # General opts
     parser.add_argument('-v', '--verbose',

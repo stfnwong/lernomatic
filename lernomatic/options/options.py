@@ -8,20 +8,6 @@ Stefan Wong 2019
 import argparse
 
 
-# TODO : deprecate...
-def get_basic_options(parser:argparse.ArgumentParser=None) -> argparse.ArgumentParser:
-    if parser is None:
-        parser = argparse.ArgumentParser()
-
-    parser.add_argument('-v', '--verbose',
-                        action='store_true',
-                        default=False,
-                        help='Set verbose mode'
-                        )
-
-    return parser
-
-
 def get_trainer_options(parser:argparse.ArgumentParser=None) -> argparse.ArgumentParser:
     if parser is None:
         parser = argparse.ArgumentParser()
@@ -105,6 +91,11 @@ def get_trainer_options(parser:argparse.ArgumentParser=None) -> argparse.Argumen
                         default=5.0,
                         help='Clip gradients at this (absolute) value'
                         )
+    parser.add_argument('--tensorboard-dir',
+                        default=None,
+                        type=str,
+                        help='Directory to save tensorboard runs to. If None, tensorboard is not used. (default: None)'
+                        )
 
     return parser
 
@@ -150,27 +141,3 @@ def get_lr_finder_options(parser:argparse.ArgumentParser=None) -> argparse.Argum
     return parser
 
 
-    #self.num_epochs       :int   = kwargs.pop('num_epochs', 8)
-    ## lr params
-    #self.lr_mult          :float = kwargs.pop('lr_mult', 0.0)
-    #self.lr_min           :float = kwargs.pop('lr_min', 1e-6)
-    #self.lr_max           :float = kwargs.pop('lr_max', 1.0)
-    #self.explode_thresh   :float = kwargs.pop('explode_thresh', 4.0)      # fast.ai uses 4 * min_smoothed_loss
-    #self.beta             :float = kwargs.pop('beta', 0.999)
-    #self.gamma            :float = kwargs.pop('gamma', 0.999995)
-    #self.lr_min_factor    :float = kwargs.pop('lr_min_factor', 2.0)
-    #self.lr_max_scale     :float = kwargs.pop('lr_max_scale', 1.0)
-    #self.lr_select_method :str   = kwargs.pop('lr_select_method', 'max_acc')
-    #self.lr_trunc         :int   = kwargs.pop('lr_trunc', 10)
-    ## search time
-    #self.max_batches      :int   = kwargs.pop('max_batches', 0)
-    ## gradient params
-    #self.grad_thresh      :float = kwargs.pop('grad_thresh', 0.002)
-    ## other
-    #self.acc_test         :bool  = kwargs.pop('acc_test', True)
-    #self.print_every      :int   = kwargs.pop('print_every', 20)
-    #self.verbose          :bool  = kwargs.pop('verbose', False)
-
-    ## can add some unique id (eg: for comparing states from different
-    ## experiments)
-    #self.expr_id          :str   = kwargs.pop('expr_id', None)

@@ -8,7 +8,7 @@ Stefan Wong 2019
 import numpy as np
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 EXP_DEFAULT_K = 1e-4
 # TODO : genericized to param sched?
@@ -291,6 +291,7 @@ class InvTriangularScheduler(LRScheduler):
         rate = self.lr_max - rate
         self._update_lr_history(rate)
         return rate
+
 
 class TriangularExpScheduler(LRScheduler):
     def __init__(self, **kwargs) -> None:
@@ -585,6 +586,7 @@ class DecayToEpoch(LRScheduler):
             self.learning_rate = self.learning_rate * self.lr_decay
 
         return self.learning_rate
+
 
 #class DecayWhenEpochAfter(LRScheduler):
 #    """

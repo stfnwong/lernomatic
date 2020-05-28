@@ -6,15 +6,18 @@ Stefan Wong 2018
 """
 
 import torch
+#from torch.utils import tensorboard
 from lernomatic.train import trainer
 from lernomatic.models import common
 from lernomatic.models.cvd import cvdnet
 
-# debug
-#from pudb import set_trace; set_trace()
 
 
 class CVDTrainer(trainer.Trainer):
+    """
+    CVDTrainer
+    Trainer object for the Kaggle Cats vs. Dogs example.
+    """
     def __init__(self, model:common.LernomaticModel, **kwargs) -> None:
         super(CVDTrainer, self).__init__(model, **kwargs)
 
@@ -69,6 +72,9 @@ class CVDTrainer(trainer.Trainer):
                        correct, len(self.val_loader.dataset))
                 )
 
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('loss/val', loss.item(), self.val_loss_iter)
+
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
 
@@ -79,6 +85,9 @@ class CVDTrainer(trainer.Trainer):
         print('[VAL ]  : Avg. Val Loss : %.4f, Accuracy : %d / %d (%.4f%%)' %\
               (avg_val_loss, correct, len(self.val_loader.dataset), 100.0 * acc)
         )
+
+        if self.tb_writer is not None:
+            self.tb_writer.add_scalar('acc/val', acc, self.acc_iter)
 
         # save the best weights
         if acc > self.best_acc:

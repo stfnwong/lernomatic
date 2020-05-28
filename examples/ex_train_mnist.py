@@ -5,20 +5,28 @@ Train a classifier on the MNIST handwritten digits example
 Stefan Wong 2019
 """
 
+import os
 import argparse
+import time
+from datetime import timedelta
+# Tensorboard
+import torchvision
+from torch.utils import tensorboard
+# lernomatic
 from lernomatic.train import mnist_trainer
 from lernomatic.models import mnist
+from lernomatic.options import options
+# experiment utils
+from lernomatic.util import expr_util
 
-# debug
-#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
-def main():
 
+# ======== EXPERIMENT ======== #
+def main() -> None:
     # Get a model
     model = mnist.MNISTNet()
-
     # Get a trainer
     trainer = mnist_trainer.MNISTTrainer(
         model,
@@ -39,76 +47,61 @@ def main():
         verbose = GLOBAL_OPTS['verbose']
     )
 
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        if not os.path.isdir(GLOBAL_OPTS['tensorboard_dir']):
+            os.mkdir(GLOBAL_OPTS['tensorboard_dir'])
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
+        trainer.set_tb_writer(writer)
+
+    # Optionally do a search pass here and add a scheduler
+    if GLOBAL_OPTS['find_lr']:
+        lr_finder = expr_util.get_lr_finder(trainer)
+        lr_find_start_time = time.time()
+        lr_finder.find()
+        lr_find_min, lr_find_max = lr_finder.get_lr_range()
+        lr_find_end_time = time.time()
+        lr_find_total_time = lr_find_end_time - lr_find_start_time
+        print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
+        print('Total find time [%s] ' %\
+                str(timedelta(seconds = lr_find_total_time))
+        )
+        # Now get a scheduler
+        stepsize = len(trainer.train_loader.dataset) // 2
+        # get scheduler
+        lr_scheduler = expr_util.get_scheduler(
+            lr_find_min,
+            lr_find_max,
+            stepsize,
+            sched_type='TriangularScheduler'
+        )
+        trainer.set_lr_scheduler(lr_scheduler)
+
+    # train the model
+    train_start_time = time.time()
     trainer.train()
+    train_end_time = time.time()
+    train_total_time = train_end_time - train_start_time
+
+    print('Total training time [%s] (%d epochs)  %s' %\
+            (repr(trainer), trainer.cur_epoch,
+             str(timedelta(seconds = train_total_time)))
+    )
 
 
-def get_parser():
-    parser = argparse.ArgumentParser()
+def get_parser() -> argparse.ArgumentParser:
+    parser = options.get_trainer_options()
+    parser = options.get_lr_finder_options(parser)
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
                         )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=100,
-                        help='Print output every N epochs'
+    parser.add_argument('--find-lr',
+                        action='store_true',
+                        default=False,
+                        help='Search for optimal learning rate'
                         )
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=1000,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
-                        )
-    # Network options
-    # Training options
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        help='Epoch to start training from'
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=20,
-                        help='Epoch to stop training at'
-                        )
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--weight-decay',
-                        type=float,
-                        default=1e-4,
-                        help='Weight decay to use for optimizer'
-                        )
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=1e-3,
-                        help='Learning rate for optimizer'
-                        )
-    parser.add_argument('--momentum',
-                        type=float,
-                        default=0.5,
-                        help='Momentum for SGD'
-                        )
-    parser.add_argument('--grad-clip',
-                        type=float,
-                        default=5.0,
-                        help='Clip gradients at this (absolute) value'
-                        )
-    # Data options
     parser.add_argument('--checkpoint-dir',
                         type=str,
                         default='./checkpoint',
@@ -118,16 +111,6 @@ def get_parser():
                         type=str,
                         default='mnist',
                         help='Name to prepend to all checkpoints'
-                        )
-    parser.add_argument('--load-checkpoint',
-                        type=str,
-                        default=None,
-                        help='Load a given checkpoint'
-                        )
-    parser.add_argument('--overwrite',
-                        action='store_true',
-                        default=False,
-                        help='Overwrite existing processed data files'
                         )
 
     return parser
@@ -143,6 +126,6 @@ if __name__ == '__main__':
     if GLOBAL_OPTS['verbose'] is True:
         print(' ---- GLOBAL OPTIONS ---- ')
         for k,v in GLOBAL_OPTS.items():
-            print('%s : %s' % (str(k), str(v)))
+            print('\t[%s] : %s' % (str(k), str(v)))
 
     main()

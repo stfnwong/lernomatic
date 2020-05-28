@@ -1,6 +1,8 @@
 """
 HDF5_DATASET
-Dataset for an HDF5 file
+Torch Dataset wrapper for an HDF5 file
+
+Stefan Wong 2019
 """
 
 import h5py
@@ -13,7 +15,7 @@ from torch.utils.data import Dataset
 from typing import Tuple
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 
 class HDF5Dataset(Dataset):
@@ -43,6 +45,7 @@ class HDF5Dataset(Dataset):
     """
     def __init__(self, filename: str, **kwargs) -> None:
         self.fp = h5py.File(filename, 'r')
+        self.filename      :str = filename
         # set dataset names
         self.feature_name  :str = kwargs.pop('feature_name', 'features')
         self.label_name    :str = kwargs.pop('label_name', 'labels')
@@ -52,6 +55,12 @@ class HDF5Dataset(Dataset):
     def __repr__(self) -> str:
         return 'HDF5Dataset'
 
+    def __str__(self) -> str:
+        s = []
+        s.append('HDF5Dataset [%s]\n' % str(self.filename))
+        s.append('feature <%s>, label <%s>\n' % (str(self.feature_name), str(self.label_name)))
+        return ''.join(s)
+
     def __del__(self) -> None:
         self.fp.close()
 
@@ -59,7 +68,7 @@ class HDF5Dataset(Dataset):
         return len(self.fp[self.feature_name])
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        if idx > len(self)-1:
+        if idx >= len(self):
             raise IndexError('idx %d out of range (%d)' % (idx, len(self)))
 
         feature = torch.FloatTensor(self.fp[self.feature_name][idx][:])

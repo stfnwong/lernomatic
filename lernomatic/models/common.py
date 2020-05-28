@@ -20,11 +20,11 @@ class LernomaticModel(object):
     with importlib.
     """
     def __init__(self, **kwargs) -> None:
-        self.net               : torch.nn.Module = None
-        self.import_path       : str             = 'lernomatic.model.common'
-        self.model_name        : str             = 'LernomaticModel'
-        self.module_name       : str             = None
-        self.module_import_path: str             = None
+        self.net                : torch.nn.Module = None
+        self.import_path        : str             = 'lernomatic.model.common'
+        self.module_import_path : str             = None
+        self.model_name         : str             = 'LernomaticModel'
+        self.module_name        : str             = None
 
     def __repr__(self) -> str:
         return 'LernomaticModel'
@@ -83,12 +83,10 @@ class LernomaticModel(object):
         # Import the actual network module
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
-
         if 'model_args' in params:
             self.net = mod(**params['model_args'])
         else:
             self.net = mod()
-
         self.net.load_state_dict(params['model_state_dict'])
 
     def set_train(self) -> None:

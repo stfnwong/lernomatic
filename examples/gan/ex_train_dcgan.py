@@ -9,6 +9,8 @@ import argparse
 # timing
 import time
 from datetime import timedelta
+# tensorboard
+from torch.utils import tensorboard
 # visions
 from torchvision import datasets
 from torchvision import transforms
@@ -24,8 +26,6 @@ from lernomatic.util.gan import gan_util
 # command line options
 from lernomatic.options import options
 
-# debug
-from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 
@@ -101,6 +101,12 @@ def main() -> None:
         device_id       = GLOBAL_OPTS['device_id']
     )
 
+    # add a summary writer
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
+        gan_trainer.set_tb_writer(writer)
+
+    # load a checkpoint?
     if GLOBAL_OPTS['load_checkpoint'] is not None:
         print('Loading checkpoint data from file [%s]' % str(GLOBAL_OPTS['load_checkpoint']))
         gan_trainer.load_checkpoint(GLOBAL_OPTS['load_checkpoint'])

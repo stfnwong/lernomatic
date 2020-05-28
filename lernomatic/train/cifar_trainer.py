@@ -11,7 +11,7 @@ from lernomatic.train import trainer
 from lernomatic.models import cifar
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 class CIFAR10Trainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs):
@@ -74,6 +74,8 @@ class CIFAR10Trainer(trainer.Trainer):
             num_workers = self.num_workers,
             shuffle = self.shuffle
         )
+
+        self.test_loader = None
 
     def save_history(self, fname):
         history = dict()

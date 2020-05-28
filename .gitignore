@@ -3,7 +3,7 @@
 *.swp
 *.pkl
 
-# Ignore image files in root
+# Ignore image files in the root directory
 *.png
 *.jpg
 
@@ -12,3 +12,6 @@
 
 # Ignore audio files in root
 *.mp3
+
+# Ignore LMDB cache files
+*.cache

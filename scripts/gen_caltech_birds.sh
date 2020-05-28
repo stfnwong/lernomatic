@@ -24,4 +24,3 @@ $PYTHON tools/dataset/gan_image_proc.py \
     --size=$SIZE \
     --extension=$EXTENSION \
     --split-name=$SPLIT_NAME
-

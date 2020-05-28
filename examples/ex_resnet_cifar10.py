@@ -5,35 +5,42 @@ Resnet trained on CIFAR-10 with LRFinder and Scheduling
 Stefan Wong 2019
 """
 
+import os
 import sys
 import argparse
 import matplotlib.pyplot as plt
-# library modules
+# Tensorboard
+from torch.utils import tensorboard
+# lernomatic
+from lernomatic.models import common
 from lernomatic.models import resnets
 from lernomatic.train import resnet_trainer
 from lernomatic.train import schedule
 from lernomatic.param import lr_common
 # some vis stuff
 from lernomatic.vis import vis_loss_history
+from lernomatic.options import options
 
-# debug
-#from pudb import set_trace; set_trace()
+import time
+from datetime import timedelta
 
 GLOBAL_OPTS = dict()
 
 
-def main():
-    # get a model
-    ref_model = resnets.WideResnet(
-        depth = 58,
-        num_classes = 10
+def get_model(depth:int=58, num_classes:int=10) -> common.LernomaticModel:
+    model = resnets.WideResnet(
+        depth = depth,
+        num_classes = num_classes
     )
 
-    # get a trainer
-    ref_trainer = resnet_trainer.ResnetTrainer(
-        ref_model,
+    return model
+
+
+def get_trainer(model:common.LernomaticModel, checkpoint_name:str) -> resnet_trainer.ResnetTrainer:
+    trainer = resnet_trainer.ResnetTrainer(
+        model,
         batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
+        val_batch_size  = GLOBAL_OPTS['val_batch_size'],
         num_epochs      = GLOBAL_OPTS['num_epochs'],
         learning_rate   = GLOBAL_OPTS['learning_rate'],
         #momentum = GLOBAL_OPTS['momentum'],
@@ -42,79 +49,98 @@ def main():
         device_id       = GLOBAL_OPTS['device_id'],
         # checkpoint
         checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'ex_cifar10_lr_find_schedule_',
+        checkpoint_name = checkpoint_name,
         # display,
         print_every     = GLOBAL_OPTS['print_every'],
         save_every      = GLOBAL_OPTS['save_every'],
         verbose         = GLOBAL_OPTS['verbose']
     )
 
+    return trainer
+
+
+def main() -> None:
+    # get a model and train it as a reference
+    ref_model = get_model()
+    ref_trainer = get_trainer(ref_model, 'ex_cifar10_lr_find_schedule_')
+
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        ref_writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
+        ref_trainer.set_tb_writer(ref_writer)
+
+    ref_train_start_time = time.time()
     ref_trainer.train()
-
-    # get a model
-    sched_model = resnets.WideResnet(
-        depth = 58,
-        num_classes = 10
+    ref_train_end_time = time.time()
+    ref_train_total_time = ref_train_end_time - ref_train_start_time
+    print('Total reference training time [%s] (%d epochs)  %s' %\
+            (repr(ref_trainer), ref_trainer.cur_epoch,
+             str(timedelta(seconds = ref_train_total_time)))
     )
 
-    # get a trainer
-    sched_trainer = resnet_trainer.ResnetTrainer(
-        sched_model,
-        batch_size      = GLOBAL_OPTS['batch_size'],
-        test_batch_size = GLOBAL_OPTS['test_batch_size'],
-        num_epochs      = GLOBAL_OPTS['num_epochs'],
-        learning_rate   = GLOBAL_OPTS['learning_rate'],
-        #momentum = GLOBAL_OPTS['momentum'],
-        weight_decay    = GLOBAL_OPTS['weight_decay'],
-        # device
-        device_id       = GLOBAL_OPTS['device_id'],
-        # checkpoint
-        checkpoint_dir  = GLOBAL_OPTS['checkpoint_dir'],
-        checkpoint_name = 'ex_cifar10_lr_find_schedule_',
-        # display,
-        print_every     = GLOBAL_OPTS['print_every'],
-        save_every      = GLOBAL_OPTS['save_every'],
-        verbose         = GLOBAL_OPTS['verbose']
-    )
+    # get a model and train it with a scheduler
+    sched_model = get_model()
+    sched_trainer = get_trainer(sched_model, 'ex_cifar10_lr_find_schedule_')
+
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        if not os.path.isdir(GLOBAL_OPTS['tensorboard_dir']):
+            os.mkdir(GLOBAL_OPTS['tensorboard_dir'])
+        sched_writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
+        sched_trainer.set_tb_writer(sched_writer)
 
     # get an LRFinder object
     lr_finder = lr_common.LogFinder(
         sched_trainer,
-        lr_min         = GLOBAL_OPTS['lr_min'],
-        lr_max         = GLOBAL_OPTS['lr_max'],
+        lr_min         = GLOBAL_OPTS['find_lr_min'],
+        lr_max         = GLOBAL_OPTS['find_lr_max'],
         num_epochs     = GLOBAL_OPTS['find_num_epochs'],
         explode_thresh = GLOBAL_OPTS['find_explode_thresh'],
         print_every    = GLOBAL_OPTS['find_print_every']
     )
     print(lr_finder)
 
+    lr_find_start_time = time.time()
     lr_finder.find()
     lr_find_min, lr_find_max = lr_finder.get_lr_range()
+    lr_find_end_time = time.time()
+    lr_find_total_time = lr_find_end_time - lr_find_start_time
+    print('Total parameter search time : %s' % str(timedelta(seconds = lr_find_total_time)))
 
     if GLOBAL_OPTS['verbose']:
         print('Found learning rate range as %.4f -> %.4f' % (lr_find_min, lr_find_max))
 
     # get a scheduler
-    lr_scheduler = schedule.TriangularScheduler(
-        stepsize = GLOBAL_OPTS['sched_stepsize'],
-        #stepsize = int(len(sched_trainer.train_loader) / 4),
+    lr_sched_obj = getattr(schedule, GLOBAL_OPTS['sched_type'])
+    lr_scheduler = lr_sched_obj(
+        stepsize = int(len(sched_trainer.train_loader) / 4),
         lr_min = lr_find_min,
         lr_max = lr_find_max
     )
     assert(sched_trainer.acc_iter == 0)
-
     sched_trainer.set_lr_scheduler(lr_scheduler)
+
+    sched_train_start_time = time.time()
     sched_trainer.train()
-
-
+    sched_train_end_time = time.time()
+    sched_train_total_time = sched_train_end_time - sched_train_start_time
+    print('Total scheduled training time [%s] (%d epochs)  %s' %\
+            (repr(sched_trainer), ref_trainer.cur_epoch,
+             str(timedelta(seconds = sched_train_total_time)))
+    )
+    print('Scheduled training time (including find time) : %s' %\
+          str(timedelta(seconds = sched_train_total_time + lr_find_total_time))
+    )
 
     # Compare loss, accuracy
     fig, ax = vis_loss_history.get_figure_subplots(2)
+    # TODO : write out figure...
+
+    # Could also have a step here to show inference
 
 
 
-def get_parser():
-    parser = argparse.ArgumentParser()
+def get_parser() -> argparse.ArgumentParser:
+    parser = options.get_trainer_options()
+    parser = options.get_lr_finder_options(parser)
     # General opts
     parser.add_argument('-v', '--verbose',
                         action='store_true',
@@ -126,111 +152,26 @@ def get_parser():
                         action='store_true',
                         help='Display plots'
                         )
-    parser.add_argument('--print-every',
-                        type=int,
-                        default=100,
-                        help='Print output every N epochs'
-                        )
-    parser.add_argument('--save-every',
-                        type=int,
-                        default=1000,
-                        help='Save model checkpoint every N epochs'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of workers to use when generating HDF5 files'
-                        )
-    # Learning rate finder options
-    parser.add_argument('--find-print-every',
-                        type=int,
-                        default=20,
-                        help='How often to print output from learning rate finder'
-                        )
-    parser.add_argument('--find-num-epochs',
-                        type=int,
-                        default=8,
-                        help='Maximum number of epochs to attempt to find learning rate'
-                        )
-    parser.add_argument('--find-explode-thresh',
-                        type=float,
-                        default=4.5,
-                        help='Threshold at which to stop increasing learning rate'
-                        )
-    parser.add_argument('--lr-min',
-                        type=float,
-                        default=2e-6,
-                        help='Minimum range to search for learning rate'
-                        )
-    parser.add_argument('--lr-max',
-                        type=float,
-                        default=1e-1,
-                        help='Maximum range to search for learning rate'
-                        )
-    # Device options
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=-1,
-                        help='Set device id (-1 for CPU)'
-                        )
-    # Network options
-    # Training options
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during training'
-                        )
-    parser.add_argument('--test-batch-size',
-                        type=int,
-                        default=64,
-                        help='Batch size to use during testing'
-                        )
-    parser.add_argument('--start-epoch',
-                        type=int,
-                        default=0,
-                        help='Epoch to start training from'
-                        )
-    parser.add_argument('--num-epochs',
-                        type=int,
-                        default=20,
-                        help='Epoch to stop training at'
-                        )
-
-    parser.add_argument('--weight-decay',
-                        type=float,
-                        default=0.0,
-                        help='Weight decay to use for optimizer'
-                        )
-    parser.add_argument('--learning-rate',
-                        type=float,
-                        default=1e-3,
-                        help='Learning rate for optimizer'
-                        )
-    parser.add_argument('--sched-stepsize',
-                        type=int,
-                        default=5000,
-                        help='Stepsize for learning rate scheduler'
-                        )
     # Data options
     parser.add_argument('--checkpoint-dir',
                         type=str,
                         default='./checkpoint',
                         help='Set directory to place training snapshots into'
                         )
-    parser.add_argument('--checkpoint-name',
-                        type=str,
-                        default='lr_find_ex_cifar10',
-                        help='Name to prepend to all checkpoints'
-                        )
     parser.add_argument('--load-checkpoint',
                         type=str,
                         default=None,
                         help='Load a given checkpoint'
                         )
-    parser.add_argument('--overwrite',
-                        action='store_true',
-                        default=False,
-                        help='Overwrite existing processed data files'
+    parser.add_argument('--tensorboard-dir',
+                        default=None,
+                        type=str,
+                        help='Directory to save tensorboard runs to. If None, tensorboard is not used. (default: None)'
+                        )
+    parser.add_argument('--sched-type',
+                        type=str,
+                        default='TriangularScheduler',
+                        help='Type of learning rate scheduler to use. Must be the name of a class in lernomatic.train.schedule. (default: TriangularScheduler)'
                         )
 
     return parser

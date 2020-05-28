@@ -14,7 +14,7 @@ from lernomatic.models.gan import gan_loss
 
 
 # debug
-#from pudb import set_trace; set_trace()
+#
 
 
 class Pix2PixTrainer(trainer.Trainer):
@@ -180,6 +180,10 @@ class Pix2PixTrainer(trainer.Trainer):
                        g_loss.item(), d_loss.item())
                 )
 
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('generator/loss',     g_loss.item(), self.loss_iter)
+                    self.tb_writer.add_scalar('discriminator/loss', d_loss.item(), self.loss_iter)
+
             # save checkpoints during training
             if self.save_every > 0 and (self.loss_iter % self.save_every) == 0:
                 ck_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
@@ -190,6 +194,9 @@ class Pix2PixTrainer(trainer.Trainer):
 
         if self.lr_scheduler is not None:
             self.apply_lr_schedule()
+
+        # TODO : Do a forward pass here if we have a summary writer
+
 
     def val_epoch(self) -> None:
         # No validation for GAN
