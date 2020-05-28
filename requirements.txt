@@ -1,6 +1,6 @@
 torch
 torchvision
-hdf5
+h5py
 matplotlib
 numpy
 pandas
