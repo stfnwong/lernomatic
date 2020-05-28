@@ -5,6 +5,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
+  - future
   - mkl
   - hdf5
   - pandas
