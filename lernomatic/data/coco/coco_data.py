@@ -11,7 +11,6 @@ import h5py
 from tqdm import tqdm
 import numpy as np
 from random import seed, choice, sample
-from imageio import imread
 
 from lernomatic.data import data_split
 from lernomatic.data.text import word_map
