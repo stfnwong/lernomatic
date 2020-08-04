@@ -20,20 +20,14 @@ class LernomaticModel(object):
     with importlib.
     """
     def __init__(self, **kwargs) -> None:
-        self.net               : torch.nn.Module = None
-        self.import_path       : str             = 'lernomatic.model.common'
-        self.model_name        : str             = 'LernomaticModel'
-        self.module_name       : str             = None
-        self.module_import_path: str             = None
+        self.net                : torch.nn.Module = None
+        self.import_path        : str             = 'lernomatic.model.common'
+        self.module_import_path : str             = None
+        self.model_name         : str             = 'LernomaticModel'
+        self.module_name        : str             = None
 
     def __repr__(self) -> str:
         return 'LernomaticModel'
-
-    def is_train(self) -> bool:
-        return self.net.training
-
-    def is_eval(self) -> bool:
-        return not self.net.training
 
     def get_model_parameters(self) -> dict:
         """
@@ -55,6 +49,9 @@ class LernomaticModel(object):
             'module_name'        : self.get_module_name(),
             'module_import_path' : self.get_module_import_path()
         }
+        if hasattr(self, 'get_model_args'):
+            params.update({'model_args' : self.get_model_args()})
+
         return params
 
     def get_model_name(self) -> str:
@@ -87,7 +84,10 @@ class LernomaticModel(object):
         # Import the actual network module
         imp = importlib.import_module(self.module_import_path)
         mod = getattr(imp, self.module_name)
-        self.net = mod()
+        if 'model_args' in params:
+            self.net = mod(**params['model_args'])
+        else:
+            self.net = mod()
         self.net.load_state_dict(params['model_state_dict'])
 
     def set_train(self) -> None:
@@ -159,17 +159,6 @@ class LernomaticModel(object):
         for l, param in enumerate(self.net.parameters()):
             param.requires_grad = False
 
-    def freeze_these(self, items:list) -> None:
-        """
-        FREEZE_THESE
-        Freeze only the layer numbers given in a list
-        """
-        item_ptr = 0
-        for l, param in enumerate(self.net.parameters()):
-            if l == items[item_ptr]:
-                param.requires_grad = False
-                item_ptr += 1
-
     def unfreeze(self) -> None:
         for l, param in enumerate(self.net.parameters()):
             param.requires_grad = True
@@ -188,3 +177,6 @@ class LernomaticModel(object):
         model_params.update({'module_name' : checkpoint_data[model_key]['module_name']})
         model_params.update({'module_import_path' : checkpoint_data[model_key]['module_import_path']})
         self.set_params(model_params)
+
+    def zero_grad(self) -> None:
+        self.net.zero_grad()

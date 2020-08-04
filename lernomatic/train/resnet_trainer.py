@@ -15,10 +15,6 @@ from lernomatic.train import trainer
 from lernomatic.models import resnets
 from lernomatic.models import common
 
-# debug
-#from pudb import set_trace; set_trace()
-
-
 class ResnetTrainer(trainer.Trainer):
     """
     ResnetTrainer
@@ -116,6 +112,8 @@ class ResnetTrainer(trainer.Trainer):
             num_workers = self.num_workers
         )
 
+        self.test_loader = None
+
     def save_history(self, fname: str) -> None:
         history = dict()
         history['loss_history']      = self.loss_history
@@ -149,7 +147,7 @@ class ResnetTrainer(trainer.Trainer):
         """
         Load all data from a checkpoint
         """
-        checkpoint_data = torch.load(fname)
+        checkpoint_data = torch.load(fname, map_location='cpu')
         self.set_trainer_params(checkpoint_data['trainer_params'])
         # here we just load the object that derives from LernomaticModel. That
         # object will in turn load the actual nn.Module data from the
@@ -177,40 +175,3 @@ class ResnetTrainer(trainer.Trainer):
 
         # restore trainer object info
         self._send_to_device()
-
-    def get_params(self) -> dict:
-        params = super(WideResnet, self).get_params()
-        params['resnet_params'] = {
-            'depth'          : self.depth,
-            'num_classes'    : self.num_classes,
-            'input_channels' : self.input_channels,
-            'w_factor'       : self.w_factor,
-            'drop_rate'      : self.drop_rate
-        }
-
-        return params
-
-    def set_params(self, params : dict) -> None:
-        # load resnet params
-        self.depth          = params['resnet_params']['depth']
-        self.num_classes    = params['resnet_params']['num_classes']
-        self.input_channels = params['resnet_params']['input_channels']
-        self.w_factor       = params['resnet_params']['w_factor']
-        self.drop_rate      = params['resnet_params']['drop_rate']
-        # regular model stuff
-        self.import_path = params['model_import_path']
-        self.model_name  = params['model_name']
-        self.module_name = params['module_name']
-        self.module_import_path = params['module_import_path']
-        # Import the actual network module
-        imp = importlib.import_module(self.module_import_path)
-        mod = getattr(imp, self.module_name)
-        self.net = mod(
-            self.depth,
-            self.num_classes,
-            self.input_channels,
-            self.w_factor,
-            self.drop_rate
-        )
-        self.net.load_state_dict(params['model_state_dict'])
-

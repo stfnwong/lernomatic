@@ -10,9 +10,6 @@ import torchvision
 from lernomatic.train import trainer
 from lernomatic.models import mnist
 
-# debug
-#from pudb import set_trace; set_trace()
-
 
 class MNISTTrainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs) -> None:
@@ -63,6 +60,16 @@ class MNISTTrainer(trainer.Trainer):
             batch_size = self.val_batch_size,
             shuffle = self.shuffle
         )
+
+        self.test_loader = None
+
+    def train_epoch(self) -> None:
+        super(MNISTTrainer, self).train_epoch()
+
+        # If we have a tensorboard writer, then visualize some outputs here
+        #if self.tb_writer is not None:
+        #    data, label = next(iter(self.train_loader))
+        #    self.tb_writer.add_graph(self.model.net, data)
 
     def save_history(self, fname: str) -> None:
         history = dict()

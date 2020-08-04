@@ -1,7 +1,12 @@
 torch
 torchvision
-unittest
 h5py
+matplotlib
+numpy
+pandas
+librosa
+opencv-python
+pytest
 pudb
 argparse
 cv2

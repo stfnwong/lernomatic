@@ -4,6 +4,7 @@ Represents a generic split of data
 
 Stefan Wong 2018
 """
+# TODO : There could probably be a lot more consolidation here...
 
 import json
 import os
@@ -20,6 +21,8 @@ class DataSplit(object):
         self.elem_ids    = list()
         self.split_name  = split_name
         self.idx         = 0
+        self.has_labels = False
+        self.has_ids    = False
 
     def __len__(self) -> int:
         return len(self.data_paths)
@@ -38,8 +41,15 @@ class DataSplit(object):
         if self.idx >= len(self.data_paths):
             raise StopIteration
         path  = self.data_paths[self.idx]
-        elem_id = self.elem_ids[self.idx]
-        label = self.data_labels[self.idx]
+        if self.has_ids:
+            elem_id = self.elem_ids[self.idx]
+        else:
+            elem_id = None
+
+        if self.has_labels:
+            label = self.data_labels[self.idx]
+        else:
+            label = None
         self.idx += 1
 
         return (path, elem_id, label)
@@ -72,17 +82,18 @@ class DataSplit(object):
         self.elem_ids.append(i)
 
     def add_elem(self, p, i, l) -> None:
+        self.has_ids = True
+        self.has_labels = True
         self.data_paths.append(p)
         self.elem_ids.append(i)
         self.data_labels.append(l)
 
+    def init_labels_ids(self) -> None:
+        self.elem_ids    = [int(0) for _ in range(len(self.data_paths))]
+        self.data_labels = [int(0) for _ in range(len(self.data_paths))]
+
     def save(self, fname:str) -> None:
         param = self.get_param_dict()
-        # debuig
-        print('saving parameters to file [%s]' % fname)
-        for k, v in param.items():
-            print('[%s] : %s' % (str(k), type(v)))
-            print('\t type of [%s][0] : <%s>' % (str(k), type(v[0])))
         with open(fname, 'w') as fp:
             json.dump(param, fp)
 
@@ -94,15 +105,9 @@ class DataSplit(object):
     def get_elem(self, idx:int) -> tuple:
         return (self.data_paths[idx], self.elem_ids[idx], self.data_labels[idx])
 
-    # TODO : these
-    #def to_csv(self, fname):
-    #    pass
 
-    #def from_csv(self, fname):
-    #    pass
 
-# Splitters
-
+# ======== Splitters ======== #
 class DataSplitter(object):
     def __init__(self, **kwargs) -> None:
         valid_split_methods = ('random', 'seq')
@@ -142,8 +147,8 @@ class DataSplitter(object):
 
         return (split_lens, split_offsets)
 
-# TODO : csv splitter
 
+# TODO : csv splitter
 class ListSplitter(DataSplitter):
     """
     Generate splits from a list of filenames

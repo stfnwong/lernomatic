@@ -5,11 +5,17 @@ Train a classifier on the CIFAR10 dataset
 Stefan Wong 2019
 """
 
+import sys
 import argparse
+# Tensorboard
+import torchvision
+from torch.utils import tensorboard
+# lernomatic
 from lernomatic.train import cifar_trainer
 from lernomatic.models import cifar
 from lernomatic.vis import vis_loss_history
 from lernomatic.options import options
+from lernomatic.util import expr_util
 
 import time
 from datetime import timedelta
@@ -39,8 +45,37 @@ def main() -> None:
         save_every = GLOBAL_OPTS['save_every'],
         verbose = GLOBAL_OPTS['verbose']
     )
-    train_start_time = time.time()
+
+    if GLOBAL_OPTS['tensorboard_dir'] is not None:
+        writer = tensorboard.SummaryWriter(log_dir=GLOBAL_OPTS['tensorboard_dir'])
+        trainer.set_tb_writer(writer)
+
+    # Optionally do a search pass here and add a scheduler
+    if GLOBAL_OPTS['find_lr']:
+        lr_finder = expr_util.get_lr_finder(trainer)
+        lr_find_start_time = time.time()
+        lr_finder.find()
+        lr_find_min, lr_find_max = lr_finder.get_lr_range()
+        lr_find_end_time = time.time()
+        lr_find_total_time = lr_find_end_time - lr_find_start_time
+        print('Found learning rate range %.4f -> %.4f' % (lr_find_min, lr_find_max))
+        print('Total find time [%s] ' %\
+                str(timedelta(seconds = lr_find_total_time))
+        )
+
+        # Now get a scheduler
+        stepsize = trainer.get_num_epochs() * len(trainer.train_loader) // 2
+        # get scheduler
+        lr_scheduler = expr_util.get_scheduler(
+            lr_find_min,
+            lr_find_max,
+            stepsize,
+            sched_type='TriangularScheduler'
+        )
+        trainer.set_lr_scheduler(lr_scheduler)
+
     # train the model
+    train_start_time = time.time()
     trainer.train()
     train_end_time = time.time()
     train_total_time = train_end_time - train_start_time
@@ -66,13 +101,17 @@ def main() -> None:
 
 
 def get_parser() -> argparse.ArgumentParser:
-
     parser = options.get_trainer_options()
     # add some extra options for this particular example
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         default=False,
                         help='Set verbose mode'
+                        )
+    parser.add_argument('--find-lr',
+                        action='store_true',
+                        default=False,
+                        help='Search for optimal learning rate'
                         )
     # Figure output
     parser.add_argument('--fig-name',
@@ -109,7 +148,7 @@ if __name__ == '__main__':
         GLOBAL_OPTS[k] = v
 
     if GLOBAL_OPTS['verbose'] is True:
-        print(' ---- GLOBAL OPTIONS ---- ')
+        print(' ---- GLOBAL OPTIONS (%s) ---- ' % str(sys.argv[0]))
         for k,v in GLOBAL_OPTS.items():
             print('\t[%s] : %s' % (str(k), str(v)))
 

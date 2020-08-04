@@ -11,7 +11,6 @@ from lernomatic.util import hdf5_util
 from lernomatic.vis import vis_data
 
 # debug
-#from pudb import set_trace; set_trace()
 
 GLOBAL_OPTS = dict()
 

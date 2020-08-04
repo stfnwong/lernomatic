@@ -30,7 +30,6 @@ def get_mnist_datasets(data_dir:str, download:bool=True) -> tuple:
     return (train_dataset, val_dataset)
 
 
-
 def get_cifar10_datasets(data_dir:str, download:bool=True) -> tuple:
     dataset_transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),

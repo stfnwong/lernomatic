@@ -20,14 +20,14 @@ install_requirements = to_list("""
     torch
     torchvision
     matplotlib
-    json
     h5py
+    pillow
     numpy >=1.12
 """)
 
 setup(
     name = "Lernomatic",
-    version = __version__,
+    version = "0.333333",
 
     install_requires = install_requirements,
     python_requires = '>=3.4',
@@ -37,6 +37,8 @@ setup(
     description = 'Lernomatic',
     author = 'Stefan Wong',
     author_email = 'stfnwong@gmail.com',
+
+    packages=['lernomatic'],
 
     zip_safe = False,
 )

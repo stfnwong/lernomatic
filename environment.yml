@@ -1,0 +1,19 @@
+name: lernomatic
+channels:
+  - pytorch
+  - anaconda
+  - defaults
+  - conda-forge
+dependencies:
+  - future
+  - mkl
+  - hdf5
+  - pandas
+  - librosa
+  - numpy>=1.18.1
+  - python>=3.7
+  - pytorch>=1.5.0
+  - torchvision>=0.6.0
+  - tensorboard
+  - pytest
+  - matplotlib

@@ -7,6 +7,7 @@ Stefan Wong 2018
 
 import importlib
 import torch
+from torch.utils import tensorboard
 from torch import nn
 import numpy as np
 from lernomatic.train import schedule
@@ -17,6 +18,7 @@ import time
 from datetime import timedelta
 
 
+# TODO : Update accuracy so that there is val_acc AND train_acc AND test_acc
 class Trainer(object):
     """
     Trainer
@@ -61,6 +63,8 @@ class Trainer(object):
         self.mtm_scheduler          = kwargs.pop('mtm_scheduler', None)
         self.stop_when_acc   :float = kwargs.pop('stop_when_acc', 0.0)
         self.early_stop      :dict  = kwargs.pop('early_stop', None)
+        # Tensorboard writer
+        self.tb_writer:tensorboard.SummaryWriter = kwargs.pop('tb_writer', None)
 
         self.start_epoch = 0
         if self.val_batch_size == 0:
@@ -120,12 +124,13 @@ class Trainer(object):
         self.loss_iter      = 0
         self.val_loss_iter  = 0
         self.acc_iter       = 0
-        self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
 
         if self.train_loader is not None:
             self.loss_history   = np.zeros(len(self.train_loader) * self.num_epochs)
+            self.iter_per_epoch = int(len(self.train_loader) / self.num_epochs)
         else:
             self.loss_history = None
+            self.iter_per_epoch = 0
 
         if self.val_loader is not None:
             self.val_loss_history = np.zeros(len(self.val_loader) * self.num_epochs)
@@ -148,7 +153,7 @@ class Trainer(object):
         if self.test_dataset is None:
             self.test_loader = None
         else:
-            self.test_loader = torch.utils.data.DataLoader(
+            self.test_loader = torch.utils.data.Dataloader(
                 self.test_dataset,
                 batch_size = self.val_batch_size,
                 drop_last = self.drop_last,
@@ -173,12 +178,6 @@ class Trainer(object):
 
     def _send_to_device(self) -> None:
         self.model.send_to(self.device)
-
-    def save_checkpoint(self, fname: str) -> None:
-        raise NotImplementedError
-
-    def load_checkpoint(self, fname: str) -> None:
-        raise NotImplementedError
 
     def set_num_epochs(self, num_epochs:int) -> None:
         if num_epochs > self.num_epochs:
@@ -243,6 +242,11 @@ class Trainer(object):
             for g in self.optimizer.param_groups:
                 g['momentum'] = momentum
 
+    # Update batch size
+    def set_batch_size(self, batch_size:int) -> None:
+        self.batch_size = batch_size
+        self._init_dataloaders()
+
     def set_lr_scheduler(self, lr_scheduler: schedule.LRScheduler) -> None:
         self.lr_scheduler = lr_scheduler
 
@@ -267,29 +271,42 @@ class Trainer(object):
         self.test_dataset = test_dataset
         self._init_dataloaders()
 
+    def set_tb_writer(self, writer:tensorboard.SummaryWriter) -> None:
+        self.tb_writer = writer
+
     def apply_lr_schedule(self) -> None:
-        if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
-            new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
-        elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or \
-             isinstance(self.lr_scheduler, schedule.DecayWhenEpoch) or \
-             isinstance(self.lr_scheduler, schedule.DecayToEpoch):
-            new_lr = self.lr_scheduler.get_lr(self.cur_epoch)
-        elif isinstance(self.lr_scheduler, schedule.DecayWhenAcc):
-            new_lr = self.lr_scheduler.get_lr(self.acc_history[self.acc_iter])
-        else:
-            new_lr = self.lr_scheduler.get_lr(self.loss_iter)
-        self.set_learning_rate(new_lr)
+        if self.lr_scheduler is not None:
+            if isinstance(self.lr_scheduler, schedule.TriangularDecayWhenAcc):
+                new_lr = self.lr_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
+            elif isinstance(self.lr_scheduler, schedule.EpochSetScheduler) or \
+                isinstance(self.lr_scheduler, schedule.DecayWhenEpoch) or \
+                isinstance(self.lr_scheduler, schedule.DecayToEpoch):
+                new_lr = self.lr_scheduler.get_lr(self.cur_epoch)
+            elif isinstance(self.lr_scheduler, schedule.DecayWhenAcc):
+                new_lr = self.lr_scheduler.get_lr(self.acc_history[self.acc_iter])
+            else:
+                new_lr = self.lr_scheduler.get_lr(self.loss_iter)
+            self.set_learning_rate(new_lr)
+
+            if self.tb_writer is not None:
+                scalar_tag = 'schedule/lr_%s' % repr(self.lr_scheduler)
+                self.tb_writer.add_scalar(scalar_tag, new_lr, self.loss_iter)
 
     def apply_mtm_schedule(self) -> None:
-        if isinstance(self.mtm_scheduler, schedule.TriangularDecayWhenAcc):
-            new_mtm = self.mtm_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
-        elif isinstance(self.mtm_scheduler, schedule.EpochSetScheduler) or isinstance(self.mtm_scheduler, schedule.DecayWhenEpoch):
-            new_mtm = self.mtm_scheduler.get_lr(self.cur_epoch)
-        elif isinstance(self.mtm_scheduler, schedule.DecayWhenAcc):
-            new_mtm = self.mtm_scheduler.get_lr(self.acc_history[self.acc_iter])
-        else:
-            new_mtm = self.mtm_scheduler.get_lr(self.loss_iter)
-        self.set_momentum(new_mtm)
+        if self.mtm_scheduler is not None:
+            if isinstance(self.mtm_scheduler, schedule.TriangularDecayWhenAcc):
+                new_mtm = self.mtm_scheduler.get_lr(self.loss_iter, self.acc_history[self.acc_iter])
+            elif isinstance(self.mtm_scheduler, schedule.EpochSetScheduler) or isinstance(self.mtm_scheduler, schedule.DecayWhenEpoch):
+                new_mtm = self.mtm_scheduler.get_lr(self.cur_epoch)
+            elif isinstance(self.mtm_scheduler, schedule.DecayWhenAcc):
+                new_mtm = self.mtm_scheduler.get_lr(self.acc_history[self.acc_iter])
+            else:
+                new_mtm = self.mtm_scheduler.get_lr(self.loss_iter)
+            self.set_momentum(new_mtm)
+
+            if self.tb_writer is not None:
+                scalar_tag = 'schedule/mtm_%s' % repr(self.mtm_scheduler)
+                self.tb_writer.add_scalar(scalar_tag, new_mtm, self.loss_iter)
 
     # Layer freeze / unfreeze
     def freeze_to(self, layer_num: int) -> None:
@@ -335,6 +352,10 @@ class Trainer(object):
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
 
+                # if we have a tensorboard writer, update that as well
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('loss/train', loss.item(), self.loss_iter)
+
             self.loss_history[self.loss_iter] = loss.item()
             self.loss_iter += 1
 
@@ -345,16 +366,10 @@ class Trainer(object):
                 if self.verbose:
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
-                hist_name = self.checkpoint_dir + '/' + self.checkpoint_name +\
-                    '_iter_' + str(self.loss_iter) + '_epoch_' + str(self.cur_epoch) + '_history_.pkl'
-                self.save_history(hist_name)
 
-            # perform any scheduling
-            if self.lr_scheduler is not None:
-                self.apply_lr_schedule()
-
-            if self.mtm_scheduler is not None:
-                self.apply_mtm_schedule()
+            # apply scheduling
+            self.apply_lr_schedule()
+            self.apply_mtm_schedule()
 
     def val_epoch(self) -> None:
         """
@@ -369,8 +384,7 @@ class Trainer(object):
             data = data.to(self.device)
             labels = labels.to(self.device)
 
-            with torch.no_grad():
-                output = self.model.forward(data)
+            output = self.model.forward(data)
             loss = self.criterion(output, labels)
             val_loss += loss.item()
 
@@ -382,6 +396,9 @@ class Trainer(object):
                 print('[VAL ]  :   Epoch       iteration         Val Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
+
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('loss/val', loss.item(), self.val_loss_iter)
 
             self.val_loss_history[self.val_loss_iter] = loss.item()
             self.val_loss_iter += 1
@@ -395,6 +412,9 @@ class Trainer(object):
                100.0 * acc)
         )
 
+        if self.tb_writer is not None:
+            self.tb_writer.add_scalar('acc/val', acc, self.acc_iter)
+
         # save the best weights
         if acc > self.best_acc:
             self.best_acc = acc
@@ -404,13 +424,45 @@ class Trainer(object):
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+    def test_epoch(self) -> None:
+        self.model.set_eval()
+        test_loss = 0.0
+        correct = 0
+
+        for batch_idx, (data, labels) in enumerate(self.test_loader):
+            data = data.to(self.device)
+            labels = labels.to(self.device)
+
+            output = self.model.forward(data)
+            loss = self.criterion(output, labels)
+            test_loss += loss.item()
+
+            # accuracy
+            pred = output.data.max(1, keepdim=True)[1]
+            correct += pred.eq(labels.data.view_as(pred)).sum().item()
+
+            if (batch_idx % self.print_every) == 0:
+                print('[VAL ]  :   Epoch       iteration         Val Loss')
+                print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
+                      (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.val_loader), loss.item()))
+
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('loss/test', loss.item(), self.test_loss_iter)
+
+            self.val_loss_history[self.val_loss_iter] = loss.item()
+            self.val_loss_iter += 1
+
+        if self.tb_writer is not None:
+            self.tb_writer.add_scalar('acc/test', acc, self.test_loss_iter)
+
+
     def train(self) -> None:
         """
         TRAIN
         Standard training routine
         """
         if self.save_every == -1:
-            self.save_every = len(self.train_loader)
+            self.save_every = len(self.train_loader)-1
 
         for epoch in range(self.cur_epoch, self.num_epochs):
             epoch_start_time = time.time()
@@ -422,7 +474,16 @@ class Trainer(object):
             )
 
             if self.val_loader is not None:
+                val_epoch_start_time = time.time()
                 self.val_epoch()
+                val_epoch_end_time = time.time()
+                val_epoch_total_time = val_epoch_end_time - val_epoch_start_time
+                print('Epoch %d (validation) [%s] took %s' %\
+                        (epoch+1, repr(self), str(timedelta(seconds = val_epoch_total_time)))
+                )
+
+            if self.test_loader is not None:
+                self.test_epoch()
 
             # save history at the end of each epoch
             if self.save_hist:
@@ -455,15 +516,40 @@ class Trainer(object):
             return None
         return self.loss_history[0 : self.loss_iter]
 
+    def get_cur_loss(self) -> float:
+        if self.loss_iter == 0:
+            return 0.0
+        return self.loss_history[self.loss_iter]
+
+    def get_cur_epoch_loss(self) -> np.ndarray:
+        if self.loss_iter == 0:
+            return None
+        return self.loss_history[self.loss_iter - len(self.train_loader) : self.loss_iter]
+
     def get_val_loss_history(self) -> np.ndarray:
         if self.val_loss_iter == 0:
             return None
         return self.val_loss_history[0 : self.val_loss_iter]
 
+    def get_cur_val_loss(self) -> float:
+        if self.val_loss_iter == 0:
+            return 0.0
+        return self.val_loss_history[self.val_loss_iter]
+
+    def get_cur_epoch_val_loss(self) -> np.ndarray:
+        if self.val_loss_iter == 0:
+            return None
+        return self.val_loss_history[self.val_loss_iter - len(self.val_loader) : self.val_loss_iter]
+
     def get_acc_history(self) -> np.ndarray:
         if self.acc_iter == 0:
             return None
         return self.acc_history[0 : self.acc_iter]
+
+    def get_cur_acc(self) -> float:
+        if self.acc_iter == 0:
+            return 0.0
+        return self.acc_history[self.acc_iter]
 
     # model checkpoints
     def save_checkpoint(self, fname : str) -> None:
@@ -541,7 +627,7 @@ class Trainer(object):
         self.num_epochs      = params['num_epochs']
         self.learning_rate   = params['learning_rate']
         self.momentum        = params['momentum']
-        self.weigh_decay     = params['weight_decay']
+        self.weight_decay    = params['weight_decay']
         self.loss_function   = params['loss_function']
         self.optim_function  = params['optim_function']
         self.cur_epoch       = params['cur_epoch']
@@ -550,7 +636,7 @@ class Trainer(object):
         self.print_every     = params['print_every']
         # dataloader params
         self.batch_size      = params['batch_size']
-        self.val_batch_size = params['val_batch_size']
+        self.val_batch_size  = params['val_batch_size']
         self.shuffle         = params['shuffle']
 
         self._init_device()

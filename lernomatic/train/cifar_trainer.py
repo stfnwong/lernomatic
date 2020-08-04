@@ -10,18 +10,13 @@ import torchvision
 from lernomatic.train import trainer
 from lernomatic.models import cifar
 
-# debug
-#from pudb import set_trace; set_trace()
 
 class CIFAR10Trainer(trainer.Trainer):
     def __init__(self, model=None, **kwargs):
         self.data_dir       = kwargs.pop('data_dir', 'data/')
         super(CIFAR10Trainer, self).__init__(model, **kwargs)
         self.criterion = torch.nn.CrossEntropyLoss()
-
-        # FIXME : debug, remove
-        if self.model is None:
-            print('[%s] created trainer with no model' % self)
+        self.test_loader = None
 
     def __repr__(self):
         return 'CIFAR10Trainer'

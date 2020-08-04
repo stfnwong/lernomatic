@@ -7,8 +7,6 @@ from torch.nn import functional as F
 from lernomatic.train import trainer
 from lernomatic.models import common
 
-# debug
-#from pudb import set_trace; set_trace()
 
 class MNISTVAETrainer(trainer.Trainer):
     """
@@ -54,17 +52,19 @@ class MNISTVAETrainer(trainer.Trainer):
             shuffle = self.shuffle
         )
         # validation data
-        self.test_loader = torch.utils.data.DataLoader(
+        self.val_loader = torch.utils.data.DataLoader(
             torchvision.datasets.MNIST(
                 self.data_dir,
                 train = False,
                 download = True,
                 transform = dataset_transform
             ),
-            batch_size = self.test_batch_size,
+            batch_size  = self.val_batch_size,
             num_workers = self.num_workers,
-            shuffle = self.shuffle
+            shuffle     = self.shuffle
         )
+
+        self.test_loader = None
 
     def save_history(self, fname: str) -> None:
         history = dict()
@@ -123,6 +123,12 @@ class MNISTVAETrainer(trainer.Trainer):
                 print('[TRAIN] :   Epoch       iteration         Loss')
                 print('            [%3d/%3d]   [%6d/%6d]  %.6f' %\
                       (self.cur_epoch+1, self.num_epochs, batch_idx, len(self.train_loader), loss.item()))
+
+                if self.tb_writer is not None:
+                    self.tb_writer.add_scalar('loss/train', loss.item(), self.loss_iter)
+
+            self.loss_history[self.loss_iter] = loss.item()
+            self.loss_iter += 1
 
             # Apply scheduling
             if self.lr_scheduler is not None:

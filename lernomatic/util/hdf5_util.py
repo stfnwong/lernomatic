@@ -8,8 +8,6 @@ Stefan Wong 2018
 import h5py
 import numpy as np
 
-# debug
-#from pudb import set_trace; set_trace()
 
 class HDF5Data(object):
     def __init__(self, fname: str, **kwargs) -> None:

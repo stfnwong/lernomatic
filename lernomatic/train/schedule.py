@@ -7,9 +7,9 @@ Stefan Wong 2019
 
 import numpy as np
 
-# debug
-#from pudb import set_trace; set_trace()
-
+EXP_DEFAULT_K = 1e-4
+# TODO : genericized to param sched?
+# TODO : docstrings for all the classes
 
 # ---- Learning Rate ---- #
 class LRScheduler(object):
@@ -201,7 +201,7 @@ class WarmRestartScheduler(LRScheduler):
         self.step_per_epoch = kwargs.pop('step_per_epoch', 1000)
         super(WarmRestartScheduler, self).__init__(**kwargs)
         self.cur_lr = self.lr_max
-        self.batch_since_restart = 0
+        self.batch_since_restart = 1
 
     def __repr__(self) -> str:
         return 'WarmRestartScheduler'
@@ -217,7 +217,8 @@ class WarmRestartScheduler(LRScheduler):
         if cur_iter < 1:
             restart_frac = 1.0 / (2 * self.stepsize * self.step_per_epoch)
         else:
-            restart_frac = self.batch_since_restart / (2 * self.stepsize * self.step_per_epoch)
+            restart_frac = self.batch_since_restart / (2 * self.stepsize) # * self.step_per_epoch)
+        self.batch_since_restart += 1
         new_lr = self.lr_min + 0.5 * (self.lr_max - self.lr_min) * (1 + np.cos(restart_frac * np.pi))
         self._update_lr_history(new_lr)
 
@@ -245,22 +246,53 @@ class TriangularScheduler(LRScheduler):
 
     def get_lr(self, cur_iter: int) -> float:
         itr = cur_iter - self.start_iter
-        if itr > 0:
-            cycle = itr / (2 * self.stepsize)
-            x = itr - (2 * cycle + 1) * self.stepsize
-            x /= self.stepsize
-            rate = self.lr_min + (self.lr_max - self.lr_min) *\
-                np.maximum(0.0, 1.0 - np.abs(x))
-            self._update_lr_history(rate)
-            return rate
+        if itr < 1:
+            self._update_lr_history(self.lr_min)
+            return self.lr_min
 
-        self._update_lr_history(self.lr_min)
-        return self.lr_min
+        cycle = np.floor(1 + itr / (2 * self.stepsize))
+        x = np.abs(itr / self.stepsize - 2 * cycle + 1)
+        rate = self.lr_min + (self.lr_max - self.lr_min) *\
+            np.maximum(0.0, 1.0 - np.abs(x))
+        self._update_lr_history(rate)
+        return rate
+
+
+class InvTriangularScheduler(LRScheduler):
+    """
+    InvTriangularScheduler
+    """
+    def __init__(self, **kwargs) -> None:
+        super(InvTriangularScheduler, self).__init__(**kwargs)
+
+    def __repr__(self) -> str:
+        return 'InvTriangularScheduler'
+
+    def __str__(self) -> str:
+        s = []
+        s.append('Inverse Triangular Learning Rate Scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+
+        return ''.join(s)
+
+    def get_lr(self, cur_iter: int) -> float:
+        itr = cur_iter - self.start_iter
+        if itr < 1:
+            self._update_lr_history(self.lr_max)
+            return self.lr_max
+
+        cycle = np.floor(1 + itr / (2 * self.stepsize))
+        x = np.abs(itr / self.stepsize - 2 * cycle + 1)
+        rate = self.lr_min + (self.lr_max - self.lr_min) *\
+            np.maximum(0.0, 1.0 - np.abs(x))
+        rate = self.lr_max - rate
+        self._update_lr_history(rate)
+        return rate
 
 
 class TriangularExpScheduler(LRScheduler):
     def __init__(self, **kwargs) -> None:
-        self.k :float = kwargs.pop('k', 0.1)
+        self.k :float = kwargs.pop('k', EXP_DEFAULT_K)
         super(TriangularExpScheduler, self).__init__(**kwargs)
 
     def __repr__(self) -> str:
@@ -276,9 +308,8 @@ class TriangularExpScheduler(LRScheduler):
     def get_lr(self, cur_iter: int) -> float:
         itr = cur_iter - self.start_iter
         if itr > 0:
-            cycle = itr / (2 * self.stepsize)
-            x = itr - (2 * cycle + 1) * self.stepsize
-            x /= self.stepsize
+            cycle = np.floor(1 + itr / (2 * self.stepsize))
+            x = np.abs(itr / self.stepsize - 2 * cycle + 1)
             rate = self.lr_min + (self.lr_max - self.lr_min) *\
                 np.maximum(0.0, 1.0 - np.abs(x))
             rate = rate * np.exp(-self.k * cur_iter)
@@ -306,11 +337,10 @@ class Triangular2Scheduler(LRScheduler):
     def get_lr(self, cur_iter: int) -> float:
         itr = cur_iter - self.start_iter
         if itr > 0:
-            cycle = itr / (2 * self.stepsize)
-            x = itr - (2 * cycle + 1) * self.stepsize
-            x /= self.stepsize
+            cycle = np.floor(1 + itr / (2 * self.stepsize))
+            x = np.abs(itr / self.stepsize - 2 * cycle + 1)
             rate = self.lr_min + (self.lr_max - self.lr_min) *\
-                np.minimum(1.0, np.maximum(0.0, (1.0 - np.abs(x) / np.power(2, cycle))))
+                np.minimum(1.0, np.maximum(0.0, 1.0 - np.abs(x) / np.power(2, cycle)))
             self._update_lr_history(rate)
             return rate
 
@@ -320,7 +350,7 @@ class Triangular2Scheduler(LRScheduler):
 
 class Triangular2ExpScheduler(LRScheduler):
     def __init__(self, **kwargs) -> None:
-        self.k :float = kwargs.pop('k', 0.1)
+        self.k :float = kwargs.pop('k', EXP_DEFAULT_K)
         super(Triangular2ExpScheduler, self).__init__(**kwargs)
 
     def __repr__(self) -> str:
@@ -336,11 +366,11 @@ class Triangular2ExpScheduler(LRScheduler):
     def get_lr(self, cur_iter: int) -> float:
         itr = cur_iter - self.start_iter
         if itr > 0:
-            cycle = itr / (2 * self.stepsize)
-            x = itr - (2 * cycle + 1) * self.stepsize
-            x /= self.stepsize
+            cycle = np.floor(1 + itr / (2 * self.stepsize))
+            x = np.abs(itr / self.stepsize - 2 * cycle + 1)
             rate = self.lr_min + (self.lr_max - self.lr_min) *\
-                np.minimum(1.0, np.maximum(0.0, (1.0 - np.abs(x) / np.power(2, cycle))))
+                np.minimum(1.0, np.maximum(0.0, 1.0 - np.abs(x) / np.power(2, cycle)))
+
             rate = rate * np.exp(-self.k * cur_iter)
             self._update_lr_history(rate)
             return rate
@@ -383,7 +413,7 @@ class EpochSetScheduler(LRScheduler):
         s = []
         s.append('EpochSetScheduler learning rate scheduler\n')
         s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
-        if self.lr_value is true:
+        if self.lr_value is True:
             s.append(' epoch      : learning rate (set) \n')
         else:
             s.append(' epoch      : learning rate (multiplied by) \n')
@@ -455,8 +485,7 @@ class DecayWhenAcc(LRScheduler):
         self.lr_decay      : float = kwargs.pop('lr_decay', 0.9)
         super(DecayWhenAcc, self).__init__(**kwargs)
         self.best_acc      : float = 0.0
-        self.learning_rate : float = self.lr_max
-        #self.learning_rate : float = self.initial_lr
+        self.learning_rate : float = self.initial_lr
 
     def __repr__(self) -> str:
         return 'DecayWhenAcc'
@@ -489,10 +518,9 @@ class DecayWhenEpoch(LRScheduler):
         self.num_epochs : int   = kwargs.pop('num_epochs', 8)
         self.lr_decay   : float = kwargs.pop('lr_decay', 0.9)
         super(DecayWhenEpoch, self).__init__(**kwargs)
-        self.learning_rate : float = self.lr_max
 
     def __repr__(self) -> str:
-        return 'decaywhenepoch'
+        return 'DecayWhenEpoch'
 
     def __str__(self) -> str:
         s = []
@@ -500,6 +528,7 @@ class DecayWhenEpoch(LRScheduler):
         s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
         s.append('epoch : %.4f, lr decay : %.4f\n' % (self.num_epochs, self.lr_decay))
         s.append('\n')
+        return ''.join(s)
 
     def get_lr(self, cur_epoch: int) -> float:
         if (cur_epoch % self.num_epochs) == 0:
@@ -508,38 +537,84 @@ class DecayWhenEpoch(LRScheduler):
         return self.learning_rate
 
 
-class DecayWhenAccEpoch(LRScheduler):
-    """
-    DecayWhenAccEpoch
-    Decay the learning rate when the accuracy changes by less than a certain
-    amount within a specified number of epochs.
-    """
+class DecayToEpoch(LRScheduler):
     def __init__(self, **kwargs) -> None:
-        self.num_epochs : int   = kwargs.pop('num_epochs', 8)
-        self.lr_decay   : float = kwargs.pop('lr_decay', 0.9)
-        super(DecayWhenAccEpoch, self).__init__(**kwargs)
-        self.learning_rate : float = self.lr_max
+        """
+        Arguments:
+            non_decay_time: (int)
+                Number of epochs to wait until applying the decay rate (default: 0)
+
+            initial_lr: (float)
+                Starting value of learning rate (default: 3e-4)
+
+            final_lr: (float)
+                Final value to decay towards. The learning rate is guarateed to not
+                go below this value no matter how long the training run lasts(default: 0.0)
+
+            decay_length: (int)
+                Number of epochs over which to apply the decay
+        """
+        self.non_decay_time :int   = kwargs.pop('non_decay_time', 0)
+        self.initial_lr     :float = kwargs.pop('initial_lr', 3e-4)
+        self.final_lr       :float = kwargs.pop('final_lr', 0.0)
+        self.decay_length   :int   = kwargs.pop('decay_length', 40)
+        super(DecayToEpoch, self).__init__(**kwargs)
+
+        self.lr_decay = (self.initial_lr - self.final_lr) / self.decay_length
+        self.learning_rate = self.initial_lr
 
     def __repr__(self) -> str:
-        return 'DecayWhenAccEpoch'
+        return 'DecayToEpoch'
 
     def __str__(self) -> str:
         s = []
-        s.append('DecayWhenAccEpoch learning rate scheduler\n')
-        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
-        s.append('epoch : %.4f, lr decay : %.4f\n' % (self.num_epochs, self.lr_decay))
+        s.append('DecayToEpoch learning rate scheduler\n')
+        s.append('lr range %.4f -> %.4f \n' % (self.initial_lr, self.final_lr))
+        s.append('Decay starts after %d epochs\n' % self.non_decay_time)
+        s.append('Decay runs for %d epochs from %.4f -> %.4f \n' %\
+                 (self.decay_length, self.initial_lr, self.final_lr)
+        )
         s.append('\n')
 
-    def get_lr(self, cur_epoch: int, cur_acc:float) -> float:
-        if cur_acc > self.best_acc:
-            self.best_acc = cur_acc
-        if (cur_epoch % self.num_epochs) == 0:
-            if cur_acc < (self.best_acc * (1.0 - self.acc_thresh)):
-                self.learning_rate = self.learning_rate * self.lr_decay
-        self._update_lr_history(self.learning_rate)
+        return ''.join(s)
+
+    def get_lr(self, cur_epoch:int) -> float:
+        if (cur_epoch > self.non_decay_time) and (cur_epoch < (self.non_decay_time + self.decay_length)):
+            self.learning_rate = self.learning_rate * self.lr_decay
 
         return self.learning_rate
 
+
+#class DecayWhenEpochAfter(LRScheduler):
+#    """
+#    DecayWhenEpochAfter
+#    Decay the learning rate every num_epochs by lr_decay, but only after
+#    initial_epochs have passed
+#    """
+#    def __init__(self, **kwargs) -> None:
+#        self.initial_epochs:int = kwargs.pop('initial_epochs', 50)
+#        self.num_epochs : int   = kwargs.pop('num_epochs', 8)
+#        self.lr_decay   : float = kwargs.pop('lr_decay', 0.9)
+#        super(DecayWhenEpochAfter, self).__init__(**kwargs)
+#
+#    def __repr__(self) -> str:
+#        return 'DecayWhenEpochAfter'
+#
+#    def __str__(self) -> str:
+#        s = []
+#        s.append('DecayWhenEpochAfter learning rate scheduler\n')
+#        s.append('lr range %.4f -> %.4f \n' % (self.lr_min, self.lr_max))
+#        s.append('epoch : %.4f, lr decay : %.4f inital_epochs: %d \n' %\
+#                 (self.num_epochs, self.lr_decay, self.initial_epochs))
+#        s.append('\n')
+#
+#    def get_lr(self, cur_epoch: int) -> float:
+#        if cur_epoch < self.inital_epochs:
+#            return self.learning_rate
+#        if (cur_epoch % self.num_epochs) == 0:
+#            self.learning_rate = self.learning_rate * self.lr_decay
+#
+#        return self.learning_rate
 
 
 # ---- Momentum ----- #
