@@ -153,7 +153,7 @@ class Trainer(object):
         if self.test_dataset is None:
             self.test_loader = None
         else:
-            self.test_loader = torch.utils.data.Dataloader(
+            self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset,
                 batch_size = self.val_batch_size,
                 drop_last = self.drop_last,

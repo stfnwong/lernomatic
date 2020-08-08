@@ -272,6 +272,9 @@ class ImageCaptTrainer(trainer.Trainer):
                     print('\t Saving checkpoint to file [%s] ' % str(ck_name))
                 self.save_checkpoint(ck_name)
 
+    def test_epoch(self) -> None:
+        pass        # TODO : implement this
+
     def val_epoch(self) -> None:
         """
         Find accuracy on test data

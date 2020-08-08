@@ -10,3 +10,4 @@ pytest
 pudb
 argparse
 cv2
+nltk

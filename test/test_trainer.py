@@ -50,6 +50,7 @@ class TestTrainer:
             model,
             num_epochs  = self.test_num_epochs,
             save_every  = 0,
+            print_every = 250,
             device_id   = util.get_device_id(),
             batch_size  = self.test_batch_size,
             num_workers = self.test_num_workers
@@ -110,9 +111,9 @@ class TestTrainer:
 
         # Try to train for another epoch
         dst_tr.set_num_epochs(src_tr.num_epochs+1)
-        self.assertEqual(dst_tr.num_epochs, src_tr.num_epochs+1)
+        assert dst_tr.num_epochs == src_tr.num_epochs + 1
         dst_tr.train()
-        self.assertEqual(src_tr.num_epochs+1, dst_tr.cur_epoch)
+        assert src_tr.num_epochs + 1 == dst_tr.cur_epoch
 
         print('\n ...done')
         os.remove(test_checkpoint)
@@ -127,7 +128,7 @@ class TestTrainer:
         src_tr = cifar_trainer.CIFAR10Trainer(
             model,
             save_every  = 0,
-            print_every = 50,
+            print_every = 250,
             device_id   = util.get_device_id(),
             # loader options,
             num_epochs  = 2 * self.test_num_epochs,
@@ -205,7 +206,7 @@ class TestTrainer:
         src_tr = cifar_trainer.CIFAR10Trainer(
             model,
             save_every  = 0,
-            print_every = 50,
+            print_every = 250,
             device_id   = util.get_device_id(),
             # loader options,
             num_epochs  = self.test_num_epochs,
@@ -281,7 +282,7 @@ class TestTrainer:
         src_tr = cifar_trainer.CIFAR10Trainer(
             model,
             save_every  = 0,
-            print_every = 50,
+            print_every = 250,
             device_id   = util.get_device_id(),
             # loader options,
             num_epochs  = self.test_num_epochs,
@@ -353,7 +354,7 @@ class TestTrainer:
         trainer = cifar_trainer.CIFAR10Trainer(
             model,
             save_every    = 0,
-            print_every   = 50,
+            print_every   = 250,
             device_id     = util.get_device_id(),
             # loader options,
             num_epochs    = self.test_num_epochs,
@@ -410,7 +411,7 @@ class TestTrainer:
         extend_trainer = cifar_trainer.CIFAR10Trainer(
             model,
             save_every    = 0,
-            print_every   = 50,
+            print_every   = 250,
             device_id     = util.get_device_id(),
             # loader options,
             num_epochs    = 10,

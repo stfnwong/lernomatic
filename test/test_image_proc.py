@@ -8,6 +8,7 @@ Stefan Wong 2019
 """
 
 import os
+import pytest
 import torch
 import cv2
 import PIL
