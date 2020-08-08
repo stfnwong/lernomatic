@@ -48,6 +48,10 @@ def get_trainer(encoder:image_caption.Encoder,
         std =[0.229, 0.224, 0.225]
     )
 
+    if not os.path.exists(TRAIN_DATASET_PATH):
+        print('Generating test data...')
+        os.system('scripts/coco/gen_caption_unit_test.sh')
+
     # Create datasets
     train_dataset = coco_dataset.CaptionDataset(
         TRAIN_DATASET_PATH,
@@ -195,82 +199,3 @@ class TestImageCaptTrainer:
         print('%d items correct' % num_pos)
         print('%d items incorrect' % num_neg)
         print('Total : %d/%d' % (num_pos, num_pos + num_neg))
-
-
-
-# Entry point
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--verbose',
-                        action='store_true',
-                        default=False,
-                        help='Sets verbose mode'
-                        )
-    parser.add_argument('--draw-plot',
-                        action='store_true',
-                        default=False,
-                        help='Draw plots'
-                        )
-    parser.add_argument('--num-workers',
-                        type=int,
-                        default=1,
-                        help='Number of worker processes to use for reading HDF5'
-                        )
-    parser.add_argument('--device-id',
-                        type=int,
-                        default=0,
-                        help='Device to use for tests (default : -1)'
-                        )
-    # wordmap
-    parser.add_argument('--wordmap',
-                        type=str,
-                        default='/mnt/ml-data/datasets/COCO/wordmap.json',
-                        help='Wordmap file to use for test'
-                        )
-    # dataset files (run tools/gen_caption_unit_test.sh to generate)
-    parser.add_argument('--batch-size',
-                        type=int,
-                        default=32,
-                        help='Batch size to use during test'
-                        )
-    parser.add_argument('--train-dataset-path',
-                        type=str,
-                        default='hdf5/caption_unit_test_train.h5',
-                        help='Path to unit test train dataset'
-                        )
-    parser.add_argument('--test-dataset-path',
-                        type=str,
-                        default='hdf5/caption_unit_test_test.h5',
-                        help='Path to unit test test dataset'
-                        )
-    parser.add_argument('--val-dataset-path',
-                        type=str,
-                        default='hdf5/caption_unit_test_val.h5',
-                        help='Path to unit test val dataset'
-                        )
-
-    # args for unittest module
-    parser.add_argument('unittest_args', nargs='*')
-
-    args = parser.parse_args()
-    arg_vals = vars(args)
-    for k, v in arg_vals.items():
-        GLOBAL_OPTS[k] = v
-
-    if GLOBAL_OPTS['verbose']:
-        print('-------- GLOBAL OPTS (%s) --------' % str(sys.argv[0]))
-        for k, v in GLOBAL_OPTS.items():
-            print('\t[%s] : %s' % (str(k), str(v)))
-
-    # Check that the unit test data is present
-    if not os.path.exists(GLOBAL_OPTS['train_dataset_path']):
-        raise RuntimeError('No training data - run tools/gen_caption_unit_test.sh to generate')
-    if not os.path.exists(GLOBAL_OPTS['test_dataset_path']):
-        raise RuntimeError('No testing data - run tools/gen_caption_unit_test.sh to generate')
-    if not os.path.exists(GLOBAL_OPTS['val_dataset_path']):
-        raise RuntimeError('No validation data - run tools/gen_caption_unit_test.sh to generate')
-
-    sys.argv[1:] = args.unittest_args
-    unittest.main()
-
-
