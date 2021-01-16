@@ -17,3 +17,4 @@ dependencies:
   - tensorboard
   - pytest
   - matplotlib
+  - requests    # for scrapers
