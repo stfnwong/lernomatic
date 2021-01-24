@@ -13,6 +13,7 @@ from PIL import Image
 from lernomatic.util.image_util import img_to_tensor
 from lernomatic.vis.util import img_to_var
 
+import argparse
 
 
 def vis_cnn_layer(model:nn.Module, target_layer:int, target_filter:int, **kwargs) -> None:
@@ -63,14 +64,24 @@ def vis_cnn_layer(model:nn.Module, target_layer:int, target_filter:int, **kwargs
 
 if __name__ == '__main__':
     # conv layers in alexnet are 0, 3, 6, 8, 10
-    layer = 6
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('img',
+                        type=str,
+                        help='Path to test image file'
+                        )
+    arg_parser.add_argument('--layer',
+                        type=int,
+                        default = 6,
+                            help='Which layer to visualize'
+                        )
+    args = arg_parser.parse_args()
 
-    img_path = "/home/kreshnik/Pictures/shirley-head-2.png"
+    img_path = args.img
     test_img = Image.open(img_path).convert("RGB")
     test_img_var = img_to_var(test_img)
 
     model = models.alexnet(pretrained=True)
-    filter_tensor = model.features[layer].weight.data.clone()
+    filter_tensor = model.features[args.layer].weight.data.clone()
 
     target_layer = 17
     target_filter = 5
