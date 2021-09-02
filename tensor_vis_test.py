@@ -4,7 +4,6 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from torchvision import models, utils
-import argparse
 
 
 def vis_tensor(tensor:torch.Tensor, ch:int=0, all_kernels:bool=False, num_rows:int=8, padding:int=1) -> None:
@@ -25,17 +24,9 @@ def vis_tensor(tensor:torch.Tensor, ch:int=0, all_kernels:bool=False, num_rows:i
 if __name__ == '__main__':
     #from pudb import set_trace; set_trace()
     # conv layers in alexnet are 0, 3, 6, 8, 10
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--layer',
-                        type=int,
-                        default = 6,
-                            help='Which layer to visualize'
-                        )
-    args = arg_parser.parse_args()
-
-    # model stuff
+    layer = 6
     model = models.alexnet(pretrained=True)
-    filter_tensor = model.features[args.layer].weight.data.clone()
+    filter_tensor = model.features[layer].weight.data.clone()
 
     vis_tensor(filter_tensor, ch=0, all_kernels=False)
 

@@ -5,6 +5,7 @@ import torch.nn as nn
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import argparse
 
 from torchvision import models
 from lernomatic.util.image_util import img_to_tensor
@@ -28,7 +29,7 @@ class VanillaBackprop:
         return self.__repr__()
 
     def _set_layer_hook(self, layer:int=0) -> None:
-        def hook_fn(module:nn.Module, grad_in:torch.Tensor, grad_out:torch.Tensor) -> None:
+        def hook_fn(module: nn.Module, grad_in: torch.Tensor, grad_out: torch.Tensor) -> None:
             self.gradients = grad_in[0]
 
         # register hook to layer k
@@ -44,24 +45,44 @@ class VanillaBackprop:
         one_hot_output[0][target_class] = 1
         # backward pass
         model_output.backward(gradient=one_hot_output)
-
-        # convert to numpy array
+        # convert to numpy array - size seems to small here...?
+        # TODO: for Alexnet we expect the output to have shape (1, 3, 224, 224)
         grad_array = self.gradients.data.numpy()[0]
+
         return grad_array
 
 
 
 if __name__ == '__main__':
-    from pudb import set_trace; set_trace()
+    #from pudb import set_trace; set_trace()
     # conv layers in alexnet are 0, 3, 6, 8, 10
-    target_layer = 1
-    target_example = 1      # category: Snake
-    model = models.alexnet(pretrained=True)
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('img',
+                        type=str,
+                        help='Path to test image file'
+                        )
+    arg_parser.add_argument('--target-layer',
+                        type=int,
+                        default = 0,
+                        help='Which layer to visualize'
+                        )
+    arg_parser.add_argument('--target-class',
+                        type=int,
+                        default = 1,
+                        help='Which class to visualize'
+                        )
+    args = arg_parser.parse_args()
 
-    img_path = "/home/kreshnik/Pictures/shirley-head-2.png"
+    target_layer = args.target_layer
+    target_example = args.target_class      # category: Snake
+    img_path = args.img
+
     test_img = Image.open(img_path).convert("RGB")
     test_img_var = img_to_var(test_img)
 
+    print(f"test_img_var.shape : {test_img_var.shape}")
+
+    model = models.alexnet(pretrained=True)
     # get the grads
     grad_viz = VanillaBackprop(model, target_layer)
     grads = grad_viz.get_grads(test_img_var, target_example)
