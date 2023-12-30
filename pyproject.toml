@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "lernomatic"
+version = "0.2.0"
+description = "Poor man's fast.ai"
+authors = ["Stefan Wong <stfnwong@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.1.4"
+librosa = "^0.10.1"
+numpy = "^1.26.2"
+opencv-cam2 = "^0.0.1"
+torchvision = "^0.16.2"
+matplotlib = "^3.8.2"
+tensorboard = "^2.15.1"
+torch = "^2.1.2"
+
+[tool.poetry.group.dev.dependencies]
+ipython = "^8.19.0"
+pudb = "^2023.1"
+pytest = "^7.4.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

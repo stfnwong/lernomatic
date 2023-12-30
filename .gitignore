@@ -15,3 +15,9 @@
 
 # Ignore LMDB cache files
 *.cache
+
+# Ignore any random file with suffix *.out
+*.out
+
+# Ignore tags
+tags
