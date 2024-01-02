@@ -17,6 +17,7 @@ torch = "^2.1.2"
 tqdm = "^4.66.1"
 h5py = "^3.10.0"
 opencv-python = "^4.8.1.78"
+lmdb = "^1.4.1"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.19.0"

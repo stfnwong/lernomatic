@@ -6,8 +6,9 @@ Stefan Wong 2019
 """
 
 import os
-import numpy as np
 import h5py
+import pytest
+
 # unit(s) under test
 from lernomatic.data.gan import aligned_data_split
 from lernomatic.data.gan import aligned_data_proc

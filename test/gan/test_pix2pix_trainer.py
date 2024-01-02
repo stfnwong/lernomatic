@@ -7,9 +7,11 @@ Stefan Wong 2019
 
 import os
 import torch
-import torchvision
 from torchvision import transforms
+import pytest
 # units under test
+
+
 # I suppose that this unit test can almost serve as a model test as well
 from lernomatic.models.gan.cycle_gan import resnet_gen
 from lernomatic.models.gan.cycle_gan import pixel_disc

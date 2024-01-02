@@ -21,3 +21,6 @@
 
 # Ignore tags
 tags
+
+# Ignore any tool directories
+.jukit/

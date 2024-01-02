@@ -8,10 +8,11 @@ Stefan Wong 2019
 """
 
 import os
-import torch
 import cv2
 import PIL
 import numpy as np
+import pytest
+
 # unit(s) under test
 from lernomatic.data import image_proc
 from lernomatic.data import data_split
